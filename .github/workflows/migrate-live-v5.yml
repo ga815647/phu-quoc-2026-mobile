@@ -1,0 +1,158 @@
+name: migrate-live-v5
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/migrate-live-v5.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download exact live-v5 capture
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          curl -fL \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/artifacts/9902484004/zip" \
+            -o /tmp/live-v5.zip
+
+      - name: Reconstruct accepted v5 plus Cable patch
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import zipfile, re, hashlib, json
+
+          root = Path('.')
+          zpath = Path('/tmp/live-v5.zip')
+          with zipfile.ZipFile(zpath) as z:
+              def ztext(name): return z.read(name).decode('utf-8')
+              html = ztext('mirror/index.html')
+              page = ztext('mirror/assets/page-kjCTkZIS.js')
+              index = ztext('mirror/assets/index-BYyvJifK.js')
+              assets = {
+                  'assets/framework-CXnKph_e.js': z.read('mirror/assets/framework-CXnKph_e.js'),
+                  'assets/index-C-szeJ12.css': z.read('mirror/assets/index-C-szeJ12.css'),
+                  'assets/layout-segment-context-DvoW-dBA.js': z.read('mirror/assets/layout-segment-context-DvoW-dBA.js'),
+                  'assets/rolldown-runtime-S-ySWqyJ.js': z.read('mirror/assets/rolldown-runtime-S-ySWqyJ.js'),
+              }
+              favicon = z.read('mirror/favicon.svg')
+
+          def rep(s, old, new, label):
+              c=s.count(old)
+              if c != 1:
+                  raise SystemExit(f'{label}: expected 1, found {c}')
+              return s.replace(old,new,1)
+
+          html=rep(html,'<figcaption><span>MANDATORY ANCHOR</span>Cable 日 08:50–09:05 到站</figcaption>',
+                   '<figcaption><span>FIRST-WAVE TARGET</span>Cable 日 10:30–10:45 soft arrival · 11:00 hard queue</figcaption>','HTML hero')
+          page=rep(page,'(0,j.jsxs)(`figcaption`,{children:[(0,j.jsx)(`span`,{children:`MANDATORY ANCHOR`}),`Cable 日 08:50–09:05 到站`]})',
+                   '(0,j.jsxs)(`figcaption`,{children:[(0,j.jsx)(`span`,{children:`FIRST-WAVE TARGET`}),`Cable 日 10:30–10:45 soft arrival · 11:00 hard queue`]})','PAGE hero')
+
+          old_html='''<article class="card" id="cable"><div class="chead"><div class="kicker">CARD A · MANDATORY</div><h3>🚠 Cable + Sunset Town</h3><p class="summary">Phụng → Dinh Cậu → Cable。下午只決定：留 Hòn Thơm，或 Khem；晚上回 Sunset Town。</p><div class="tags"><span class="tag">必排</span><span class="tag orange">Heavy</span><span class="tag gray">Direct car primary</span></div></div><div class="timeline"><div class="step"><div class="time">06:20–06:30</div><div><b>Cosy 出發</b><p>短車到 Bánh Canh Phụng；不繞 An Thới Market。</p></div></div><div class="step"><div class="time">06:30–07:10</div><div><b>Bánh Canh Phụng</b><p>早餐 25–40 分；T−72 查首開／早餐售罄。</p></div></div><div class="step"><div class="time">07:10–07:40</div><div><b>Dinh Cậu＋水龍聖母廟＋河口</b><p>Phụng 後步行／短車，停 10–20 分，不延伸老城散步。</p></div></div><div class="step"><div class="time">≤08:15</div><div><b>離開 DD</b><p>Direct Grab／GreenSM／taxi → Ga Ánh Dương。</p></div></div><div class="step"><div class="time">08:50–09:05</div><div><b>Ga Ánh Dương</b><p>留 25–40 分給離線 QR、票券、廁所、量身高與排隊。</p></div></div><div class="step"><div class="time">09:00／09:30*</div><div><b>Cable first run</b><p>官方 2026 頁互相衝突；08:50–09:05 到站對兩種版本都安全，T−72 查 actual first run。</p></div></div>'''
+          new_html='''<article class="card" id="cable"><div class="chead"><div class="kicker">CARD A · MANDATORY</div><h3>🚠 Cable + Sunset Town</h3><p class="summary">Phụng → Dinh Cậu → Cable。下午只決定：留 Hòn Thơm，或 Khem；晚上回 Sunset Town。</p><div class="tags"><span class="tag">必排</span><span class="tag orange">Heavy</span><span class="tag gray">First-wave, not first-run</span></div></div><div class="timeline"><div class="step"><div class="time">08:30–08:45</div><div><b>Cosy 出發</b><p>短車到 Bánh Canh Phụng；不繞 An Thới Market。</p></div></div><div class="step"><div class="time">早餐</div><div><b>Bánh Canh Phụng</b><p>早餐 25–40 分；T−72 查首開／早餐售罄。</p></div></div><div class="step"><div class="time">接著</div><div><b>Dinh Cậu＋水龍聖母廟＋河口</b><p>Phụng 後步行／短車，停 10–20 分，不延伸老城散步。</p></div></div><div class="step"><div class="time">接著</div><div><b>離開 DD</b><p>Direct Grab／GreenSM／taxi → Ga Ánh Dương。</p></div></div><div class="step"><div class="time">10:30–10:45</div><div><b>Ga Ánh Dương soft target</b><p>留票券／QR、廁所、量身高與排隊 friction。</p></div></div><div class="step"><div class="time">11:00</div><div><b>Hard arrival / queue deadline</b><p>最晚此時應已到站／入列；不要把 11:30 當到站目標。</p></div></div><div class="step"><div class="time">09:30–11:30*</div><div><b>Current first wave</b><p>目前官方 best evidence；目標是進第一波，不追 first run。T−72 重查 October exact hours。</p></div></div>'''
+          html=rep(html,old_html,new_html,'HTML Cable morning')
+
+          old_page='''(0,j.jsxs)(`article`,{className:`card`,id:`cable`,children:[(0,j.jsxs)(`div`,{className:`chead`,children:[(0,j.jsx)(`div`,{className:`kicker`,children:`CARD A · MANDATORY`}),(0,j.jsx)(`h3`,{children:`🚠 Cable + Sunset Town`}),(0,j.jsx)(`p`,{className:`summary`,children:`Phụng → Dinh Cậu → Cable。下午只決定：留 Hòn Thơm，或 Khem；晚上回 Sunset Town。`}),(0,j.jsxs)(`div`,{className:`tags`,children:[(0,j.jsx)(`span`,{className:`tag`,children:`必排`}),(0,j.jsx)(`span`,{className:`tag orange`,children:`Heavy`}),(0,j.jsx)(`span`,{className:`tag gray`,children:`Direct car primary`})]})]}),(0,j.jsxs)(`div`,{className:`timeline`,children:[(0,j.jsx)($,{time:`06:20–06:30`,title:`Cosy 出發`,children:`短車到 Bánh Canh Phụng；不繞 An Thới Market。`}),(0,j.jsx)($,{time:`06:30–07:10`,title:`Bánh Canh Phụng`,children:`早餐 25–40 分；T−72 查首開／早餐售罄。`}),(0,j.jsx)($,{time:`07:10–07:40`,title:`Dinh Cậu＋水龍聖母廟＋河口`,children:`Phụng 後步行／短車，停 10–20 分，不延伸老城散步。`}),(0,j.jsx)($,{time:`≤08:15`,title:`離開 DD`,children:`Direct Grab／GreenSM／taxi → Ga Ánh Dương。`}),(0,j.jsx)($,{time:`08:50–09:05`,title:`Ga Ánh Dương`,children:`留 25–40 分給離線 QR、票券、廁所、量身高與排隊。`}),(0,j.jsx)($,{time:`09:00／09:30*`,title:`Cable first run`,children:`官方 2026 頁互相衝突；08:50–09:05 到站對兩種版本都安全，T−72 查 actual first run。`}),'''
+          new_page='''(0,j.jsxs)(`article`,{className:`card`,id:`cable`,children:[(0,j.jsxs)(`div`,{className:`chead`,children:[(0,j.jsx)(`div`,{className:`kicker`,children:`CARD A · MANDATORY`}),(0,j.jsx)(`h3`,{children:`🚠 Cable + Sunset Town`}),(0,j.jsx)(`p`,{className:`summary`,children:`Phụng → Dinh Cậu → Cable。下午只決定：留 Hòn Thơm，或 Khem；晚上回 Sunset Town。`}),(0,j.jsxs)(`div`,{className:`tags`,children:[(0,j.jsx)(`span`,{className:`tag`,children:`必排`}),(0,j.jsx)(`span`,{className:`tag orange`,children:`Heavy`}),(0,j.jsx)(`span`,{className:`tag gray`,children:`First-wave, not first-run`})]})]}),(0,j.jsxs)(`div`,{className:`timeline`,children:[(0,j.jsx)($,{time:`08:30–08:45`,title:`Cosy 出發`,children:`短車到 Bánh Canh Phụng；不繞 An Thới Market。`}),(0,j.jsx)($,{time:`早餐`,title:`Bánh Canh Phụng`,children:`早餐 25–40 分；T−72 查首開／早餐售罄。`}),(0,j.jsx)($,{time:`接著`,title:`Dinh Cậu＋水龍聖母廟＋河口`,children:`Phụng 後步行／短車，停 10–20 分，不延伸老城散步。`}),(0,j.jsx)($,{time:`接著`,title:`離開 DD`,children:`Direct Grab／GreenSM／taxi → Ga Ánh Dương。`}),(0,j.jsx)($,{time:`10:30–10:45`,title:`Ga Ánh Dương soft target`,children:`留票券／QR、廁所、量身高與排隊 friction。`}),(0,j.jsx)($,{time:`11:00`,title:`Hard arrival / queue deadline`,children:`最晚此時應已到站／入列；不要把 11:30 當到站目標。`}),(0,j.jsx)($,{time:`09:30–11:30*`,title:`Current first wave`,children:`目前官方 best evidence；目標是進第一波，不追 first run。T−72 重查 October exact hours。`}),'''
+          page=rep(page,old_page,new_page,'PAGE Cable morning')
+
+          html=rep(html,'<div class="step"><div class="time">10:00–12:45</div><div><b>Hòn Thơm</b>', '<div class="step"><div class="time">上島後–12:45</div><div><b>Hòn Thơm</b>','HTML island time')
+          page=rep(page,'(0,j.jsx)($,{time:`10:00–12:45`,title:`Hòn Thơm`', '(0,j.jsx)($,{time:`上島後–12:45`,title:`Hòn Thơm`','PAGE island time')
+          html=rep(html,'T−72：actual first run、13:30–14:00 return、last run、maintenance／weather。','T−72：October first-wave hours、13:30–14:00 return、last run、maintenance／weather。','HTML Cable ops')
+          page=rep(page,'T−72：actual first run、13:30–14:00 return、last run、maintenance／weather。','T−72：October first-wave hours、13:30–14:00 return、last run、maintenance／weather。','PAGE Cable ops')
+          html=rep(html,'09:00／09:30 actual first、return／last run、maintenance、child rides；Khem retained driver。','09:30–11:30 current first wave、October exact hours、return／last run、maintenance、child rides；Khem retained driver。','HTML Cable T72 rule')
+          page=rep(page,'09:00／09:30 actual first、return／last run、maintenance、child rides；Khem retained driver。','09:30–11:30 current first wave、October exact hours、return／last run、maintenance、child rides；Khem retained driver。','PAGE Cable T72 rule')
+
+          html=html.replace('href="/assets/','href="./assets/')
+          html=html.replace('href="/favicon.svg','href="./favicon.svg')
+          html=html.replace('import("/assets/','import("./assets/')
+          html=html.replace('\\"/assets/','\\"./assets/')
+          html=html.replace('\\"/favicon.svg','\\"./favicon.svg')
+          html,n=re.subn(r'<script>\(function\(\)\{function c\(\).*?</script></body></html>', '</body></html>', html, count=1, flags=re.S)
+          if n != 1: raise SystemExit(f'CF removal count {n}')
+          index=rep(index,'var gi=`modulepreload`,_i=function(e){return`/`+e},vi={}','var gi=`modulepreload`,_i=function(e){return`./`+e},vi={}','INDEX preload path')
+
+          (root/'assets').mkdir(exist_ok=True)
+          (root/'index.html').write_text(html)
+          (root/'assets/page-kjCTkZIS.js').write_text(page)
+          (root/'assets/index-BYyvJifK.js').write_text(index)
+          for path,data in assets.items():
+              p=root/path; p.parent.mkdir(parents=True,exist_ok=True); p.write_bytes(data)
+          (root/'favicon.svg').write_bytes(favicon)
+          (root/'.nojekyll').write_text('\n')
+
+          checks = {
+            'six cards': all(f'id="{x}"' in html for x in ['cable','vinwonders','onbird','starfish','anthoi','safari']),
+            'OnBird confirmed': '10/11 Morning 已確認' in html and '10/11 Morning 已確認' in page,
+            'Khem no food gate': 'Food 不構成 activation gate' in html and 'Food 不構成 activation gate' in page,
+            'Hamninh adaptive': '不是 hard lunch node、Food anchor 或 Card success condition' in html and '不是 hard lunch node、Food anchor 或 Card success condition' in page,
+            'Cable patch': all(x in html and x in page for x in ['08:30–08:45','10:30–10:45','Hard arrival / queue deadline','09:30–11:30*']),
+            'old cable anchor gone': '08:50–09:05' not in html and '08:50–09:05' not in page,
+            'old early departure gone': '06:20–06:30' not in html and '06:20–06:30' not in page,
+            'localStorage v5 unchanged': 'pq2026v4' in page and 'pq2026v4-onbird-20260902' in page,
+            'project-relative assets': 'href="/assets/' not in html and 'import("/assets/' not in html and '_i=function(e){return`./`+e}' in index,
+            'Cloudflare host injection removed': 'challenge-platform/scripts/jsd/main.js' not in html,
+          }
+          for k,v in checks.items(): print(('PASS' if v else 'FAIL'), k)
+          if not all(checks.values()): raise SystemExit('static verification failed')
+
+          files=[]
+          for p in sorted([root/'index.html',root/'favicon.svg',root/'.nojekyll',*(root/'assets').glob('*')]):
+              if p.is_file():
+                  b=p.read_bytes(); files.append({'path':str(p.relative_to(root)),'bytes':len(b),'sha256':hashlib.sha256(b).hexdigest()})
+          manifest={
+            'basis':'exact live accepted v5 deployed capture; workflow run 33778274743 artifact 9902484004',
+            'authorized_delta':'accepted 2026-09-03 Cable first-wave timing patch + GitHub Pages project-path adaptation + removal of Cloudflare host-only injection',
+            'checks':checks,
+            'files':files,
+          }
+          (root/'MIGRATION_MANIFEST.json').write_text(json.dumps(manifest,ensure_ascii=False,indent=2)+'\n')
+          PY
+
+      - name: Commit reconstructed deployment
+        id: commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html favicon.svg .nojekyll assets MIGRATION_MANIFEST.json
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "Rebuild Pages from accepted v5 capture + Cable patch"
+            git push origin HEAD:main
+          fi
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Wait for live Pages and smoke
+        env:
+          SITE: https://ga815647.github.io/phu-quoc-2026-mobile/
+        run: |
+          ok=0
+          for i in $(seq 1 36); do
+            if curl -fsSL "$SITE" -o /tmp/live.html && grep -q 'FIRST-WAVE TARGET' /tmp/live.html && grep -q '10:30–10:45' /tmp/live.html; then
+              ok=1
+              break
+            fi
+            sleep 5
+          done
+          test "$ok" = 1
+          grep -q '10/11 Morning 已確認' /tmp/live.html
+          grep -q 'Hard arrival / queue deadline' /tmp/live.html
+          grep -q 'Food 不構成 activation gate' /tmp/live.html
+          curl -fsSI "${SITE}assets/index-C-szeJ12.css" >/dev/null
+          curl -fsSI "${SITE}assets/page-kjCTkZIS.js" >/dev/null
+          echo "LIVE_PAGES_SMOKE=PASS"
+          echo "MIGRATION_COMMIT=${{ steps.commit.outputs.sha }}"
