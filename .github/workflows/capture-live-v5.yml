@@ -1,0 +1,116 @@
+name: capture-live-v5
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/capture-live-v5.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Capture deployed v5
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='https://phu-quoc-2026-mobile.ga815647.chatgpt.site/'
+          mkdir -p capture/raw capture/mirror
+
+          curl --fail --location --retry 3 --retry-all-errors \
+            --user-agent 'Mozilla/5.0 GitHubActions PhuQuocV5Capture/1.0' \
+            --dump-header capture/raw/root.headers.txt \
+            --output capture/raw/index.html \
+            "$BASE"
+
+          python3 - <<'PY'
+          from html.parser import HTMLParser
+          from pathlib import Path
+          from urllib.parse import urljoin, urlparse
+          from urllib.request import Request, urlopen
+          import hashlib, json, re, time
+
+          base = 'https://phu-quoc-2026-mobile.ga815647.chatgpt.site/'
+          host = urlparse(base).netloc
+          out = Path('capture/mirror')
+          out.mkdir(parents=True, exist_ok=True)
+          root = Path('capture/raw/index.html').read_bytes()
+
+          class P(HTMLParser):
+              def __init__(self):
+                  super().__init__(); self.urls=[]
+              def handle_starttag(self, tag, attrs):
+                  for k,v in attrs:
+                      if k in ('src','href') and v:
+                          self.urls.append(v)
+
+          def local_path(url):
+              p = urlparse(url)
+              path = p.path or '/'
+              if path.endswith('/'):
+                  path += 'index.html'
+              return out / path.lstrip('/')
+
+          seen=set()
+          queue=[]
+          def add(raw_url, parent=base):
+              if not raw_url or raw_url.startswith(('data:','mailto:','tel:','javascript:','#')):
+                  return
+              u=urljoin(parent, raw_url)
+              p=urlparse(u)
+              if p.scheme not in ('http','https') or p.netloc != host:
+                  return
+              u=p._replace(fragment='').geturl()
+              if u not in seen:
+                  seen.add(u); queue.append(u)
+
+          parser=P(); parser.feed(root.decode('utf-8','replace'))
+          for u in parser.urls: add(u)
+          add(base)
+
+          asset_re = re.compile(r'''(?:(?:src|href)=["']([^"']+)["']|["']((?:/|https://phu-quoc-2026-mobile\.ga815647\.chatgpt\.site/)[^"'<> ]+)["'])''')
+          manifest=[]
+          failures=[]
+          i=0
+          while i < len(queue) and i < 500:
+              u=queue[i]; i+=1
+              req=Request(u, headers={'User-Agent':'Mozilla/5.0 GitHubActions PhuQuocV5Capture/1.0'})
+              try:
+                  with urlopen(req, timeout=30) as r:
+                      data=r.read()
+                      ctype=r.headers.get('Content-Type','')
+                      status=getattr(r,'status',200)
+                  lp=local_path(u); lp.parent.mkdir(parents=True, exist_ok=True); lp.write_bytes(data)
+                  manifest.append({'url':u,'path':str(lp),'status':status,'bytes':len(data),'sha256':hashlib.sha256(data).hexdigest(),'content_type':ctype})
+                  if any(x in ctype.lower() for x in ('text/','javascript','json','xml','css')) or lp.suffix.lower() in ('.html','.js','.css','.json','.txt','.map'):
+                      text=data.decode('utf-8','replace')
+                      for m in asset_re.finditer(text):
+                          add(m.group(1) or m.group(2), u)
+              except Exception as e:
+                  failures.append({'url':u,'error':repr(e)})
+              time.sleep(0.05)
+
+          Path('capture/manifest.json').write_text(json.dumps({'base':base,'host':host,'captured':manifest,'failures':failures},ensure_ascii=False,indent=2),encoding='utf-8')
+          Path('capture/SHA256SUMS.txt').write_text('\n'.join(f"{x['sha256']}  {x['path']}" for x in manifest)+'\n',encoding='utf-8')
+          print(f'captured={len(manifest)} failures={len(failures)} queued={len(queue)}')
+          if not Path('capture/raw/index.html').stat().st_size:
+              raise SystemExit('empty root html')
+          PY
+
+          printf '\nROOT SIZE: '; wc -c < capture/raw/index.html
+          printf 'FILES: '; find capture -type f | wc -l
+          printf 'ROOT SHA256: '; sha256sum capture/raw/index.html
+
+      - name: Upload capture artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-v5-capture
+          path: capture/
+          if-no-files-found: error
+          retention-days: 7
