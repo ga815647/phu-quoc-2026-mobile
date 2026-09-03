@@ -1,0 +1,63 @@
+{
+  "basis": "exact live accepted v5 deployed capture; workflow run 33778274743 artifact 9902484004",
+  "authorized_delta": "accepted 2026-09-03 Cable first-wave timing patch + GitHub Pages project-path adaptation + removal of Cloudflare host-only injection",
+  "checks": {
+    "six cards": true,
+    "OnBird confirmed": true,
+    "Khem no food gate": true,
+    "Hamninh adaptive": true,
+    "Cable patch": true,
+    "old cable anchor gone": true,
+    "old early departure gone": true,
+    "localStorage v5 unchanged": true,
+    "project-relative assets": true,
+    "Cloudflare host injection removed": true
+  },
+  "files": [
+    {
+      "path": ".nojekyll",
+      "bytes": 1,
+      "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+    },
+    {
+      "path": "assets/framework-CXnKph_e.js",
+      "bytes": 189805,
+      "sha256": "73b45b606448e4dc310fbe851d8089ee752f3eb081980b3a6fec88988820ee12"
+    },
+    {
+      "path": "assets/index-BYyvJifK.js",
+      "bytes": 80718,
+      "sha256": "5de276e53bdf008ab9eb60c70b0042463d346c72c06929ec7a5442767f8d39cc"
+    },
+    {
+      "path": "assets/index-C-szeJ12.css",
+      "bytes": 149033,
+      "sha256": "273b58b62c6e803245b25adc3013f0f2ff0689d0f9846bda39d616184266ad34"
+    },
+    {
+      "path": "assets/layout-segment-context-DvoW-dBA.js",
+      "bytes": 288,
+      "sha256": "eeb662555c8356ea2865818127fb72ad6e82ac62e93b5033ed72f0716fae97c3"
+    },
+    {
+      "path": "assets/page-kjCTkZIS.js",
+      "bytes": 161023,
+      "sha256": "b4835860d7877dff219856206766479d784ec387b7d4d73b5a62f68988b8e2fa"
+    },
+    {
+      "path": "assets/rolldown-runtime-S-ySWqyJ.js",
+      "bytes": 694,
+      "sha256": "5db5ba82eef00d1dee7e86e663098c9427d01183a88d357437daff295aec3e75"
+    },
+    {
+      "path": "favicon.svg",
+      "bytes": 712,
+      "sha256": "e6d2e59b7b5bbb0342e0fb496dfc262decbfe4426bbb7b047aec8d467d1dc6f7"
+    },
+    {
+      "path": "index.html",
+      "bytes": 43103,
+      "sha256": "a66c59e2a62e7e91d0f7602ef3c7d11c7c01790e91579fd3c9f0fd892429893d"
+    }
+  ]
+}
