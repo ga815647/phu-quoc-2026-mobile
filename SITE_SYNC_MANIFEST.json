@@ -1,0 +1,36 @@
+{
+  "sync_id": "PHQ-SITE-STAGING-SYNC-2026-09-04-01",
+  "scope": "PUBLIC_GITHUB_PAGES_STAGING_ONLY",
+  "canonical_production_unchanged": "https://phu-quoc-2026-mobile.ga815647.chatgpt.site",
+  "staging_url": "https://ga815647.github.io/phu-quoc-2026-mobile/",
+  "accepted_route_state": {
+    "card_count": 5,
+    "cards": [
+      "onbird",
+      "vinwonders",
+      "cable",
+      "starfish",
+      "safari"
+    ],
+    "anthoi": "OPTIONAL_SATELLITE_NOT_CARD",
+    "khem": "NOT_DEFAULT_CABLE_SATELLITE",
+    "safari_tail": "GANH_DAU_DAYLIGHT_OR_GRAND_WORLD_EVENING",
+    "vinwonders_to_grand_world": "OPTIONAL"
+  },
+  "regional_food": {
+    "south": "DECISION_USABLE",
+    "north": "DECISION_USABLE",
+    "central": "DECISION_USABLE",
+    "north_verify_candidates_are_not_carriers": true
+  },
+  "files": {
+    "index.html": {
+      "bytes": 30611,
+      "sha256": "7c53a4dac920401b0ad0dba74745813e2653e9094899677ae705f34b3085fca7"
+    },
+    "assets/page-kjCTkZIS.js": {
+      "bytes": 156966,
+      "sha256": "28f1a3240ba6d432a52c3f24f4d73897aa5f60146365e54e216171350a199164"
+    }
+  }
+}
