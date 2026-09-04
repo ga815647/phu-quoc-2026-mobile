@@ -42,8 +42,8 @@ jobs:
           page = once(page, cable_old, cable_new, 'PAGE Cable breakfast/DD')
 
           html = once(html, '<h3>🤿 OnBird</h3>', '<h3>🤿 OnBird + optional DD</h3>', 'HTML OnBird title')
-          page = once(page, 'children:`🤿 OnBird`', 'children:`🤿 OnBird + optional DD`', 'PAGE OnBird title')
           page = once(page, '[`onbird`,`🤿 OnBird`]', '[`onbird`,`🤿 OnBird + optional DD`]', 'PAGE selector label')
+          page = once(page, 'children:`🤿 OnBird`', 'children:`🤿 OnBird + optional DD`', 'PAGE OnBird title')
 
           summary_old = '10/11 Morning 已確認並付訂金；South Phu Quoc soft-adventure，Max 10 pax，1 adult + 1 kid，Cosy 往返。'
           summary_new = '10/11 Morning 已確認並付訂金；South Phu Quoc soft-adventure，Max 10 pax，1 adult + 1 kid，Cosy 往返。回 Cosy 休息後，狀態正常才接 optional DD evening。'
