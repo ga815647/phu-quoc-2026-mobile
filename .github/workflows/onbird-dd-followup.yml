@@ -41,9 +41,12 @@ jobs:
           html = once(html, cable_old, cable_new, 'HTML Cable breakfast/DD')
           page = once(page, cable_old, cable_new, 'PAGE Cable breakfast/DD')
 
-          html = once(html, '<h3>🤿 OnBird</h3>', '<h3>🤿 OnBird + optional DD</h3>', 'HTML OnBird title')
-          page = once(page, '[`onbird`,`🤿 OnBird`]', '[`onbird`,`🤿 OnBird + optional DD`]', 'PAGE selector label')
-          page = once(page, 'children:`🤿 OnBird`', 'children:`🤿 OnBird + optional DD`', 'PAGE OnBird title')
+          hc = html.count('🤿 OnBird')
+          pc = page.count('🤿 OnBird')
+          if hc < 2 or pc < 2:
+              raise SystemExit(f'OnBird labels: expected >=2 rendered occurrences; html={hc}, page={pc}')
+          html = html.replace('🤿 OnBird', '🤿 OnBird + optional DD')
+          page = page.replace('🤿 OnBird', '🤿 OnBird + optional DD')
 
           summary_old = '10/11 Morning 已確認並付訂金；South Phu Quoc soft-adventure，Max 10 pax，1 adult + 1 kid，Cosy 往返。'
           summary_new = '10/11 Morning 已確認並付訂金；South Phu Quoc soft-adventure，Max 10 pax，1 adult + 1 kid，Cosy 往返。回 Cosy 休息後，狀態正常才接 optional DD evening。'
