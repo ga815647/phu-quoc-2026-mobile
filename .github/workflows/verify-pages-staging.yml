@@ -1,0 +1,44 @@
+name: verify-pages-staging
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/verify-pages-staging.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for Pages and verify live accepted markers
+        run: |
+          set -euo pipefail
+          base="https://ga815647.github.io/phu-quoc-2026-mobile"
+          ok=0
+          for i in $(seq 1 18); do
+            echo "Attempt $i"
+            if curl -fsSL --retry 2 --connect-timeout 10 "$base/?sync=PHQ-SITE-STAGING-SYNC-2026-09-04-01-$i" -o /tmp/live.html; then
+              if grep -q 'PHU QUOC · FIVE-CARD EXECUTION' /tmp/live.html \
+                 && grep -q '區域吃飯 Queue' /tmp/live.html \
+                 && grep -q 'An Thới optional satellite' /tmp/live.html \
+                 && ! grep -q 'PHU QUOC · SIX-CARD EXECUTION' /tmp/live.html \
+                 && ! grep -q 'CARD E · SOUTH-EAST LOOP' /tmp/live.html; then
+                ok=1
+                break
+              fi
+            fi
+            sleep 10
+          done
+          test "$ok" = 1
+          asset=$(grep -o './assets/page-[A-Za-z0-9_-]*\.js' /tmp/live.html | head -1 | sed 's#^\./##')
+          test -n "$asset"
+          curl -fsSL --retry 2 "$base/$asset?sync=PHQ-SITE-STAGING-SYNC-2026-09-04-01" -o /tmp/page.js
+          grep -q 'FIVE-CARD EXECUTION' /tmp/page.js
+          grep -q '區域吃飯 Queue' /tmp/page.js
+          grep -q 'Bếp Nhà' /tmp/page.js
+          ! grep -q 'anthoi.*,.*An Thới South-East Loop' /tmp/page.js
+          echo "LIVE_STAGING_VERIFY=PASS"
