@@ -37,5 +37,11 @@
   "followup_patch_scope": "PUBLIC_GITHUB_PAGES_STAGING_ONLY",
   "onbird_card": "ONBIRD_PLUS_OPTIONAL_DD_EVENING",
   "cable_day_dd": "BREAKFAST_ONLY_NO_DINH_CAU_MICROSTOP",
-  "canonical_cutover": false
+  "canonical_cutover": false,
+  "ux_coherence_patch_id": "PHQ-SITE-UX-COHERENCE-FOOD-QUEUES-2026-09-05-01",
+  "ux_coherence_scope": "PUBLIC_GITHUB_PAGES_STAGING_ONLY",
+  "food_queue_ui": "ALL_DECISION_USABLE_EXECUTION_QUEUES_WITH_GOOGLE_MAPS",
+  "breakfast_queue_name": "Central / Cosy｜早餐 Queue",
+  "site_language_consistency": "NORMALIZED_TRAVEL_FACING",
+  "bottom_nav_columns": 5
 }
