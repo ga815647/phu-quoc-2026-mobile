@@ -40,12 +40,16 @@
   "canonical_cutover": false,
   "ux_coherence_patch_id": "PHQ-SITE-UX-COHERENCE-FOOD-QUEUES-2026-09-05-01",
   "ux_coherence_scope": "PUBLIC_GITHUB_PAGES_STAGING_ONLY",
-  "food_queue_ui": "ALL_DECISION_USABLE_EXECUTION_QUEUES_WITH_GOOGLE_MAPS",
-  "breakfast_queue_name": "Central / Cosy｜早餐 Queue",
+  "food_queue_ui": "LOCATION_TIME_REGIONAL_QUEUE_WITH_SNACKS_AND_GOOGLE_MAPS",
   "site_language_consistency": "NORMALIZED_TRAVEL_FACING",
   "bottom_nav_columns": 5,
   "food_queue_scroll_hotfix": "PHQ-SITE-FOOD-HASH-SCROLL-HOTFIX-2026-09-05-01",
   "food_queue_anchor_policy": "OPEN_TARGET_SCROLL_THEN_CLEAR_HASH",
   "food_queue_hash_behavior": "PHQ-SITE-FOOD-HASH-OPEN-UNLOCK-2026-09-05-02",
-  "food_queue_deeplink_scope": "ALL_FOOD_REGION_HASH_TARGETS"
+  "food_queue_deeplink_scope": "ALL_FOOD_REGION_HASH_TARGETS",
+  "food_queue_model_patch_id": "PHQ-SITE-FOOD-LOCATION-TIME-QUEUE-2026-09-05-01",
+  "food_queue_model": "LOCATION_TIME_REGION_FIRST",
+  "food_queue_meal_binding": "NONE",
+  "food_queue_snacks_merged": true,
+  "regional_food_queue_name": "Central / Cosy｜Food Queue"
 }
