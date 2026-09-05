@@ -1,0 +1,67 @@
+name: site-bottom-nav-browser-smoke
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/site-bottom-nav-browser-smoke.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mobile-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Real Chromium mobile hydration and scroll smoke
+        run: |
+          set -euo pipefail
+          npm install --no-save playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install --with-deps chromium >/dev/null 2>&1
+          cat > mobile-smoke.cjs <<'JS'
+          const { chromium } = require('playwright');
+          (async () => {
+            const browser = await chromium.launch({headless:true});
+            const context = await browser.newContext({
+              viewport: {width: 390, height: 844},
+              isMobile: true,
+              hasTouch: true,
+              deviceScaleFactor: 2
+            });
+            const page = await context.newPage();
+            const errors = [];
+            page.on('pageerror', e => errors.push(String(e)));
+            await page.goto('https://ga815647.github.io/phu-quoc-2026-mobile/?browser-smoke=bottom-nav-03', {waitUntil:'networkidle'});
+            await page.waitForTimeout(700);
+            const text = await page.locator('body').innerText();
+            if (!text.includes('富國島 2026') || !text.includes('區域 Food Queue')) throw new Error('hydrated content missing');
+            if (errors.length) throw new Error('pageerror: ' + errors.join(' | '));
+            const bodyHeight = await page.evaluate(() => document.documentElement.scrollHeight);
+            if (bodyHeight < 2000) throw new Error('unexpectedly short/blank document: ' + bodyHeight);
+
+            await page.locator('.bottom nav a[href="#food"]').click();
+            await page.waitForTimeout(250);
+            const state1 = await page.evaluate(() => ({hash: location.hash, y: scrollY, foodTop: document.getElementById('food').getBoundingClientRect().top}));
+            if (state1.hash) throw new Error('bottom nav left hash behind: ' + state1.hash);
+            if (Math.abs(state1.foodTop) > 80) throw new Error('food target did not align: ' + JSON.stringify(state1));
+
+            await page.evaluate(() => window.scrollBy(0, 320));
+            await page.waitForTimeout(650);
+            const state2 = await page.evaluate(() => ({hash: location.hash, y: scrollY}));
+            if (state2.hash) throw new Error('hash reappeared after manual scroll: ' + state2.hash);
+            if (state2.y < state1.y + 180) throw new Error('scroll appears stuck/snapped back: ' + JSON.stringify({state1,state2}));
+
+            await page.locator('.bottom nav a[href="#today"]').click();
+            await page.waitForTimeout(250);
+            const state3 = await page.evaluate(() => ({hash: location.hash, y: scrollY, top: document.getElementById('today').getBoundingClientRect().top}));
+            if (state3.hash) throw new Error('today tap left hash behind: ' + state3.hash);
+            if (Math.abs(state3.top) > 80) throw new Error('today target did not align: ' + JSON.stringify(state3));
+            if (errors.length) throw new Error('pageerror after interactions: ' + errors.join(' | '));
+
+            console.log('MOBILE_HYDRATION_AND_SCROLL_SMOKE=PASS', JSON.stringify({bodyHeight,state1,state2,state3}));
+            await browser.close();
+          })().catch(e => { console.error(e); process.exit(1); });
+          JS
+          node mobile-smoke.cjs
