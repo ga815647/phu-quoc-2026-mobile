@@ -18,53 +18,44 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Apply coherence and scroll hotfix
+      - name: Apply Grand World hash scroll hotfix
         run: |
           python - <<'PY'
           from pathlib import Path
           import json
 
-          p = Path('tools/site_coherence_patch.py')
-          s = p.read_text()
+          old_note = '只有刻意提早離園、孩子還有力才接；不要為了晚餐單獨硬加 Grand World。'
+          new_note = '只有刻意提早離園、孩子還有力才接；Grand World Queue 就在本區下方，直接往下滑即可，不要為了晚餐單獨硬加 Grand World。'
 
-          old = '<div class="stitle"><h2>吃飯 Queue</h2><span>到哪裡就看哪一區</span></div>'
-          new = '<div class="stitle"><h2>吃飯 Queue</h2><span>到哪裡就看哪一區 · Google Maps 直達</span></div>'
-          if old in s:
-              s = s.replace(old, new, 1)
-          elif new not in s:
-              raise SystemExit('Google Maps subtitle source not found')
+          # Keep the patch generator from reintroducing the problematic deep link.
+          tp = Path('tools/site_coherence_patch.py')
+          tool = tp.read_text()
+          tool = tool.replace('"id": "food-grandworld",', '"id": "food-grandworld-panel",', 1)
+          tool = tool.replace(',"jump":["看 Grand World Queue","#food-grandworld"]', '')
+          tool = tool.replace(old_note, new_note, 1)
+          if '#food-grandworld' in tool:
+              raise SystemExit('stale Grand World hash remains in generator')
+          tp.write_text(tool)
 
-          # A hash target on a closed <details> can create unpleasant mobile scroll behavior.
-          # Grand World is directly below in the same Food Queue, so remove the deep-link
-          # and use a non-addressable panel id instead.
-          s = s.replace('"id": "food-grandworld",', '"id": "food-grandworld-panel",', 1)
-          s = s.replace(',"jump":["看 Grand World Queue","#food-grandworld"]', '')
-          s = s.replace('只有刻意提早離園、孩子還有力才接；不要為了晚餐單獨硬加 Grand World。',
-                        '只有刻意提早離園、孩子還有力才接；Grand World Queue 就在本區下方，直接往下滑即可，不要為了晚餐單獨硬加 Grand World。', 1)
-          p.write_text(s)
-          PY
+          # Static pre-rendered HTML.
+          hp = Path('index.html')
+          html = hp.read_text()
+          html = html.replace('id="food-grandworld"', 'id="food-grandworld-panel"', 1)
+          html = html.replace('<a class="pq-btn queue-jump" href="#food-grandworld">↳ 看 Grand World Queue</a>', '<span class="queue-inline">Grand World Queue 在下方</span>', 1)
+          html = html.replace(old_note, new_note, 1)
+          if '#food-grandworld' in html or 'id="food-grandworld"' in html:
+              raise SystemExit('stale Grand World hash target remains in static HTML')
+          hp.write_text(html)
 
-          python tools/site_coherence_patch.py
-
-          python - <<'PY'
-          from pathlib import Path
-          import json
-
-          # PQFoodQueues is injected only once by the generator; patch existing hydrated data too.
+          # Hydrated client data.
           jp = Path('assets/page-kjCTkZIS.js')
           page = jp.read_text()
           page = page.replace('{"id":"food-grandworld","title"', '{"id":"food-grandworld-panel","title"', 1)
           page = page.replace(',"jump":["看 Grand World Queue","#food-grandworld"]', '')
-          page = page.replace('只有刻意提早離園、孩子還有力才接；不要為了晚餐單獨硬加 Grand World。',
-                              '只有刻意提早離園、孩子還有力才接；Grand World Queue 就在本區下方，直接往下滑即可，不要為了晚餐單獨硬加 Grand World。', 1)
-          jp.write_text(page)
-
-          hp = Path('index.html')
-          html = hp.read_text()
-          if 'href="#food-grandworld"' in html or 'id="food-grandworld"' in html:
-              raise SystemExit('stale Grand World hash target remains in static HTML')
+          page = page.replace(old_note, new_note, 1)
           if '#food-grandworld' in page or 'id:`food-grandworld`' in page:
               raise SystemExit('stale Grand World hash target remains in hydrated client')
+          jp.write_text(page)
 
           mp = Path('SITE_SYNC_MANIFEST.json')
           manifest = json.loads(mp.read_text())
@@ -76,18 +67,18 @@ jobs:
 
           node --check assets/page-kjCTkZIS.js
 
-      - name: Commit staging UX coherence update
+      - name: Commit staging scroll hotfix
         run: |
           set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add tools/site_coherence_patch.py index.html assets/page-kjCTkZIS.js assets/index-C-szeJ12.css SITE_SYNC_MANIFEST.json
+          git add tools/site_coherence_patch.py index.html assets/page-kjCTkZIS.js SITE_SYNC_MANIFEST.json
           git diff --cached --check
           if git diff --cached --quiet; then
             echo 'No patch required'
             exit 0
           fi
-          git commit -m 'Fix food queue hash scroll behavior'
+          git commit -m 'Fix Grand World food queue hash scroll'
           git push origin HEAD:main
 
       - name: Verify public Pages staging
@@ -99,22 +90,14 @@ jobs:
             echo "Attempt $i"
             if curl -fsSL --retry 2 --connect-timeout 10 "$base/?sync=PHQ-SITE-FOOD-HASH-SCROLL-HOTFIX-2026-09-05-01-$i" -o /tmp/live.html; then
               page_asset=$(grep -o './assets/page-[A-Za-z0-9_-]*\.js' /tmp/live.html | head -1 | sed 's#^\./##')
-              css_asset=$(grep -o './assets/index-[A-Za-z0-9_-]*\.css' /tmp/live.html | head -1 | sed 's#^\./##')
-              if [ -n "$page_asset" ] && [ -n "$css_asset" ]; then
+              if [ -n "$page_asset" ]; then
                 curl -fsSL --retry 2 "$base/$page_asset?sync=$i" -o /tmp/page.js || true
-                curl -fsSL --retry 2 "$base/$css_asset?sync=$i" -o /tmp/site.css || true
-                if grep -q 'Central / Cosy｜早餐 Queue' /tmp/live.html \
-                   && grep -q 'food-grandworld-panel' /tmp/live.html \
-                   && grep -q 'Google Maps' /tmp/live.html \
-                   && grep -q 'Central / Cosy｜早餐 Queue' /tmp/page.js \
+                if grep -q 'food-grandworld-panel' /tmp/live.html \
                    && grep -q 'food-grandworld-panel' /tmp/page.js \
-                   && grep -q 'PQFoodQueues' /tmp/page.js \
-                   && grep -q 'grid-template-columns:repeat(5,1fr)' /tmp/site.css \
-                   && ! grep -q 'href="#food-grandworld"' /tmp/live.html \
+                   && grep -q 'Grand World Queue 就在本區下方' /tmp/live.html \
+                   && ! grep -q '#food-grandworld' /tmp/live.html \
                    && ! grep -q '#food-grandworld' /tmp/page.js \
-                   && ! grep -q 'Central dynamic breakfast' /tmp/live.html \
-                   && ! grep -q 'Central dynamic breakfast' /tmp/page.js \
-                   && ! grep -q '不是第七張 Card' /tmp/page.js; then
+                   && ! grep -q 'id="food-grandworld"' /tmp/live.html; then
                   ok=1
                   break
                 fi
