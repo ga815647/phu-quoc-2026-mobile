@@ -1,0 +1,238 @@
+name: site-food-location-time-queue
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/site-food-location-time-queue.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Apply location-time regional food queue model
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from urllib.parse import quote_plus
+          from pprint import pformat
+          import json, re
+
+          PATCH_ID = 'PHQ-SITE-FOOD-LOCATION-TIME-QUEUE-2026-09-05-01'
+
+          queues = [
+              {
+                  'id': 'food-central',
+                  'title': '🌅 Central / Cosy',
+                  'summary': '人在這區，就依現在時間直接選；正餐、小吃、糕點同一 Queue',
+                  'open': True,
+                  'rows': [
+                      {'slot':'05:00–12:00','name':'Bánh Canh Phụng','role':'Carrier','tone':'carrier','note':'早段強選項；約 05:00–11:30/12:00，06:30–08:30 最穩。可能售罄；魚肉注意刺。','maps':[['Phụng','Bánh Canh Phụng Phú Quốc']]},
+                      {'slot':'06:00–12:00','name':'Bún Kèn Út Lượm','role':'Carrier','tone':'carrier','note':'A-priority；約 06:00–12:00。若沒吃到，Bún kèn 87 是正式 Backup，但時段仍要 T−72/T−1 重查。','maps':[['Út Lượm','Bún Kèn Út Lượm Phú Quốc'],['87','Bún kèn 87 Phú Quốc']]},
+                      {'slot':'午間／先確認','name':'Bún Mắm Dung Hà','role':'條件式 Carrier','tone':'conditional','note':'想吃 bún mắm 時優先；先問 normal/special bowl 與 extras，不清楚就跳過。實際營業窗 T−72/T−1 再鎖。','maps':[['Dung Hà','Bún Mắm Dung Hà Phú Quốc']]},
+                      {'slot':'06:00–00:00','name':'Bánh mì Anh Thư','role':'Carrier','tone':'carrier','note':'目前最穩的全天／晚間鹹食 Carrier；任何不是正餐時段、只想快速吃一點也能用。','maps':[['Anh Thư','Bánh mì Anh Thư Phú Quốc']]},
+                      {'slot':'06:30–21:30','name':'bánh Khéo cô Dung','role':'ACTIVE · 地方糕點','tone':'fallback','note':'43 Đ. 30 Tháng 4；地方特色高、成本低，適合任何順路嘴饞時段少量買多口味。不是 Dish Carrier。','maps':[['Cô Dung','bánh Khéo cô Dung, 43 Đ. 30 Tháng 4, Phú Quốc']]},
+                      {'slot':'看到好貨就買','name':'Chợ Dương Đông｜糕點／小吃／水果','role':'MARKET NODE','tone':'market','note':'不綁餐次：熟食／小吃優先，其次 bòn bon（A）與榴槤（B）。看到 Bánh tét mật cật、kẹo chỉ、bánh bò thốt nốt、dừa sáp dầm thốt nốt 可順手試；目前不假裝有固定 Carrier。','maps':[['Dương Đông Market','Chợ Dương Đông Phú Quốc']]},
+                      {'slot':'傍晚／晚間','name':'Nhum nướng mỡ hành 8K','role':'條件式 Carrier','tone':'conditional','note':'只有 Nhum 尚未完成才優先；先確認有貨、確為 nướng mỡ hành、當日價格。「8K」不是現價保證。','maps':[['Nhum 8K','Hàu Nướng Nhum nướng 8K Phú Quốc']]},
+                      {'slot':'17:00–20:00','name':'Cơm tấm Nhị','role':'現場備案','tone':'fallback','note':'想快速坐下吃飯、又不需要追高優先 Dish 時用；屬功能型 fallback。','maps':[['Cơm tấm Nhị','Cơm tấm Nhị Phú Quốc']]},
+                      {'slot':'09:30–22:00','name':'Nhà Xưa 68','role':'家庭現場備案','tone':'fallback','note':'白飯、蛋、肉與清淡熟食較容易拆；孩子累、想坐下、或正餐時間被打亂時都能直接用。','maps':[['Nhà Xưa 68','Nhà Xưa 68 Phú Quốc']]},
+                  ],
+              },
+              {
+                  'id': 'food-vinwonders',
+                  'title': '🎢 VinWonders｜園內餐飲',
+                  'summary': '人在園內就先看目前還營業的選項；不為吃飯硬提早離園',
+                  'open': False,
+                  'rows': [
+                      {'slot':'園內營業時段','name':'園內先吃','role':'園內備案','tone':'park','note':'Món ngon Việt Nam、Cơm gà Hội An & Bún Chả Hà Nội 等目前多落在白天到約 19:00；T−72/T−1 再查實際時段。','maps':[['VinWonders','VinWonders Phú Quốc']]},
+                      {'slot':'提早離園＋Green','name':'Grand World Queue','role':'可選尾段','tone':'fallback','note':'只有刻意提早離園、孩子還有力才接；可直接跳到 Grand World Queue，不要為了晚餐單獨硬加 Grand World。','maps':[],'jump':['看 Grand World Queue','#food-grandworld']},
+                  ],
+              },
+              {
+                  'id': 'food-south',
+                  'title': '🌇 An Thới / Sunset Town',
+                  'summary': '沒有 generic Primary；到這區再依時間與當下需求選',
+                  'open': False,
+                  'rows': [
+                      {'slot':'白天／一般','name':'WOW QUÊ TÔI','role':'現場備案','tone':'fallback','note':'本區沒有穩定 generic Food Primary；WOW 是低摩擦正餐備案，不是 Dish Carrier。','maps':[['WOW','WOW QUÊ TÔI An Thới Phú Quốc']]},
+                      {'slot':'Cable 回島後','name':'BUP Seafood','role':'條件式 Backup Carrier','tone':'conditional','note':'只有 Nhum 尚未完成且 stock／preparation／price 都通過才用。Cô Thu 仍是 VERIFY；否則直接 WOW。','maps':[['BUP','BUP Seafood An Thới Phú Quốc'],['Cô Thu','Bún Kèn Cô Thu An Thới Phú Quốc'],['WOW','WOW QUÊ TÔI An Thới Phú Quốc']]},
+                      {'slot':'Show 前／晚間','name':'WOW QUÊ TÔI','role':'現場備案','tone':'fallback','note':'不要為 Food 折返 An Thới；接近 show 時以低摩擦為主。','maps':[['WOW','WOW QUÊ TÔI An Thới Phú Quốc']]},
+                      {'slot':'市場開放時段','name':'Chợ An Thới','role':'MARKET NODE','tone':'market','note':'只當現場探索點；熟食／小吃優先，水果其次。目前沒有可重訪、protocol-valid 的固定攤位 Carrier。','maps':[['市場','Chợ An Thới Phú Quốc']]},
+                  ],
+              },
+              {
+                  'id': 'food-ganhdau',
+                  'title': '🌊 Gành Dầu',
+                  'summary': 'Safari daylight tail 到這區後再吃，不是為了 Food 才選 tail',
+                  'open': False,
+                  'rows': [
+                      {'slot':'白天／Safari 後','name':'Quốc Thiên','role':'VERIFY · 現場備案 #1','tone':'verify','note':'目前最實用的 Gành Dầu fallback；秤重海鮮先問單價、重量、加工費與其他費用。不是 Carrier。','maps':[['Quốc Thiên','Welcome To Nha Hang Quoc Thien Gành Dầu Phú Quốc']]},
+                      {'slot':'白天～晚餐','name':'Phúc Ngân','role':'VERIFY · 第二備案','tone':'verify','note':'偏 cooked local seafood；有 Nhum／còi 類線索，但證據仍不足以升 Carrier。','maps':[['Phúc Ngân','Nhà Hàng Biển Phúc Ngân Gành Dầu Phú Quốc']]},
+                      {'slot':'早上較佳','name':'Chợ Gành Dầu','role':'MARKET NODE','tone':'market','note':'早上較有市場感；只挑當下現做、熱賣的熟食，不指定不存在的固定攤位。','maps':[['市場','Chợ Gành Dầu Phú Quốc']]},
+                  ],
+              },
+              {
+                  'id': 'food-grandworld',
+                  'title': '🌃 Grand World',
+                  'summary': '人在 Grand World，就看當下仍營業且摩擦最低的選項',
+                  'open': False,
+                  'rows': [
+                      {'slot':'約11:00–23:00','name':'Bếp Nhà Restaurant','role':'VERIFY · 現場備案 #1','tone':'verify','note':'目前最完整的 Grand World fallback；保守按約 11:00–23:00 執行，T−72/T−1 重查。不是 Carrier。','maps':[['Bếp Nhà','Bếp Nhà Restaurant Grand World Phú Quốc']]},
+                      {'slot':'約08:00–22:00','name':'Cơm Nhà Phú Quốc','role':'VERIFY · 第二備案','tone':'verify','note':'family-style execution 比較乾淨；review-integrity 有疑慮，所以不升 Food winner。','maps':[['Cơm Nhà','Cơm Nhà Phú Quốc Grand World']]},
+                  ],
+              },
+          ]
+
+          role_icon = {'carrier':'✅','conditional':'⚠️','verify':'🔎','fallback':'🍲','market':'🧺','park':'🎟️'}
+          def map_link(label, query):
+              return f'<a class="map-button" href="https://www.google.com/maps/search/?api=1&query={quote_plus(query)}" target="_blank" rel="noopener">📍 {label}</a>'
+          def food_row(row):
+              maps = ''.join(map_link(label, query) for label, query in row.get('maps', []))
+              jump = ''
+              if row.get('jump'):
+                  label, href = row['jump']
+                  jump = f'<a class="pq-btn queue-jump" href="{href}">↳ {label}</a>'
+              tone = row['tone']
+              return ('<div class="food-row">'
+                      f'<div class="food-slot">{row["slot"]}</div>'
+                      '<div class="food-main">'
+                      f'<div class="food-titleline"><strong>{row["name"]}</strong><span class="food-role {tone}">{role_icon.get(tone,"•")} {row["role"]}</span></div>'
+                      f'<p>{row["note"]}</p></div>'
+                      f'<div class="food-maps">{maps}{jump}</div></div>')
+          def food_region(region):
+              op = ' open' if region.get('open') else ''
+              return (f'<details class="food-region" id="{region["id"]}"{op}><summary>'
+                      f'<strong>{region["title"]}</strong><span>{region["summary"]}</span></summary>'
+                      f'<div class="food-region-body">{"".join(food_row(r) for r in region["rows"])}</div></details>')
+
+          guide = ('<div class="callout amber food-note"><strong>怎麼看：</strong>'
+                   '先看你現在在哪一區，再看目前時間與仍營業的選項。正餐、小吃、糕點、甜飲放在同一個區域 Queue；'
+                   '時段只是可用窗口與排序訊號，不代表早餐／午餐／下午茶一定要吃指定類型。'
+                   'Carrier 才是 protocol-valid production 選擇；VERIFY／現場備案只是到了這區可直接用，不等於認證最好吃。'
+                   'Market Node 只代表可逛的市場節點。選定店家仍做 T−72／T−1 營業時間、庫存與價格複核。</div>')
+          food_html = ('<section class="section" id="food">'
+                       '<div class="stitle"><h2>區域 Food Queue</h2><span>所在區域 → 現在時間 → 直接選</span></div>'
+                       '<div class="food-legend">'
+                       '<span class="food-role carrier">✅ Carrier</span>'
+                       '<span class="food-role conditional">⚠️ 條件式</span>'
+                       '<span class="food-role verify">🔎 VERIFY</span>'
+                       '<span class="food-role fallback">🍲 現場備案</span>'
+                       '<span class="food-role market">🧺 MARKET NODE</span>'
+                       '</div><div class="food-stack">' + ''.join(food_region(q) for q in queues) + '</div>' + guide + '</section>')
+
+          hp = Path('index.html')
+          html = hp.read_text()
+          html = html.replace('Central / Cosy｜早餐 Queue', 'Central / Cosy｜Food Queue')
+          pat = re.compile(r'<section class="section" id="food">.*?</section>(?=<section class="section" id="rules">)', re.S)
+          html, n = pat.subn(food_html, html, count=1)
+          if n != 1:
+              raise SystemExit('static food section boundary mismatch')
+          hp.write_text(html)
+
+          jp = Path('assets/page-kjCTkZIS.js')
+          page = jp.read_text()
+          page = page.replace('Central / Cosy｜早餐 Queue', 'Central / Cosy｜Food Queue')
+          qjson = json.dumps(queues, ensure_ascii=False, separators=(',', ':'))
+          page, n = re.subn(r'var PQFoodQueues=.*?;\nfunction PQFoodRow', 'var PQFoodQueues=' + qjson + ';\nfunction PQFoodRow', page, count=1, flags=re.S)
+          if n != 1:
+              raise SystemExit('PQFoodQueues replacement mismatch')
+          page, n = re.subn(r'title:`吃飯 Queue`,note:`[^`]*`', 'title:`區域 Food Queue`,note:`所在區域 → 現在時間 → 直接選`', page, count=1)
+          if n != 1:
+              raise SystemExit('client food title replacement mismatch')
+          old_guide = 'Carrier 才是 protocol-valid production 選擇；VERIFY / 現場備案只是「到了這區可直接用」，不等於認證最好吃。Market Node 只代表可逛的市場節點，不假裝有固定攤位。所有選定店家仍做 T−72 / T−1 營業時間、庫存與價格複核。'
+          new_guide = '先看你現在在哪一區，再看目前時間與仍營業的選項。正餐、小吃、糕點、甜飲放在同一個區域 Queue；時段只是可用窗口與排序訊號，不代表早餐／午餐／下午茶一定要吃指定類型。Carrier 才是 protocol-valid production 選擇；VERIFY／現場備案只是到了這區可直接用，不等於認證最好吃。Market Node 只代表可逛的市場節點。選定店家仍做 T−72／T−1 營業時間、庫存與價格複核。'
+          if old_guide in page:
+              page = page.replace(old_guide, new_guide, 1)
+          else:
+              page = re.sub(r'Carrier 才是 protocol-valid production 選擇；.*?價格複核。', new_guide, page, count=1)
+          jp.write_text(page)
+
+          tp = Path('tools/site_coherence_patch.py')
+          tool = tp.read_text()
+          block = 'queues = ' + pformat(queues, sort_dicts=False, width=180) + '\n\n\ndef replace_both'
+          tool, n = re.subn(r'queues = \[.*?\]\n\n\ndef replace_both', block, tool, count=1, flags=re.S)
+          if n != 1:
+              raise SystemExit('generator queue block mismatch')
+          tool = tool.replace('Central / Cosy｜早餐 Queue', 'Central / Cosy｜Food Queue')
+          tool = tool.replace('<div class="stitle"><h2>吃飯 Queue</h2><span>到哪裡就看哪一區</span></div>', '<div class="stitle"><h2>區域 Food Queue</h2><span>所在區域 → 現在時間 → 直接選</span></div>')
+          tool = tool.replace('title:`吃飯 Queue`,note:`到哪裡就看哪一區`', 'title:`區域 Food Queue`,note:`所在區域 → 現在時間 → 直接選`')
+          tool = tool.replace('Carrier 才是 protocol-valid production 選擇；VERIFY / 現場備案只是「到了這區可直接用」，不等於認證最好吃。Market Node 只代表可逛的市場節點，不假裝有固定攤位。所有選定店家仍做 T−72 / T−1 營業時間、庫存與價格複核。', new_guide)
+          tool = tool.replace('PATCH_ID = "PHQ-SITE-UX-COHERENCE-FOOD-QUEUES-2026-09-05-01"', f'PATCH_ID = "{PATCH_ID}"')
+          tool = tool.replace('manifest["food_queue_ui"] = "ALL_DECISION_USABLE_EXECUTION_QUEUES_WITH_GOOGLE_MAPS"', 'manifest["food_queue_ui"] = "LOCATION_TIME_REGIONAL_QUEUE_WITH_SNACKS_AND_GOOGLE_MAPS"')
+          tool = tool.replace('manifest["breakfast_queue_name"] = "Central / Cosy｜Food Queue"', 'manifest["regional_food_queue_name"] = "Central / Cosy｜Food Queue"')
+          tp.write_text(tool)
+
+          mp = Path('SITE_SYNC_MANIFEST.json')
+          manifest = json.loads(mp.read_text())
+          manifest.pop('breakfast_queue_name', None)
+          manifest['food_queue_model_patch_id'] = PATCH_ID
+          manifest['food_queue_model'] = 'LOCATION_TIME_REGION_FIRST'
+          manifest['food_queue_meal_binding'] = 'NONE'
+          manifest['food_queue_snacks_merged'] = True
+          manifest['regional_food_queue_name'] = 'Central / Cosy｜Food Queue'
+          manifest['food_queue_ui'] = 'LOCATION_TIME_REGIONAL_QUEUE_WITH_SNACKS_AND_GOOGLE_MAPS'
+          manifest['canonical_cutover'] = False
+          mp.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + '\n')
+
+          assert 'Central / Cosy｜早餐 Queue' not in html
+          assert 'Central / Cosy｜早餐 Queue' not in page
+          assert '區域 Food Queue' in html and '區域 Food Queue' in page
+          assert 'bánh Khéo cô Dung' in html and 'Chợ Dương Đông｜糕點／小吃／水果' in html
+          assert 'Bánh tét mật cật' in html and 'dừa sáp dầm thốt nốt' in html
+          assert '#food-grandworld' in html and '#food-grandworld' in page
+          print('LOCATION_TIME_QUEUE_PATCH=PASS')
+          PY
+
+          node --check assets/page-kjCTkZIS.js
+
+      - name: Commit staging food queue model
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tools/site_coherence_patch.py index.html assets/page-kjCTkZIS.js SITE_SYNC_MANIFEST.json
+          git diff --cached --check
+          if git diff --cached --quiet; then
+            echo 'No patch required'
+            exit 0
+          fi
+          git commit -m 'Use location-time regional food queues'
+          git push origin HEAD:main
+
+      - name: Verify public Pages staging
+        run: |
+          set -euo pipefail
+          base='https://ga815647.github.io/phu-quoc-2026-mobile'
+          ok=0
+          for i in $(seq 1 36); do
+            echo "Attempt $i"
+            if curl -fsSL --retry 2 --connect-timeout 10 "$base/?sync=PHQ-SITE-FOOD-LOCATION-TIME-QUEUE-2026-09-05-01-$i" -o /tmp/live.html; then
+              page_asset=$(grep -o './assets/page-[A-Za-z0-9_-]*\.js' /tmp/live.html | head -1 | sed 's#^\./##')
+              if [ -n "$page_asset" ]; then
+                curl -fsSL --retry 2 "$base/$page_asset?sync=$i" -o /tmp/page.js || true
+                if grep -q '區域 Food Queue' /tmp/live.html \
+                   && grep -q 'Central / Cosy｜Food Queue' /tmp/live.html \
+                   && grep -q 'bánh Khéo cô Dung' /tmp/live.html \
+                   && grep -q 'Chợ Dương Đông｜糕點／小吃／水果' /tmp/live.html \
+                   && grep -q 'Bánh tét mật cật' /tmp/live.html \
+                   && grep -q 'food-grandworld' /tmp/live.html \
+                   && grep -q 'food-grandworld' /tmp/page.js \
+                   && ! grep -q 'Central / Cosy｜早餐 Queue' /tmp/live.html \
+                   && ! grep -q 'Central / Cosy｜早餐 Queue' /tmp/page.js; then
+                  ok=1
+                  break
+                fi
+              fi
+            fi
+            sleep 10
+          done
+          test "$ok" = 1
+          echo 'LIVE_LOCATION_TIME_QUEUE_VERIFY=PASS'
