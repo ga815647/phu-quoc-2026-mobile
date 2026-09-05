@@ -1,0 +1,52 @@
+name: V2 mobile smoke
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'v2.html'
+      - '.github/workflows/v2-mobile-smoke.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mobile-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check live V2 on mobile Chromium
+        run: |
+          set -euo pipefail
+          npm install --no-save playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install --with-deps chromium >/dev/null 2>&1
+          cat > mobile-smoke.cjs <<'JS'
+          const { chromium } = require('playwright');
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,deviceScaleFactor:2});
+            const page=await context.newPage();
+            const errors=[]; page.on('pageerror',e=>errors.push(String(e)));
+            await page.goto('https://ga815647.github.io/phu-quoc-2026-mobile/v2.html?smoke=food-pool',{waitUntil:'networkidle'});
+            await page.waitForTimeout(500);
+            const text=await page.locator('body').innerText();
+            if(!text.includes('美食 Pool')||!text.includes('已吃 0 / 18')||!text.includes('Bún Kèn Út Lượm')) throw new Error('pool render missing');
+            if(await page.locator('[data-food-id]').count()!==18) throw new Error('wrong pool count');
+            await page.locator('[data-jump="food"]').click();
+            await page.waitForTimeout(120);
+            const nav=await page.evaluate(()=>({hash:location.hash,top:document.getElementById('food').getBoundingClientRect().top}));
+            if(nav.hash||Math.abs(nav.top)>90) throw new Error('food nav failed '+JSON.stringify(nav));
+            const btn=page.locator('[data-food-id="bun-ken-ut-luom"] .eaten-btn');
+            await btn.click(); await page.waitForTimeout(80);
+            if((await btn.textContent()).trim()!=='✓ 吃過') throw new Error('eaten toggle failed');
+            await page.reload({waitUntil:'networkidle'}); await page.waitForTimeout(250);
+            if(!(await page.locator('[data-food-id="bun-ken-ut-luom"]').evaluate(el=>el.classList.contains('eaten')))) throw new Error('eaten persistence failed');
+            await page.locator('#resetFood').click(); await page.waitForTimeout(80);
+            if(!(await page.locator('#foodProgress').innerText()).includes('0 / 18')) throw new Error('reset failed');
+            if(errors.length) throw new Error('pageerror '+errors.join(' | '));
+            console.log('V2_MOBILE_SMOKE=PASS');
+            await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          node mobile-smoke.cjs
