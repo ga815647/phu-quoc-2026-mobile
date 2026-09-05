@@ -18,56 +18,89 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Apply Grand World hash scroll hotfix
+      - name: Apply food deep-link open and unlock behavior
         run: |
+          set -euo pipefail
           python - <<'PY'
           from pathlib import Path
           import json
 
-          old_note = '只有刻意提早離園、孩子還有力才接；不要為了晚餐單獨硬加 Grand World。'
-          new_note = '只有刻意提早離園、孩子還有力才接；Grand World Queue 就在本區下方，直接往下滑即可，不要為了晚餐單獨硬加 Grand World。'
+          PATCH_ID = 'PHQ-SITE-FOOD-HASH-OPEN-UNLOCK-2026-09-05-02'
+          old_note = '只有刻意提早離園、孩子還有力才接；Grand World Queue 就在本區下方，直接往下滑即可，不要為了晚餐單獨硬加 Grand World。'
+          new_note = '只有刻意提早離園、孩子還有力才接；可直接跳到下方 Grand World Queue，不要為了晚餐單獨硬加 Grand World。'
+          hash_script = '''<script id="food-hash-unlock">(function(){function q(h){if(!h||!h.startsWith('#food-'))return null;try{return document.getElementById(decodeURIComponent(h.slice(1)))}catch(e){return null}}function u(h){var el=q(h);if(!el||!el.classList.contains('food-region'))return false;el.open=true;requestAnimationFrame(function(){el.scrollIntoView({behavior:'smooth',block:'start'});setTimeout(function(){if(location.hash===h){history.replaceState(null,'',location.pathname+location.search)}},500)});return true}document.addEventListener('click',function(e){var a=e.target.closest&&e.target.closest('a[href^="#food-"]');if(!a)return;var h=a.getAttribute('href');if(!q(h))return;e.preventDefault();history.replaceState(null,'',h);u(h)});window.addEventListener('hashchange',function(){u(location.hash)});var h=location.hash;if(h&&h.startsWith('#food-'))setTimeout(function(){u(h)},60)})();</script>'''
 
-          # Keep the patch generator from reintroducing the problematic deep link.
+          # Keep the source patch generator aligned for future regeneration.
           tp = Path('tools/site_coherence_patch.py')
           tool = tp.read_text()
-          tool = tool.replace('"id": "food-grandworld",', '"id": "food-grandworld-panel",', 1)
-          tool = tool.replace(',"jump":["看 Grand World Queue","#food-grandworld"]', '')
-          tool = tool.replace(old_note, new_note, 1)
-          if '#food-grandworld' in tool:
-              raise SystemExit('stale Grand World hash remains in generator')
+          tool = tool.replace('"id": "food-grandworld-panel",', '"id": "food-grandworld",', 1)
+          old_row = '{"slot":"提早離園＋Green","name":"Grand World Queue","role":"可選尾段","tone":"fallback","note":"'+old_note+'","maps":[]},'
+          new_row = '{"slot":"提早離園＋Green","name":"Grand World Queue","role":"可選尾段","tone":"fallback","note":"'+new_note+'","maps":[],"jump":["看 Grand World Queue","#food-grandworld"]},'
+          if old_row in tool:
+              tool = tool.replace(old_row, new_row, 1)
+          else:
+              tool = tool.replace(old_note, new_note, 1)
+              if '"jump":["看 Grand World Queue","#food-grandworld"]' not in tool:
+                  tool = tool.replace('{"slot":"提早離園＋Green","name":"Grand World Queue","role":"可選尾段","tone":"fallback","note":"'+new_note+'","maps":[]},', new_row, 1)
+          generator_inject = "\nfood_hash_script = '''" + hash_script + "'''\nif 'id=\\\"food-hash-unlock\\\"' not in html:\n    html = html.replace('</body>', food_hash_script + '</body>', 1)\n"
+          generator_marker = "html = html_pattern.sub(food_html, html, count=1)\n"
+          if 'food_hash_script =' not in tool:
+              if generator_marker not in tool:
+                  raise SystemExit('generator HTML insertion marker not found')
+              tool = tool.replace(generator_marker, generator_marker + generator_inject, 1)
+          if '"id": "food-grandworld"' not in tool or '#food-grandworld' not in tool or 'food_hash_script =' not in tool:
+              raise SystemExit('generator deep-link restore failed')
           tp.write_text(tool)
 
-          # Static pre-rendered HTML.
+          # Static pre-rendered HTML: restore addressable panel and jump link.
           hp = Path('index.html')
           html = hp.read_text()
-          html = html.replace('id="food-grandworld"', 'id="food-grandworld-panel"', 1)
-          html = html.replace('<a class="pq-btn queue-jump" href="#food-grandworld">↳ 看 Grand World Queue</a>', '<span class="queue-inline">Grand World Queue 在下方</span>', 1)
+          html = html.replace('id="food-grandworld-panel"', 'id="food-grandworld"', 1)
+          html = html.replace('<span class="queue-inline">Grand World Queue 在下方</span>', '<a class="pq-btn queue-jump" href="#food-grandworld">↳ 看 Grand World Queue</a>', 1)
           html = html.replace(old_note, new_note, 1)
-          if '#food-grandworld' in html or 'id="food-grandworld"' in html:
-              raise SystemExit('stale Grand World hash target remains in static HTML')
+          if 'href="#food-grandworld"' not in html:
+              raise SystemExit('static Grand World jump link missing')
+          if 'id="food-grandworld"' not in html:
+              raise SystemExit('static Grand World target missing')
+          if 'id="food-hash-unlock"' not in html:
+              if '</body>' not in html:
+                  raise SystemExit('static body close marker missing')
+              html = html.replace('</body>', hash_script + '</body>', 1)
           hp.write_text(html)
 
-          # Hydrated client data.
+          # Hydrated client data: restore same id + jump so hydration keeps behavior.
           jp = Path('assets/page-kjCTkZIS.js')
           page = jp.read_text()
-          page = page.replace('{"id":"food-grandworld","title"', '{"id":"food-grandworld-panel","title"', 1)
-          page = page.replace(',"jump":["看 Grand World Queue","#food-grandworld"]', '')
+          page = page.replace('{"id":"food-grandworld-panel","title"', '{"id":"food-grandworld","title"', 1)
           page = page.replace(old_note, new_note, 1)
-          if '#food-grandworld' in page or 'id:`food-grandworld`' in page:
-              raise SystemExit('stale Grand World hash target remains in hydrated client')
+          if ',"jump":["看 Grand World Queue","#food-grandworld"]' not in page:
+              needle = '"slot":"提早離園＋Green","name":"Grand World Queue","role":"可選尾段","tone":"fallback","note":"'+new_note+'","maps":[]'
+              if needle not in page:
+                  raise SystemExit('hydrated Grand World row not found')
+              page = page.replace(needle, needle+',"jump":["看 Grand World Queue","#food-grandworld"]', 1)
+          if '{"id":"food-grandworld","title"' not in page or '#food-grandworld' not in page:
+              raise SystemExit('hydrated deep-link restore failed')
           jp.write_text(page)
 
           mp = Path('SITE_SYNC_MANIFEST.json')
           manifest = json.loads(mp.read_text())
-          manifest['food_queue_scroll_hotfix'] = 'PHQ-SITE-FOOD-HASH-SCROLL-HOTFIX-2026-09-05-01'
-          manifest['food_queue_anchor_policy'] = 'NO_HASH_DEEP_LINK_FOR_COLLAPSIBLE_GRANDWORLD_PANEL'
+          manifest['food_queue_hash_behavior'] = PATCH_ID
+          manifest['food_queue_anchor_policy'] = 'OPEN_TARGET_SCROLL_THEN_CLEAR_HASH'
+          manifest['food_queue_deeplink_scope'] = 'ALL_FOOD_REGION_HASH_TARGETS'
           manifest['canonical_cutover'] = False
           mp.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + '\n')
+
+          print('FOOD_HASH_OPEN_UNLOCK_PATCH=PASS')
           PY
 
           node --check assets/page-kjCTkZIS.js
+          grep -q 'id="food-hash-unlock"' index.html
+          grep -q 'history.replaceState' index.html
+          grep -q 'href="#food-grandworld"' index.html
+          grep -q 'id="food-grandworld"' index.html
+          ! grep -q 'food-grandworld-panel' index.html
 
-      - name: Commit staging scroll hotfix
+      - name: Commit staging deep-link behavior
         run: |
           set -euo pipefail
           git config user.name 'github-actions[bot]'
@@ -78,7 +111,7 @@ jobs:
             echo 'No patch required'
             exit 0
           fi
-          git commit -m 'Fix Grand World food queue hash scroll'
+          git commit -m 'Open food queue deep links then clear hash'
           git push origin HEAD:main
 
       - name: Verify public Pages staging
@@ -88,16 +121,18 @@ jobs:
           ok=0
           for i in $(seq 1 30); do
             echo "Attempt $i"
-            if curl -fsSL --retry 2 --connect-timeout 10 "$base/?sync=PHQ-SITE-FOOD-HASH-SCROLL-HOTFIX-2026-09-05-01-$i" -o /tmp/live.html; then
+            if curl -fsSL --retry 2 --connect-timeout 10 "$base/?sync=PHQ-SITE-FOOD-HASH-OPEN-UNLOCK-2026-09-05-02-$i" -o /tmp/live.html; then
               page_asset=$(grep -o './assets/page-[A-Za-z0-9_-]*\.js' /tmp/live.html | head -1 | sed 's#^\./##')
               if [ -n "$page_asset" ]; then
                 curl -fsSL --retry 2 "$base/$page_asset?sync=$i" -o /tmp/page.js || true
-                if grep -q 'food-grandworld-panel' /tmp/live.html \
-                   && grep -q 'food-grandworld-panel' /tmp/page.js \
-                   && grep -q 'Grand World Queue 就在本區下方' /tmp/live.html \
-                   && ! grep -q '#food-grandworld' /tmp/live.html \
-                   && ! grep -q '#food-grandworld' /tmp/page.js \
-                   && ! grep -q 'id="food-grandworld"' /tmp/live.html; then
+                if grep -q 'id="food-grandworld"' /tmp/live.html \
+                   && grep -q 'href="#food-grandworld"' /tmp/live.html \
+                   && grep -q 'id="food-hash-unlock"' /tmp/live.html \
+                   && grep -q 'history.replaceState' /tmp/live.html \
+                   && grep -q 'food-grandworld' /tmp/page.js \
+                   && grep -q '#food-grandworld' /tmp/page.js \
+                   && ! grep -q 'food-grandworld-panel' /tmp/live.html \
+                   && ! grep -q 'food-grandworld-panel' /tmp/page.js; then
                   ok=1
                   break
                 fi
@@ -106,4 +141,4 @@ jobs:
             sleep 10
           done
           test "$ok" = 1
-          echo 'LIVE_STAGING_SCROLL_HOTFIX_VERIFY=PASS'
+          echo 'LIVE_STAGING_FOOD_HASH_OPEN_UNLOCK_VERIFY=PASS'
