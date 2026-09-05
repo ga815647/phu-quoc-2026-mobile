@@ -20,6 +20,16 @@ jobs:
 
       - name: Apply coherence patch
         run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('tools/site_coherence_patch.py')
+          s = p.read_text()
+          old = '<div class="stitle"><h2>吃飯 Queue</h2><span>到哪裡就看哪一區</span></div>'
+          new = '<div class="stitle"><h2>吃飯 Queue</h2><span>到哪裡就看哪一區 · Google Maps 直達</span></div>'
+          if s.count(old) != 1:
+              raise SystemExit(f'Google Maps subtitle patch mismatch: {s.count(old)}')
+          p.write_text(s.replace(old, new, 1))
+          PY
           python tools/site_coherence_patch.py
           node --check assets/page-kjCTkZIS.js
 
