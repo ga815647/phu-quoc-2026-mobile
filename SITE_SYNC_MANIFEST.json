@@ -51,5 +51,8 @@
   "food_queue_model": "LOCATION_TIME_REGION_FIRST",
   "food_queue_meal_binding": "NONE",
   "food_queue_snacks_merged": true,
-  "regional_food_queue_name": "Central / Cosy｜Food Queue"
+  "regional_food_queue_name": "Central / Cosy｜Food Queue",
+  "bottom_nav_behavior_patch": "PHQ-SITE-BOTTOM-NAV-NO-HASH-2026-09-05-01",
+  "bottom_nav_navigation": "JS_SCROLL_INTO_VIEW_NO_HASH",
+  "bottom_nav_hash_persistence": "NONE"
 }
