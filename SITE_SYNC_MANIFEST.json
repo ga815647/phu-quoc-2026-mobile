@@ -52,9 +52,10 @@
   "food_queue_meal_binding": "NONE",
   "food_queue_snacks_merged": true,
   "regional_food_queue_name": "Central / Cosy｜Food Queue",
-  "bottom_nav_behavior_patch": "PHQ-SITE-BOTTOM-NAV-CAPTURE-NOHASH-2026-09-05-02",
-  "bottom_nav_navigation": "ANCHOR_DOM_UNCHANGED_CAPTURE_INTERCEPT_NO_HASH",
+  "bottom_nav_behavior_patch": "PHQ-SITE-BOTTOM-NAV-INSTANT-NOHASH-2026-09-05-03",
+  "bottom_nav_navigation": "ANCHOR_DOM_UNCHANGED_CAPTURE_INTERCEPT_INSTANT_NO_HASH",
   "bottom_nav_hash_persistence": "NONE_AFTER_BOTTOM_NAV_TAP",
   "bottom_nav_previous_js_tree_patch": "ROLLED_BACK_NON_ACCEPTED",
-  "bottom_nav_browser_smoke": "REQUIRED_BEFORE_ACCEPTANCE"
+  "bottom_nav_browser_smoke": "REQUIRED_BEFORE_ACCEPTANCE",
+  "bottom_nav_scroll_behavior": "EXPLICIT_INSTANT_WITH_TEMP_SCROLL_BEHAVIOR_AUTO"
 }
