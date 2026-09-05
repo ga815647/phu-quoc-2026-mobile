@@ -1,0 +1,172 @@
+name: site-bottom-nav-capture-nohash
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/site-bottom-nav-capture-nohash.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Patch bottom nav without touching hydrated React tree
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import json
+
+          PATCH_ID = 'PHQ-SITE-BOTTOM-NAV-CAPTURE-NOHASH-2026-09-05-02'
+          hp = Path('index.html')
+          jp = Path('assets/page-kjCTkZIS.js')
+          mp = Path('SITE_SYNC_MANIFEST.json')
+
+          html = hp.read_text()
+          page = jp.read_text()
+          page_before = page
+
+          # Safety invariant: keep the SSR DOM and hydrated React output exactly as anchors.
+          static_nav = '<div class="bottom"><nav aria-label="行程快速導覽"><a href="#today"><span>☀️</span>今天</a><a href="#slots"><span>🧩</span>排牌</a><a href="#cards"><span>🗺️</span>Cards</a><a href="#food"><span>🍜</span>吃飯</a><a href="#rules"><span>⚡</span>T−72</a></nav></div>'
+          if static_nav not in html:
+              raise SystemExit('static bottom nav is not the known-good anchor DOM')
+          for target in ('today','slots','cards','food','rules'):
+              if f'href:`#{target}`' not in page:
+                  raise SystemExit(f'hydrated React anchor missing: {target}')
+
+          if 'BOTTOM_NAV_CAPTURE_NOHASH' in html:
+              print('Patch already present; no HTML change needed')
+          else:
+              marker = '<script id="food-hash-unlock">(function(){'
+              if marker not in html:
+                  raise SystemExit('food hash script marker missing')
+              nav_js = """/*BOTTOM_NAV_CAPTURE_NOHASH*/function bnavClear(){if(location.hash&&!location.hash.startsWith('#food-'))history.replaceState(null,'',location.pathname+location.search)}document.addEventListener('click',function(e){var a=e.target.closest&&e.target.closest('.bottom nav a[href^=\"#\"]');if(!a)return;var h=a.getAttribute('href');if(!h||h.startsWith('#food-'))return;var el;try{el=document.getElementById(decodeURIComponent(h.slice(1)))}catch(x){el=null}if(!el)return;e.preventDefault();bnavClear();requestAnimationFrame(function(){el.scrollIntoView({behavior:'auto',block:'start'})})},true);if(location.hash&&!location.hash.startsWith('#food-'))setTimeout(bnavClear,0);"""
+              html = html.replace(marker, marker + nav_js, 1)
+              hp.write_text(html)
+
+          # Never rewrite the compiled React bundle for this fix.
+          if jp.read_text() != page_before:
+              raise SystemExit('compiled React bundle changed unexpectedly')
+
+          manifest = json.loads(mp.read_text())
+          manifest['bottom_nav_behavior_patch'] = PATCH_ID
+          manifest['bottom_nav_navigation'] = 'ANCHOR_DOM_UNCHANGED_CAPTURE_INTERCEPT_NO_HASH'
+          manifest['bottom_nav_hash_persistence'] = 'NONE_AFTER_BOTTOM_NAV_TAP'
+          manifest['bottom_nav_previous_js_tree_patch'] = 'ROLLED_BACK_NON_ACCEPTED'
+          manifest['bottom_nav_browser_smoke'] = 'REQUIRED_BEFORE_ACCEPTANCE'
+          manifest['canonical_cutover'] = False
+          mp.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + '\n')
+
+          # Extract the injected inline JS and syntax-check it with Node.
+          html2 = hp.read_text()
+          start = html2.index('/*BOTTOM_NAV_CAPTURE_NOHASH*/')
+          end = html2.index('function q(h)', start)
+          snippet = html2[start:end]
+          Path('/tmp/bottom-nav.js').write_text('(function(){' + snippet + '})();\n')
+
+          # Structural checks: anchors remain in both server HTML and React bundle.
+          for target in ('today','slots','cards','food','rules'):
+              if f'<a href="#{target}">' not in html2:
+                  raise SystemExit(f'static anchor regression: {target}')
+              if f'href:`#{target}`' not in page:
+                  raise SystemExit(f'hydrated anchor regression: {target}')
+          print('SAFE_BOTTOM_NAV_PATCH=PASS')
+          PY
+          node --check /tmp/bottom-nav.js
+          git diff --check
+          changed="$(git diff --name-only | sort)"
+          expected=$'SITE_SYNC_MANIFEST.json\nindex.html'
+          test "$changed" = "$expected"
+
+      - name: Commit safe staging fix
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html SITE_SYNC_MANIFEST.json
+          git diff --cached --check
+          if git diff --cached --quiet; then
+            echo 'No generated patch required'
+            exit 0
+          fi
+          git commit -m 'Fix bottom navigation without hash persistence'
+          git push origin HEAD:main
+
+      - name: Wait for public Pages artifact
+        run: |
+          set -euo pipefail
+          base='https://ga815647.github.io/phu-quoc-2026-mobile'
+          ok=0
+          for i in $(seq 1 36); do
+            echo "Attempt $i"
+            if curl -fsSL --retry 2 --connect-timeout 10 "$base/?sync=PHQ-SITE-BOTTOM-NAV-CAPTURE-NOHASH-2026-09-05-02-$i" -o /tmp/live.html; then
+              if grep -q 'BOTTOM_NAV_CAPTURE_NOHASH' /tmp/live.html \
+                 && grep -q '<a href="#food"><span>🍜</span>吃飯</a>' /tmp/live.html \
+                 && grep -q 'id="food-hash-unlock"' /tmp/live.html; then
+                ok=1
+                break
+              fi
+            fi
+            sleep 10
+          done
+          test "$ok" = 1
+          echo 'LIVE_ARTIFACT_READY=PASS'
+
+      - name: Real Chromium mobile hydration and scroll smoke
+        run: |
+          set -euo pipefail
+          npm install --no-save playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install --with-deps chromium >/dev/null 2>&1
+          cat > /tmp/mobile-smoke.cjs <<'JS'
+          const { chromium } = require('playwright');
+          (async () => {
+            const browser = await chromium.launch({headless:true});
+            const context = await browser.newContext({
+              viewport: {width: 390, height: 844},
+              isMobile: true,
+              hasTouch: true,
+              deviceScaleFactor: 2
+            });
+            const page = await context.newPage();
+            const errors = [];
+            page.on('pageerror', e => errors.push(String(e)));
+            await page.goto('https://ga815647.github.io/phu-quoc-2026-mobile/?browser-smoke=bottom-nav-02', {waitUntil:'networkidle'});
+            await page.waitForTimeout(700);
+            const text = await page.locator('body').innerText();
+            if (!text.includes('富國島 2026') || !text.includes('區域 Food Queue')) throw new Error('hydrated content missing');
+            if (errors.length) throw new Error('pageerror: ' + errors.join(' | '));
+            const bodyHeight = await page.evaluate(() => document.documentElement.scrollHeight);
+            if (bodyHeight < 2000) throw new Error('unexpectedly short/blank document: ' + bodyHeight);
+
+            await page.locator('.bottom nav a[href="#food"]').click();
+            await page.waitForTimeout(250);
+            const state1 = await page.evaluate(() => ({hash: location.hash, y: scrollY, foodTop: document.getElementById('food').getBoundingClientRect().top}));
+            if (state1.hash) throw new Error('bottom nav left hash behind: ' + state1.hash);
+            if (Math.abs(state1.foodTop) > 80) throw new Error('food target did not align: ' + JSON.stringify(state1));
+
+            await page.evaluate(() => window.scrollBy(0, 320));
+            await page.waitForTimeout(650);
+            const state2 = await page.evaluate(() => ({hash: location.hash, y: scrollY}));
+            if (state2.hash) throw new Error('hash reappeared after manual scroll: ' + state2.hash);
+            if (state2.y < state1.y + 180) throw new Error('scroll appears stuck/snapped back: ' + JSON.stringify({state1,state2}));
+
+            await page.locator('.bottom nav a[href="#today"]').click();
+            await page.waitForTimeout(250);
+            const state3 = await page.evaluate(() => ({hash: location.hash, y: scrollY, top: document.getElementById('today').getBoundingClientRect().top}));
+            if (state3.hash) throw new Error('today tap left hash behind: ' + state3.hash);
+            if (Math.abs(state3.top) > 80) throw new Error('today target did not align: ' + JSON.stringify(state3));
+            if (errors.length) throw new Error('pageerror after interactions: ' + errors.join(' | '));
+
+            console.log('MOBILE_HYDRATION_AND_SCROLL_SMOKE=PASS', {bodyHeight,state1,state2,state3});
+            await browser.close();
+          })().catch(e => { console.error(e); process.exit(1); });
+          JS
+          node /tmp/mobile-smoke.cjs
