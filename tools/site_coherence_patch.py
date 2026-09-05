@@ -35,7 +35,7 @@ queues = [
         "open": False,
         "rows": [
             {"slot":"正常／孩子累","name":"園內先吃","role":"園內備案","tone":"park","note":"Món ngon Việt Nam、Cơm gà Hội An & Bún Chả Hà Nội 等目前多落在白天到約 19:00；T−72/T−1 再查實際時段。","maps":[["VinWonders","VinWonders Phú Quốc"]]},
-            {"slot":"提早離園＋Green","name":"Grand World Queue","role":"可選尾段","tone":"fallback","note":"只有刻意提早離園、孩子還有力才接；Grand World Queue 就在本區下方，直接往下滑即可，不要為了晚餐單獨硬加 Grand World。","maps":[]},
+            {"slot":"提早離園＋Green","name":"Grand World Queue","role":"可選尾段","tone":"fallback","note":"只有刻意提早離園、孩子還有力才接；可直接跳到下方 Grand World Queue，不要為了晚餐單獨硬加 Grand World。","maps":[],"jump":["看 Grand World Queue","#food-grandworld"]},
         ],
     },
     {
@@ -62,7 +62,7 @@ queues = [
         ],
     },
     {
-        "id": "food-grandworld-panel",
+        "id": "food-grandworld",
         "title": "🌃 Grand World",
         "summary": "晚上想坐下吃一餐時的低摩擦 Queue",
         "open": False,
@@ -188,6 +188,10 @@ html_pattern = re.compile(r'<section class="section" id="food">.*?</section>(?=<
 if len(html_pattern.findall(html)) != 1:
     raise SystemExit("HTML food section boundary mismatch")
 html = html_pattern.sub(food_html, html, count=1)
+
+food_hash_script = '''<script id="food-hash-unlock">(function(){function q(h){if(!h||!h.startsWith('#food-'))return null;try{return document.getElementById(decodeURIComponent(h.slice(1)))}catch(e){return null}}function u(h){var el=q(h);if(!el||!el.classList.contains('food-region'))return false;el.open=true;requestAnimationFrame(function(){el.scrollIntoView({behavior:'smooth',block:'start'});setTimeout(function(){if(location.hash===h){history.replaceState(null,'',location.pathname+location.search)}},500)});return true}document.addEventListener('click',function(e){var a=e.target.closest&&e.target.closest('a[href^="#food-"]');if(!a)return;var h=a.getAttribute('href');if(!q(h))return;e.preventDefault();history.replaceState(null,'',h);u(h)});window.addEventListener('hashchange',function(){u(location.hash)});var h=location.hash;if(h&&h.startsWith('#food-'))setTimeout(function(){u(h)},60)})();</script>'''
+if 'id=\"food-hash-unlock\"' not in html:
+    html = html.replace('</body>', food_hash_script + '</body>', 1)
 
 if "var PQFoodQueues=" not in page:
     queue_js = json.dumps(queues, ensure_ascii=False, separators=(",", ":"))

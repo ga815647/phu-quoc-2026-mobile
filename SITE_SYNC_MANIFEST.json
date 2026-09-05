@@ -45,5 +45,7 @@
   "site_language_consistency": "NORMALIZED_TRAVEL_FACING",
   "bottom_nav_columns": 5,
   "food_queue_scroll_hotfix": "PHQ-SITE-FOOD-HASH-SCROLL-HOTFIX-2026-09-05-01",
-  "food_queue_anchor_policy": "NO_HASH_DEEP_LINK_FOR_COLLAPSIBLE_GRANDWORLD_PANEL"
+  "food_queue_anchor_policy": "OPEN_TARGET_SCROLL_THEN_CLEAR_HASH",
+  "food_queue_hash_behavior": "PHQ-SITE-FOOD-HASH-OPEN-UNLOCK-2026-09-05-02",
+  "food_queue_deeplink_scope": "ALL_FOOD_REGION_HASH_TARGETS"
 }
