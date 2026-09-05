@@ -35,7 +35,7 @@ queues = [
         "open": False,
         "rows": [
             {"slot":"正常／孩子累","name":"園內先吃","role":"園內備案","tone":"park","note":"Món ngon Việt Nam、Cơm gà Hội An & Bún Chả Hà Nội 等目前多落在白天到約 19:00；T−72/T−1 再查實際時段。","maps":[["VinWonders","VinWonders Phú Quốc"]]},
-            {"slot":"提早離園＋Green","name":"Grand World Queue","role":"可選尾段","tone":"fallback","note":"只有刻意提早離園、孩子還有力才接；不要為了晚餐單獨硬加 Grand World。","maps":[],"jump":["看 Grand World Queue","#food-grandworld"]},
+            {"slot":"提早離園＋Green","name":"Grand World Queue","role":"可選尾段","tone":"fallback","note":"只有刻意提早離園、孩子還有力才接；Grand World Queue 就在本區下方，直接往下滑即可，不要為了晚餐單獨硬加 Grand World。","maps":[]},
         ],
     },
     {
@@ -62,7 +62,7 @@ queues = [
         ],
     },
     {
-        "id": "food-grandworld",
+        "id": "food-grandworld-panel",
         "title": "🌃 Grand World",
         "summary": "晚上想坐下吃一餐時的低摩擦 Queue",
         "open": False,

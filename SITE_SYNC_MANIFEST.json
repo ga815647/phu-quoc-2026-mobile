@@ -43,5 +43,7 @@
   "food_queue_ui": "ALL_DECISION_USABLE_EXECUTION_QUEUES_WITH_GOOGLE_MAPS",
   "breakfast_queue_name": "Central / Cosy｜早餐 Queue",
   "site_language_consistency": "NORMALIZED_TRAVEL_FACING",
-  "bottom_nav_columns": 5
+  "bottom_nav_columns": 5,
+  "food_queue_scroll_hotfix": "PHQ-SITE-FOOD-HASH-SCROLL-HOTFIX-2026-09-05-01",
+  "food_queue_anchor_policy": "NO_HASH_DEEP_LINK_FOR_COLLAPSIBLE_GRANDWORLD_PANEL"
 }
