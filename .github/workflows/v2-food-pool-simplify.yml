@@ -1,0 +1,231 @@
+name: v2-food-pool-simplify
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/v2-food-pool-simplify.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Simplify V2 Food Pool
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          p = Path('v2.html')
+          html = p.read_text()
+
+          if '<!-- FOOD_POOL_SIMPLE_V2 -->' in html:
+              raise SystemExit('Food Pool simplification already applied')
+
+          html = html.replace('data-jump="food">吃什麼</button>', 'data-jump="food">美食</button>')
+
+          old_css = re.search(r'\.food-shell\{.*?\.map\{.*?\}\n', html, flags=re.S)
+          if not old_css:
+              raise SystemExit('old food css block not found')
+          new_css = r'''.food-pool{display:grid;gap:10px}.food-guide{background:linear-gradient(135deg,#e8f3ef,#f4f7ef);border:1px solid #d8e7df;border-radius:18px;padding:14px 15px;margin-bottom:12px}.food-guide b{display:block;font-size:14px}.food-guide p{margin:4px 0 0;color:#4f655c;font-size:12px}.pool-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 2px 10px}.pool-progress{font-size:12px;font-weight:850;color:var(--brand)}.food-card{display:grid;grid-template-columns:42px minmax(0,1fr) auto;gap:11px;align-items:start;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:13px;box-shadow:0 6px 22px rgba(31,49,40,.045);transition:opacity .16s ease,transform .16s ease,background .16s ease}.food-card.eaten{opacity:.52;background:#f2f4ef}.food-rank{width:38px;height:38px;border-radius:13px;display:grid;place-items:center;background:var(--ink);color:white;font-size:12px;font-weight:900}.food-card.eaten .food-rank{background:#9ba59f}.food-info{min-width:0}.food-name{font-size:15px;font-weight:880;letter-spacing:-.01em}.food-meta{display:flex;flex-wrap:wrap;gap:5px;align-items:center;margin:5px 0 7px}.food-region{display:inline-flex;border-radius:999px;padding:3px 7px;background:var(--surface2);font-size:10px;font-weight:800;color:#526059}.role{display:inline-flex;border-radius:999px;padding:3px 6px;font-size:10px;font-weight:850}.carrier{background:#dff1e9;color:#246553}.conditional{background:#fff0dc;color:#8a591d}.verify{background:#e8eef7;color:#4a6280}.fallback{background:#f0f0ed;color:#59615c}.market{background:#efe6f6;color:#70547e}.food-order{margin:0;font-size:13px;font-weight:800;color:#26362f}.food-order span{color:var(--brand)}.food-desc{margin:4px 0 0;color:var(--muted);font-size:12px}.food-actions{display:flex;gap:6px;align-items:center}.map,.eaten-btn{display:inline-flex;align-items:center;justify-content:center;white-space:nowrap;text-decoration:none;border:1px solid var(--line);background:#fff;border-radius:11px;padding:7px 9px;font-size:11px;font-weight:850;color:var(--brand)}.eaten-btn{cursor:pointer;color:#59645e}.eaten-btn[aria-pressed="true"]{background:#e4eee8;color:#356052;border-color:#d2e2d8}.pool-note{margin-top:12px;color:var(--muted);font-size:11px;padding:0 3px}
+'''
+          html = html[:old_css.start()] + new_css + html[old_css.end():]
+
+          old_media = '@media(max-width:520px){.hero-grid{grid-template-columns:1fr}.choice-grid{grid-template-columns:1fr}.food-row{grid-template-columns:76px 1fr}.food-row .map{grid-column:2;justify-self:start}.step{grid-template-columns:78px 1fr}.slot{grid-template-columns:82px 1fr}}'
+          new_media = '@media(max-width:520px){.hero-grid{grid-template-columns:1fr}.choice-grid{grid-template-columns:1fr}.food-card{grid-template-columns:38px minmax(0,1fr)}.food-rank{width:34px;height:34px}.food-actions{grid-column:2;justify-content:flex-start}.step{grid-template-columns:78px 1fr}.slot{grid-template-columns:82px 1fr}}'
+          if old_media not in html:
+              raise SystemExit('old media rule not found')
+          html = html.replace(old_media, new_media)
+
+          replacements = {
+            '<div class="step"><div class="time">07:00–08:15</div><div><b>Central / Cosy Food Queue</b><p>挑目前營業、尚未吃過且 morning scarcity 高的選項。</p></div></div>': '<div class="step"><div class="time">07:00–08:15</div><div><b>Food Pool</b><p>告訴 ChatGPT 現在時間＋位置；從未吃且仍可用者挑。</p></div></div>',
+            '<div class="step"><div class="time">Breakfast</div><div><b>Central / Cosy Food Queue</b><p>不固定某一家，依當下營業與未完成食物選。</p></div></div>': '<div class="step"><div class="time">Breakfast</div><div><b>Food Pool</b><p>不固定某一家；把時間＋位置丟給 ChatGPT 再決定。</p></div></div>',
+            '<div class="step"><div class="time">07:55–08:10</div><div><b>Cosy 直達叫車</b><p>先吃 Central / Cosy Food Queue，不做完整 DD 散步。</p></div></div>': '<div class="step"><div class="time">07:55–08:10</div><div><b>Cosy 直達叫車</b><p>先從 Food Pool 解決早餐；告訴 ChatGPT 時間＋位置，不做完整 DD 散步。</p></div></div>',
+          }
+          for old, new in replacements.items():
+              if old not in html:
+                  raise SystemExit('card food reference not found')
+              html = html.replace(old, new)
+
+          start = html.find('  <section class="section" id="food">')
+          end = html.find('  <section class="section" id="prep">', start)
+          if start < 0 or end < 0:
+              raise SystemExit('food section boundaries not found')
+
+          food = r'''  <!-- FOOD_POOL_SIMPLE_V2 -->
+  <section class="section" id="food">
+    <div class="section-head"><h2>美食 Pool</h2><span>優先順序＋吃過紀錄</span></div>
+    <div class="food-guide">
+      <b>網站不替你判斷「現在該吃誰」</b>
+      <p>要吃的時候直接跟 ChatGPT 說：「現在 16:20，我在 Sunset Town，孩子狀態 Green。」我再依時間、位置、營業與你已吃過的項目重排。這裡只保留候選 Pool。</p>
+    </div>
+    <div class="pool-top"><div class="pool-progress" id="foodProgress">已吃 0 / 18</div><button class="ghost" id="resetFood">重設吃過</button></div>
+    <div class="food-pool">
+
+      <article class="food-card" data-food-id="bun-ken-ut-luom"><div class="food-rank">01</div><div class="food-info"><div class="food-name">Bún Kèn Út Lượm</div><div class="food-meta"><span class="food-region">Central / Cosy</span><span class="role carrier">Carrier</span></div><p class="food-order"><span>點：</span>Bún kèn</p><p class="food-desc">富國島地方味優先完成；椰奶魚風味米線。Út Lượm 沒吃到再看 bún kèn 87 backup。</p></div><div class="food-actions"><a class="map" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=B%C3%BAn+K%C3%A8n+%C3%9At+L%C6%B0%E1%BB%A3m+Ph%C3%BA+Qu%E1%BB%91c">地圖</a><button class="eaten-btn" type="button" aria-pressed="false">○ 未吃</button></div></article>
+
+      <article class="food-card" data-food-id="banh-mi-anh-thu"><div class="food-rank">02</div><div class="food-info"><div class="food-name">Bánh mì Anh Thư</div><div class="food-meta"><span class="food-region">Central / Cosy</span><span class="role carrier">Carrier</span></div><p class="food-order"><span>點：</span>Bánh mì</p><p class="food-desc">高優先、低摩擦；很適合塞進行程空檔或晚一點快速吃。</p></div><div class="food-actions"><a class="map" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=B%C3%A1nh+m%C3%AC+Anh+Th%C6%B0+Ph%C3%BA+Qu%E1%BB%91c">地圖</a><button class="eaten-btn" type="button" aria-pressed="false">○ 未吃</button></div></article>
+
+      <article class="food-card" data-food-id="banh-canh-phung"><div class="food-rank">03</div><div class="food-info"><div class="food-name">Bánh Canh Phụng</div><div class="food-meta"><span class="food-region">Central / Cosy</span><span class="role carrier">Carrier</span></div><p class="food-order"><span>點：</span>Bánh canh cá</p><p class="food-desc">魚湯粗粉類；早段機會比較珍貴，時間對就值得先完成。</p></div><div class="food-actions"><a class="map" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=B%C3%A1nh+Canh+Ph%E1%BB%A5ng+Ph%C3%BA+Qu%E1%BB%91c">地圖</a><button class="eaten-btn" type="button" aria-pressed="false">○ 未吃</button></div></article>
+
+      <article class="food-card" data-food-id="bun-mam-dung-ha"><div class="food-rank">04</div><div class="food-info"><div class="food-name">Bún Mắm Dung Hà</div><div class="food-meta"><span class="food-region">Central / Cosy</span><span class="role conditional">條件式 Carrier</span></div><p class="food-order"><span>點：</span>Bún mắm</p><p class="food-desc">偏南部、發酵魚醬風味；想吃重一點的在地味時優先，營業窗再現場確認。</p></div><div class="food-actions"><a class="map" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=B%C3%BAn+M%E1%BA%AFm+Dung+H%C3%A0+Ph%C3%BA+Qu%E1%BB%91c">地圖</a><button class="eaten-btn" type="button" aria-pressed="false">○ 未吃</button></div></article>
+
+      <article class="food-card" data-food-id="nhum-8k"><div class="food-rank">05</div><div class="food-info"><div class="food-name">Hàu Nướng · Nhum nướng 8K</div><div class="food-meta"><span class="food-region">Long Beach</span><span class="role conditional">條件式 Carrier</span></div><p class="food-order"><span>點：</span>Nhum nướng mỡ hành</p><p class="food-desc">烤海膽＋蔥油；只在尚未完成 Nhum 時追，先確認有貨、做法與當日價。</p></div><div class="food-actions"><a class="map" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=H%C3%A0u+N%C6%B0%E1%BB%9Bng+Nhum+n%C6%B0%E1%BB%9Bng+8K+Ph%C3%BA+Qu%E1%BB%91c">地圖</a><button class="eaten-btn" type="button" aria-pressed="false">○ 未吃</button></div></article>
+
+      <article class="food-card" data-food-id="banh-kheo-co-dung"><div class="food-rank">06</div><div class="food-info"><div class="food-name">bánh Khéo cô Dung</div><div class="food-meta"><span class="food-region">Central / Cosy</span><span class="role fallback">地方糕點</span></div><p class="food-order"><span>點：</span>Bánh khéo 綜合幾種口味</p><p class="food-desc">小顆、多口味，適合分食；不是正餐也不用硬塞在「下午茶」時段。</p></div><div class="food-actions"><a class="map" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=b%C3%A1nh+Kh%C3%A9o+c%C3%B4+Dung%2C+43+%C4%90.+30+Th%C3%A1ng+4%2C+Ph%C3%BA+Qu%E1%BB%91c">地圖</a><button class="eaten-btn" type="button" aria-pressed="false">○ 未吃</button></div></article>
+
+      <article class="food-card" data-food-id="duong-dong-market"><div class="food-rank">07</div><div class="food-info"><div class="food-name">Chợ Dương Đông｜市場探索</div><div class="food-meta"><span class="food-region">Central / Cosy</span><span class="role market">Market Node</span></div><p class="food-order"><span>找：</span>Bánh tét mật cật → kẹo chỉ / bánh bò thốt nốt → dừa sáp dầm thốt nốt；水果看 bòn bon / 榴槤</p><p class="food-desc">熟食與小吃優先，不追固定攤；看到現做、熱賣的再買。</p></div><div class="food-actions"><a class="map" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=Ch%E1%BB%A3+D%C6%B0%C6%A1ng+%C4%90%C3%B4ng+Ph%C3%BA+Qu%E1%BB%91c">地圖</a><button class="eaten-btn" type="button" aria-pressed="false">○ 未吃</button></div></article>
+
+      <article class="food-card" data-food-id="nha-xua-68"><div class="food-rank">08</div><div class="food-info"><div class="food-name">Nhà Xưa 68</div><div class="food-meta"><span class="food-region">Central / Cosy</span><span class="role fallback">家庭備案</span></div><p class="food-order"><span>點：</span>沒有鎖定單一必點；看當日家常菜＋白飯</p><p class="food-desc">孩子累、想舒服坐下、正餐時間亂掉時很好用。</p></div><div class="food-actions"><a class="map" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=Nh%C3%A0+X%C6%B0a+68+Ph%C3%BA+Qu%E1%BB%91c">地圖</a><button class="eaten-btn" type="button" aria-pressed="false">○ 未吃</button></div></article>
+
+      <article class="food-card" data-food-id="com-tam-nhi"><div class="food-rank">09</div><div class="food-info"><div class="food-name">Cơm tấm Nhị</div><div class="food-meta"><span class="food-region">Central / Cosy</span><span class="role fallback">現場備案</span></div><p class="food-order"><span>點：</span>Cơm tấm</p><p class="food-desc">想快速坐下吃一份飯時用；是實用 fallback，不是必追名店。</p></div><div class="food-actions"><a class="map" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=C%C6%A1m+t%E1%BA%A5m+Nh%E1%BB%8B+Ph%C3%BA+Qu%E1%BB%91c">地圖</a><button class="eaten-btn" type="button" aria-pressed="false">○ 未吃</button></div></article>
+
+      <article class="food-card" data-food-id="bup-seafood"><div class="food-rank">10</div><div class="food-info"><div class="food-name">BUP Seafood</div><div class="food-meta"><span class="food-region">An Thới</span><span class="role conditional">Backup Carrier</span></div><p class="food-order"><span>點：</span>Nhum nướng mỡ hành（只有前面還沒吃到 Nhum）</p><p class="food-desc">Cable 回島後才有意義；stock / preparation / price gate 都過才用。</p></div><div class="food-actions"><a class="map" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=BUP+Seafood+An+Th%E1%BB%9Bi+Ph%C3%BA+Qu%E1%BB%91c">地圖</a><button class="eaten-btn" type="button" aria-pressed="false">○ 未吃</button></div></article>
+
+      <article class="food-card" data-food-id="vinwonders-inside"><div class="food-rank">11</div><div class="food-info"><div class="food-name">VinWonders 園內餐飲</div><div class="food-meta"><span class="food-region">VinWonders</span><span class="role fallback">園內備案</span></div><p class="food-order"><span>點：</span>園內就近、孩子能吃的熱食</p><p class="food-desc">沒有鎖定必吃店；正常或孩子累時，園內解決比為吃飯硬接 Grand World 更合理。</p></div><div class="food-actions"><a class="map" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=VinWonders+Ph%C3%BA+Qu%E1%BB%91c">地圖</a><button class="eaten-btn" type="button" aria-pressed="false">○ 未吃</button></div></article>
+
+      <article class="food-card" data-food-id="wow-que-toi"><div class="food-rank">12</div><div class="food-info"><div class="food-name">WOW QUÊ TÔI</div><div class="food-meta"><span class="food-region">An Thới</span><span class="role fallback">現場備案</span></div><p class="food-order"><span>點：</span>沒有鎖定必點；選當下現做熱食正餐</p><p class="food-desc">南島低摩擦 fallback，不升 Dish Carrier。</p></div><div class="food-actions"><a class="map" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=WOW+QU%C3%8A+T%C3%94I+An+Th%E1%BB%9Bi+Ph%C3%BA+Qu%E1%BB%91c">地圖</a><button class="eaten-btn" type="button" aria-pressed="false">○ 未吃</button></div></article>
+
+      <article class="food-card" data-food-id="quoc-thien"><div class="food-rank">13</div><div class="food-info"><div class="food-name">Quốc Thiên</div><div class="food-meta"><span class="food-region">Gành Dầu</span><span class="role verify">VERIFY #1</span></div><p class="food-order"><span>點：</span>熟食海鮮；先問秤重單價＋加工費</p><p class="food-desc">Safari → Gành Dầu daylight tail 的目前第一現場備案；不是 protocol-certified winner。</p></div><div class="food-actions"><a class="map" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=Welcome+To+Nha+Hang+Quoc+Thien+G%C3%A0nh+D%E1%BA%A7u+Ph%C3%BA+Qu%E1%BB%91c">地圖</a><button class="eaten-btn" type="button" aria-pressed="false">○ 未吃</button></div></article>
+
+      <article class="food-card" data-food-id="phuc-ngan"><div class="food-rank">14</div><div class="food-info"><div class="food-name">Phúc Ngân</div><div class="food-meta"><span class="food-region">Gành Dầu</span><span class="role verify">VERIFY #2</span></div><p class="food-order"><span>點：</span>熟海鮮；若有熟 Nhum / còi biên mai 可優先問</p><p class="food-desc">Gành Dầu 第二備案；目前證據不足以升 Carrier。</p></div><div class="food-actions"><a class="map" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=Nh%C3%A0+H%C3%A0ng+Bi%E1%BB%83n+Ph%C3%BAc+Ng%C3%A2n+G%C3%A0nh+D%E1%BA%A7u+Ph%C3%BA+Qu%E1%BB%91c">地圖</a><button class="eaten-btn" type="button" aria-pressed="false">○ 未吃</button></div></article>
+
+      <article class="food-card" data-food-id="bep-nha-grandworld"><div class="food-rank">15</div><div class="food-info"><div class="food-name">Bếp Nhà Restaurant</div><div class="food-meta"><span class="food-region">Grand World</span><span class="role verify">VERIFY #1</span></div><p class="food-order"><span>點：</span>目前沒有足夠證據指定必點；當越式正餐 fallback</p><p class="food-desc">人在 Grand World 才用；不因為它存在就把 Grand World 接進行程。</p></div><div class="food-actions"><a class="map" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=B%E1%BA%BFp+Nh%C3%A0+Restaurant+Grand+World+Ph%C3%BA+Qu%E1%BB%91c">地圖</a><button class="eaten-btn" type="button" aria-pressed="false">○ 未吃</button></div></article>
+
+      <article class="food-card" data-food-id="com-nha-grandworld"><div class="food-rank">16</div><div class="food-info"><div class="food-name">Cơm Nhà Phú Quốc</div><div class="food-meta"><span class="food-region">Grand World</span><span class="role verify">VERIFY #2</span></div><p class="food-order"><span>點：</span>家常飯菜；目前沒有 protocol-valid 必點</p><p class="food-desc">family-style 第二備案；review-integrity 仍有疑慮。</p></div><div class="food-actions"><a class="map" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=C%C6%A1m+Nh%C3%A0+Ph%C3%BA+Qu%E1%BB%91c+Grand+World">地圖</a><button class="eaten-btn" type="button" aria-pressed="false">○ 未吃</button></div></article>
+
+      <article class="food-card" data-food-id="an-thoi-market"><div class="food-rank">17</div><div class="food-info"><div class="food-name">Chợ An Thới</div><div class="food-meta"><span class="food-region">An Thới</span><span class="role market">Market Node</span></div><p class="food-order"><span>找：</span>當下現做熟食／小吃，水果其次</p><p class="food-desc">不是為市場硬排時間；剛好在 An Thới 才逛。</p></div><div class="food-actions"><a class="map" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=Ch%E1%BB%A3+An+Th%E1%BB%9Bi+Ph%C3%BA+Qu%E1%BB%91c">地圖</a><button class="eaten-btn" type="button" aria-pressed="false">○ 未吃</button></div></article>
+
+      <article class="food-card" data-food-id="ganh-dau-market"><div class="food-rank">18</div><div class="food-info"><div class="food-name">Chợ Gành Dầu</div><div class="food-meta"><span class="food-region">Gành Dầu</span><span class="role market">Market Node</span></div><p class="food-order"><span>找：</span>現做、熱賣的熟食</p><p class="food-desc">只在 Safari daylight tail 已經到 Gành Dầu 時順手看。</p></div><div class="food-actions"><a class="map" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=Ch%E1%BB%A3+G%C3%A0nh+D%E1%BA%A7u+Ph%C3%BA+Qu%E1%BB%91c">地圖</a><button class="eaten-btn" type="button" aria-pressed="false">○ 未吃</button></div></article>
+    </div>
+    <div class="pool-note">排序代表「這趟值得優先完成」而不是此刻推薦；真正要吃時，由 ChatGPT 用現在時間＋所在區域＋已吃狀態重新排。吃過紀錄只存在這支手機。</div>
+  </section>
+'''
+          html = html[:start] + food + '\n' + html[end:]
+
+          old_js = r'''  const tabs=[...document.querySelectorAll('[data-food]')];
+  tabs.forEach(tab=>tab.addEventListener('click',()=>{
+    tabs.forEach(x=>x.classList.remove('active'));tab.classList.add('active');
+    document.querySelectorAll('[data-panel]').forEach(p=>p.classList.toggle('active',p.dataset.panel===tab.dataset.food));
+  }));'''
+          new_js = r'''  const foodKey='phq-v2-food-eaten';
+  let eaten={}; try{eaten=JSON.parse(localStorage.getItem(foodKey)||'{}')}catch(e){}
+  const foodCards=[...document.querySelectorAll('[data-food-id]')];
+  const foodProgress=document.getElementById('foodProgress');
+  function renderFood(){
+    let count=0;
+    foodCards.forEach(card=>{
+      const id=card.dataset.foodId,isEaten=!!eaten[id];
+      if(isEaten)count++;
+      card.classList.toggle('eaten',isEaten);
+      const btn=card.querySelector('.eaten-btn');
+      if(btn){btn.setAttribute('aria-pressed',String(isEaten));btn.textContent=isEaten?'✓ 吃過':'○ 未吃'}
+    });
+    if(foodProgress)foodProgress.textContent=`已吃 ${count} / ${foodCards.length}`;
+  }
+  foodCards.forEach(card=>{
+    const btn=card.querySelector('.eaten-btn');
+    if(!btn)return;
+    btn.addEventListener('click',()=>{
+      const id=card.dataset.foodId;eaten[id]=!eaten[id];
+      if(!eaten[id])delete eaten[id];
+      localStorage.setItem(foodKey,JSON.stringify(eaten));renderFood();
+    });
+  });
+  const resetFood=document.getElementById('resetFood');
+  if(resetFood)resetFood.addEventListener('click',()=>{eaten={};localStorage.removeItem(foodKey);renderFood()});
+  renderFood();'''
+          if old_js not in html:
+              raise SystemExit('old food tabs js not found')
+          html = html.replace(old_js, new_js)
+
+          if html.count('data-food-id=') != 18:
+              raise SystemExit(f'expected 18 pool items, got {html.count("data-food-id=")}')
+          if 'data-food=' in html or 'data-panel=' in html or 'food-tabs' in html or 'food-panel' in html:
+              raise SystemExit('old food tab UI remains')
+          if 'Central / Cosy Food Queue' in html:
+              raise SystemExit('old queue wording remains')
+
+          p.write_text(html)
+          print('FOOD_POOL_PATCH=PASS')
+          PY
+
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          h=Path('v2.html').read_text()
+          m=re.search(r'<script>\s*(.*?)\s*</script>',h,re.S)
+          if not m: raise SystemExit('inline script missing')
+          Path('/tmp/v2.js').write_text(m.group(1))
+          PY
+          node --check /tmp/v2.js
+          git diff --check
+
+      - name: Commit V2 Food Pool
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add v2.html
+          git rm .github/workflows/v2-food-pool-simplify.yml
+          git diff --cached --check
+          git commit -m 'Simplify V2 food into prioritized eaten-tracking pool'
+          git push origin HEAD:main
+
+      - name: Wait for live V2
+        run: |
+          set -euo pipefail
+          base='https://ga815647.github.io/phu-quoc-2026-mobile/v2.html'
+          ok=0
+          for i in $(seq 1 36); do
+            if curl -fsSL "$base?food-pool-simple=$i" -o /tmp/live-v2.html \
+              && grep -q 'FOOD_POOL_SIMPLE_V2' /tmp/live-v2.html \
+              && grep -q 'data-food-id="bun-ken-ut-luom"' /tmp/live-v2.html \
+              && ! grep -q 'food-tabs' /tmp/live-v2.html; then ok=1; break; fi
+            sleep 8
+          done
+          test "$ok" = 1
+
+      - name: Mobile browser smoke
+        run: |
+          set -euo pipefail
+          npm install --no-save playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install --with-deps chromium >/dev/null 2>&1
+          cat > v2-food-smoke.cjs <<'JS'
+          const { chromium } = require('playwright');
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,deviceScaleFactor:2});
+            const page=await context.newPage();
+            const errors=[];page.on('pageerror',e=>errors.push(String(e)));
+            await page.goto('https://ga815647.github.io/phu-quoc-2026-mobile/v2.html?food-smoke=1',{waitUntil:'networkidle'});
+            await page.waitForTimeout(500);
+            const txt=await page.locator('body').innerText();
+            if(!txt.includes('美食 Pool')||!txt.includes('Bún Kèn Út Lượm')||!txt.includes('已吃 0 / 18'))throw new Error('pool render missing');
+            if(await page.locator('[data-food-id]').count()!==18)throw new Error('pool item count wrong');
+            await page.locator('[data-jump="food"]').click();
+            await page.waitForTimeout(120);
+            const nav=await page.evaluate(()=>({hash:location.hash,top:document.getElementById('food').getBoundingClientRect().top}));
+            if(nav.hash||Math.abs(nav.top)>90)throw new Error('food nav failed '+JSON.stringify(nav));
+            const first=page.locator('[data-food-id="bun-ken-ut-luom"] .eaten-btn');
+            await first.click();await page.waitForTimeout(80);
+            if((await first.textContent()).trim()!=='✓ 吃過')throw new Error('eaten toggle failed');
+            await page.reload({waitUntil:'networkidle'});await page.waitForTimeout(300);
+            if(!(await page.locator('[data-food-id="bun-ken-ut-luom"]').evaluate(el=>el.classList.contains('eaten'))))throw new Error('eaten persistence failed');
+            await page.locator('#resetFood').click();await page.waitForTimeout(80);
+            if(!(await page.locator('#foodProgress').innerText()).includes('0 / 18'))throw new Error('reset failed');
+            if(errors.length)throw new Error('pageerror '+errors.join(' | '));
+            console.log('V2_FOOD_POOL_MOBILE=PASS');
+            await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          node v2-food-smoke.cjs
