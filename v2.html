@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f6f7f2">
+<title>富國島 2026｜V2 Mobile Preview</title>
+<style>
+:root{--bg:#f6f7f2;--surface:#ffffff;--surface2:#eef3ed;--ink:#1e2a24;--muted:#66736c;--line:#dce5de;--brand:#0b7668;--brand2:#116f89;--warm:#e9984a;--danger:#b4544c;--shadow:0 12px 36px rgba(31,49,40,.08);--r:22px;--r2:16px}
+*{box-sizing:border-box}html{scroll-behavior:auto;background:var(--bg)}body{margin:0;background:linear-gradient(180deg,#f3f7f4 0,#f7f6f0 26rem,var(--bg) 100%);color:var(--ink);font-family:ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC","PingFang TC",sans-serif;line-height:1.55}button,select,a{font:inherit}a{color:inherit}.wrap{width:min(760px,100%);margin:auto;padding:0 16px 96px}.hero{padding:34px 4px 16px}.eyebrow{font-size:12px;font-weight:800;letter-spacing:.14em;color:var(--brand);text-transform:uppercase}.hero h1{margin:9px 0 8px;font-size:clamp(34px,9vw,54px);line-height:1.02;letter-spacing:-.04em}.hero p{margin:0;color:var(--muted);font-size:15px}.hero-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:18px}.status{background:rgba(255,255,255,.78);border:1px solid rgba(255,255,255,.9);box-shadow:var(--shadow);border-radius:18px;padding:14px}.status b{display:block;font-size:13px}.status strong{display:block;font-size:20px;margin-top:2px}.status span{font-size:12px;color:var(--muted)}
+.sticky{position:sticky;top:0;z-index:30;margin:0 -16px;padding:8px 16px;background:rgba(246,247,242,.86);backdrop-filter:blur(18px);border-bottom:1px solid rgba(220,229,222,.7)}.nav{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;max-width:760px;margin:auto}.nav button{border:0;background:transparent;color:var(--muted);padding:9px 4px;border-radius:12px;font-size:13px;font-weight:750}.nav button:active{transform:scale(.98)}.nav button.primary{background:var(--ink);color:white}
+.section{padding-top:24px;scroll-margin-top:72px}.section-head{display:flex;align-items:end;justify-content:space-between;gap:10px;margin-bottom:12px}.section-head h2{margin:0;font-size:25px;letter-spacing:-.025em}.section-head span{color:var(--muted);font-size:12px;text-align:right}.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden}.pad{padding:17px}.callout{border-radius:18px;padding:14px 15px;background:#e8f3ef;color:#215c52;font-size:14px}.callout.warm{background:#fff1e3;color:#7a4d21}.callout.red{background:#f8e9e7;color:#83423c}.label{font-size:11px;font-weight:850;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.today-big{font-size:24px;font-weight:850;letter-spacing:-.02em;margin:4px 0 3px}.choice-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}.choice{border:1px solid var(--line);border-radius:16px;padding:13px;background:linear-gradient(180deg,#fff,#fbfcfa)}.choice strong{display:block}.choice span{display:block;color:var(--muted);font-size:12px;margin-top:3px}
+.slot-list{display:grid;gap:9px}.slot{display:grid;grid-template-columns:92px 1fr;gap:10px;align-items:center;border:1px solid var(--line);border-radius:15px;padding:10px 12px}.slot .date b{display:block}.slot .date small{color:var(--muted)}select{width:100%;border:1px solid var(--line);background:#fff;border-radius:12px;padding:9px 10px;color:var(--ink)}.locked{font-size:13px;font-weight:800;color:var(--brand)}.ghost{border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:12px;padding:9px 12px;font-weight:750}.row-actions{display:flex;justify-content:flex-end;margin-top:10px}
+.cards{display:grid;gap:12px}details.trip{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden}details.trip>summary{list-style:none;cursor:pointer;padding:17px}details.trip>summary::-webkit-details-marker{display:none}.trip-title{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.trip-title h3{margin:0;font-size:21px;letter-spacing:-.02em}.trip-title .arrow{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:var(--surface2);font-weight:900;color:var(--muted)}details[open] .arrow{transform:rotate(45deg)}.trip-summary{color:var(--muted);font-size:13px;margin-top:6px}.badges{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}.badge{display:inline-flex;align-items:center;gap:4px;border-radius:999px;padding:5px 8px;background:var(--surface2);font-size:11px;font-weight:800;color:#45534c}.badge.brand{background:#dff1eb;color:#256357}.badge.warm{background:#fff0df;color:#81511e}.badge.red{background:#f7e5e3;color:#88443e}.inside{padding:0 17px 17px;border-top:1px solid var(--line)}.timeline{display:grid;gap:0}.step{display:grid;grid-template-columns:94px 1fr;gap:12px;padding:13px 0;border-bottom:1px dashed var(--line)}.step:last-child{border-bottom:0}.time{font-size:12px;font-weight:850;color:var(--brand)}.step b{font-size:14px}.step p{margin:3px 0 0;color:var(--muted);font-size:13px}.mini-list{margin:10px 0 0;padding-left:20px;color:var(--muted);font-size:13px}
+.food-shell{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden}.food-tabs{display:flex;gap:7px;overflow-x:auto;padding:12px;border-bottom:1px solid var(--line);scrollbar-width:none}.food-tabs::-webkit-scrollbar{display:none}.food-tabs button{white-space:nowrap;border:1px solid var(--line);background:#fff;border-radius:999px;padding:8px 11px;font-size:12px;font-weight:800;color:var(--muted)}.food-tabs button.active{background:var(--ink);border-color:var(--ink);color:#fff}.food-panel{display:none;padding:7px 14px 14px}.food-panel.active{display:block}.food-intro{padding:8px 3px 12px;color:var(--muted);font-size:13px}.food-row{display:grid;grid-template-columns:88px 1fr auto;gap:10px;padding:13px 2px;border-top:1px solid var(--line);align-items:start}.food-time{font-size:11px;font-weight:850;color:var(--brand)}.food-main strong{font-size:14px}.food-main p{margin:3px 0 0;color:var(--muted);font-size:12px}.role{display:inline-flex;border-radius:999px;padding:3px 6px;margin-left:5px;font-size:10px;font-weight:850;vertical-align:1px}.carrier{background:#dff1e9;color:#246553}.conditional{background:#fff0dc;color:#8a591d}.verify{background:#e8eef7;color:#4a6280}.fallback{background:#f0f0ed;color:#59615c}.market{background:#efe6f6;color:#70547e}.map{display:inline-flex;text-decoration:none;border:1px solid var(--line);background:#fff;border-radius:10px;padding:7px 9px;font-size:11px;font-weight:800;color:var(--brand)}
+.prep-grid{display:grid;gap:10px}.prep{border:1px solid var(--line);border-radius:16px;padding:13px 14px;background:#fff}.prep b{display:block;font-size:14px}.prep span{display:block;color:var(--muted);font-size:12px;margin-top:3px}.footer{margin-top:26px;text-align:center;color:var(--muted);font-size:11px;padding:20px 12px}.tiny{font-size:11px;color:var(--muted)}
+@media(max-width:520px){.hero-grid{grid-template-columns:1fr}.choice-grid{grid-template-columns:1fr}.food-row{grid-template-columns:76px 1fr}.food-row .map{grid-column:2;justify-self:start}.step{grid-template-columns:78px 1fr}.slot{grid-template-columns:82px 1fr}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="hero">
+    <div class="eyebrow">PHU QUOC 2026 · MOBILE EXECUTION</div>
+    <h1>照著走，<br>不用一直想。</h1>
+    <p>1 大 1 小 · Cosy Bungalow 單一基地 · 10/10–10/15</p>
+    <div class="hero-grid">
+      <div class="status"><b>已確認</b><strong>10/11 OnBird</strong><span>回 Cosy 先休息；狀態好才接 optional DD evening</span></div>
+      <div class="status"><b>旅行核心</b><strong>5 張 Day Cards</strong><span>Cable · VinWonders · OnBird · Starfish · Safari</span></div>
+    </div>
+  </header>
+</div>
+<div class="sticky">
+  <nav class="nav" aria-label="快速導覽">
+    <button class="primary" data-jump="today">今天</button>
+    <button data-jump="cards">Cards</button>
+    <button data-jump="food">吃什麼</button>
+    <button data-jump="prep">出發前</button>
+  </nav>
+</div>
+<div class="wrap">
+  <section class="section" id="today">
+    <div class="section-head"><h2>今天怎麼決定</h2><span>只保留會真的用到的資訊</span></div>
+    <div class="panel pad">
+      <div class="label">CURRENT STATE</div>
+      <div class="today-big">10/11 已確認；10/12–10/14 保持彈性</div>
+      <div class="tiny">T−72 只暫排；每晚 T−1 只鎖隔天。</div>
+      <div class="choice-grid">
+        <div class="choice"><strong>🚠 Cable</strong><span>最高優先。早餐後直接 Ga Ánh Dương，不插 DD micro-stop。</span></div>
+        <div class="choice"><strong>🎢 VinWonders</strong><span>Sea Shell first；Grand World 只有 early exit + 孩子 Green 才接。</span></div>
+        <div class="choice"><strong>⭐ Starfish</strong><span>七項 gate + 48h 現況全綠才成立。</span></div>
+        <div class="choice"><strong>🦒 Safari</strong><span>只有真的想去才排；tail 二選一，不自動綁 Grand World。</span></div>
+      </div>
+    </div>
+
+    <div class="section-head" style="margin-top:20px"><h2>四天排牌</h2><span>存在手機本機，不改行程 authority</span></div>
+    <div class="panel pad">
+      <div class="slot-list">
+        <div class="slot"><div class="date"><b>10/11 Sun</b><small>confirmed</small></div><div class="locked">🤿 OnBird + optional DD</div></div>
+        <div class="slot"><div class="date"><b>10/12 Mon</b><small>flex</small></div><select data-day="10/12"><option value="">尚未鎖定</option><option>Cable + Sunset Town</option><option>VinWonders</option><option>Starfish conditional</option><option>Safari</option><option>Free / Recovery</option></select></div>
+        <div class="slot"><div class="date"><b>10/13 Tue</b><small>flex</small></div><select data-day="10/13"><option value="">尚未鎖定</option><option>Cable + Sunset Town</option><option>VinWonders</option><option>Starfish conditional</option><option>Safari</option><option>Free / Recovery</option></select></div>
+        <div class="slot"><div class="date"><b>10/14 Wed</b><small>flex</small></div><select data-day="10/14"><option value="">尚未鎖定</option><option>Cable + Sunset Town</option><option>VinWonders</option><option>Starfish conditional</option><option>Safari</option><option>Free / Recovery</option></select></div>
+      </div>
+      <div class="row-actions"><button class="ghost" id="resetSlots">清除暫排</button></div>
+    </div>
+  </section>
+
+  <section class="section" id="cards">
+    <div class="section-head"><h2>5 張 Day Cards</h2><span>點開才看細節</span></div>
+    <div class="cards">
+      <details class="trip">
+        <summary><div class="trip-title"><div><h3>🚠 Cable + Sunset Town</h3><div class="trip-summary">最高優先 · first-wave target · An Thới 只 optional</div><div class="badges"><span class="badge brand">必排</span><span class="badge warm">Heavy</span><span class="badge">No DD micro-stop</span></div></div><div class="arrow">＋</div></div></summary>
+        <div class="inside"><div class="timeline">
+          <div class="step"><div class="time">07:00–08:15</div><div><b>Central / Cosy Food Queue</b><p>挑目前營業、尚未吃過且 morning scarcity 高的選項。</p></div></div>
+          <div class="step"><div class="time">08:30–08:45</div><div><b>離開 Cosy / DD</b><p>Grab／GreenSM／taxi 直接往 Ga Ánh Dương。</p></div></div>
+          <div class="step"><div class="time">10:30–10:45</div><div><b>Soft arrival</b><p>留 QR、廁所、量身高、排隊 buffer。</p></div></div>
+          <div class="step"><div class="time">11:00</div><div><b>Hard arrival / queue deadline</b><p>目前 first wave close 11:30；T−72 重查 October exact hours。</p></div></div>
+          <div class="step"><div class="time">回本島後</div><div><b>An Thới optional satellite</b><p>時間與孩子狀態都好才留 45–60 分；否則直接 Sunset Town。</p></div></div>
+          <div class="step"><div class="time">Evening</div><div><b>Sunset Town</b><p>Kiss Bridge + 日落保留；免費 show 只算 bonus。</p></div></div>
+        </div></div>
+      </details>
+
+      <details class="trip">
+        <summary><div class="trip-title"><div><h3>🎢 VinWonders + optional Grand World</h3><div class="trip-summary">Sea Shell first；正常／孩子累就園內吃完撤</div><div class="badges"><span class="badge brand">核心</span><span class="badge warm">Heavy</span><span class="badge">GW optional</span></div></div><div class="arrow">＋</div></div></summary>
+        <div class="inside"><div class="timeline">
+          <div class="step"><div class="time">Breakfast</div><div><b>Central / Cosy Food Queue</b><p>不固定某一家，依當下營業與未完成食物選。</p></div></div>
+          <div class="step"><div class="time">09:15–09:35</div><div><b>Main gate</b><p>直達叫車優先。</p></div></div>
+          <div class="step"><div class="time">10:00</div><div><b>Sea Shell first</b><p>先做全齡、高確定性內容。</p></div></div>
+          <div class="step"><div class="time">正常／累</div><div><b>園內解決吃飯</b><p>不為晚餐硬加 Grand World。</p></div></div>
+          <div class="step"><div class="time">Early exit</div><div><b>Optional Grand World</b><p>只有孩子 Green 才接。</p></div></div>
+        </div></div>
+      </details>
+
+      <details class="trip" open>
+        <summary><div class="trip-title"><div><h3>🤿 OnBird + optional DD</h3><div class="trip-summary">10/11 Morning confirmed · Cosy 往返 · 回來先休息</div><div class="badges"><span class="badge brand">已確認</span><span class="badge">10/12–14 改期 buffer</span></div></div><div class="arrow">＋</div></div></summary>
+        <div class="inside"><div class="timeline">
+          <div class="step"><div class="time">−90m</div><div><b>房內簡單早餐</b><p>太早就前晚備麵包、水果、奶類與水；不繞 An Thới。</p></div></div>
+          <div class="step"><div class="time">Morning</div><div><b>Operator door-to-door</b><p>Cosy pickup／drop-off；exact window 依 OnBird 通知。</p></div></div>
+          <div class="step"><div class="time">回 Cosy</div><div><b>洗澡＋休息</b><p>回程正常、孩子 Green 才接 Dinh Cậu／河口 + DD evening；累就留 Cosy／Long Beach。</p></div></div>
+        </div><div class="callout" style="margin-top:12px">DD evening 是 optional tail，不是 OnBird 成功條件。海況與 onsite safety gate 仍可改變當日 execution。</div></div>
+      </details>
+
+      <details class="trip">
+        <summary><div class="trip-title"><div><h3>⭐ Starfish｜Rạch Vẹm / Hàm Rồng</h3><div class="trip-summary">All-green only · 不接受「先叫車去看看」</div><div class="badges"><span class="badge red">七項 hard gate</span><span class="badge">48h 現況</span></div></div><div class="arrow">＋</div></div></summary>
+        <div class="inside"><ul class="mini-list"><li>Exact Cosy pickup／drop-off。</li><li>Road + 實際 vehicle type。</li><li>Boarding map pin + 船型／容量／上下船。</li><li>Short-boat minutes。</li><li>Child-size life jacket + child-safe boat。</li><li>同船＋同 road vehicle return。</li><li>Bad-water／no-star／road closure cancellation。</li><li>另看過去 48h 路況、星況、水色照片。</li></ul><div class="callout red" style="margin-top:12px">任一 gate fail → 整包 fail。</div></div>
+      </details>
+
+      <details class="trip">
+        <summary><div class="trip-title"><div><h3>🦒 Safari + one north tail</h3><div class="trip-summary">Gành Dầu daylight 或 Grand World evening，二選一</div><div class="badges"><span class="badge warm">Optional</span><span class="badge">不是自動遞補</span></div></div><div class="arrow">＋</div></div></summary>
+        <div class="inside"><div class="timeline">
+          <div class="step"><div class="time">07:55–08:10</div><div><b>Cosy 直達叫車</b><p>先吃 Central / Cosy Food Queue，不做完整 DD 散步。</p></div></div>
+          <div class="step"><div class="time">09:00*</div><div><b>Safari arrival</b><p>保守用 09:00；T−72 重查 official hours。</p></div></div>
+          <div class="step"><div class="time">Tail A</div><div><b>Gành Dầu daylight</b><p>retained driver；17:00 前離。</p></div></div>
+          <div class="step"><div class="time">Tail B</div><div><b>Grand World evening</b><p>孩子 Green 才接；不為吃飯硬選這條。</p></div></div>
+        </div></div>
+      </details>
+    </div>
+  </section>
+
+  <section class="section" id="food">
+    <div class="section-head"><h2>現在吃什麼</h2><span>先選區域，再看現在可用選項</span></div>
+    <div class="food-shell">
+      <div class="food-tabs" role="tablist">
+        <button class="active" data-food="central">Central / Cosy</button>
+        <button data-food="vinwonders">VinWonders</button>
+        <button data-food="south">An Thới / Sunset</button>
+        <button data-food="ganhdau">Gành Dầu</button>
+        <button data-food="grandworld">Grand World</button>
+      </div>
+
+      <div class="food-panel active" data-panel="central">
+        <div class="food-intro">正餐、小吃、糕點放在一起。時段只是可用窗口，不代表一定要在某餐吃某類。</div>
+        <div class="food-row"><div class="food-time">05:00–12:00</div><div class="food-main"><strong>Bánh Canh Phụng <span class="role carrier">Carrier</span></strong><p>早段強選項；06:30–08:30 最穩，可能售罄。</p></div><a class="map" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=B%C3%A1nh+Canh+Ph%E1%BB%A5ng+Ph%C3%BA+Qu%E1%BB%91c">地圖</a></div>
+        <div class="food-row"><div class="food-time">06:00–12:00</div><div class="food-main"><strong>Bún Kèn Út Lượm <span class="role carrier">Carrier</span></strong><p>A-priority；沒吃到再看 bún kèn 87 backup。</p></div><a class="map" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=B%C3%BAn+K%C3%A8n+%C3%9At+L%C6%B0%E1%BB%A3m+Ph%C3%BA+Qu%E1%BB%91c">地圖</a></div>
+        <div class="food-row"><div class="food-time">午間／先確認</div><div class="food-main"><strong>Bún Mắm Dung Hà <span class="role conditional">條件式</span></strong><p>想吃 bún mắm 時優先；實際營業窗 T−72/T−1 再鎖。</p></div><a class="map" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=B%C3%BAn+M%E1%BA%AFm+Dung+H%C3%A0+Ph%C3%BA+Qu%E1%BB%91c">地圖</a></div>
+        <div class="food-row"><div class="food-time">06:00–00:00</div><div class="food-main"><strong>Bánh mì Anh Thư <span class="role carrier">Carrier</span></strong><p>全天／晚間很穩，想快速吃點鹹的很好用。</p></div><a class="map" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=B%C3%A1nh+m%C3%AC+Anh+Th%C6%B0+Ph%C3%BA+Qu%E1%BB%91c">地圖</a></div>
+        <div class="food-row"><div class="food-time">06:30–21:30</div><div class="food-main"><strong>bánh Khéo cô Dung <span class="role fallback">地方糕點</span></strong><p>順路嘴饞就買；適合少量多口味。</p></div><a class="map" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=b%C3%A1nh+Kh%C3%A9o+c%C3%B4+Dung%2C+43+%C4%90.+30+Th%C3%A1ng+4%2C+Ph%C3%BA+Qu%E1%BB%91c">地圖</a></div>
+        <div class="food-row"><div class="food-time">看到就買</div><div class="food-main"><strong>Chợ Dương Đông <span class="role market">Market Node</span></strong><p>Bánh tét mật cật、kẹo chỉ、bánh bò thốt nốt、dừa sáp dầm thốt nốt、bòn bon、榴槤；目前不假裝有固定 Carrier。</p></div><a class="map" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=Ch%E1%BB%A3+D%C6%B0%C6%A1ng+%C4%90%C3%B4ng+Ph%C3%BA+Qu%E1%BB%91c">地圖</a></div>
+        <div class="food-row"><div class="food-time">傍晚／晚間</div><div class="food-main"><strong>Nhum nướng mỡ hành 8K <span class="role conditional">條件式</span></strong><p>只有 Nhum 尚未完成才優先；先確認有貨、做法與當日價。</p></div><a class="map" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=H%C3%A0u+N%C6%B0%E1%BB%9Bng+Nhum+n%C6%B0%E1%BB%9Bng+8K+Ph%C3%BA+Qu%E1%BB%91c">地圖</a></div>
+        <div class="food-row"><div class="food-time">17:00–20:00</div><div class="food-main"><strong>Cơm tấm Nhị <span class="role fallback">現場備案</span></strong><p>想快速坐下吃飯時用。</p></div><a class="map" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=C%C6%A1m+t%E1%BA%A5m+Nh%E1%BB%8B+Ph%C3%BA+Qu%E1%BB%91c">地圖</a></div>
+        <div class="food-row"><div class="food-time">09:30–22:00</div><div class="food-main"><strong>Nhà Xưa 68 <span class="role fallback">家庭備案</span></strong><p>孩子累、想坐下、正餐時間被打亂時很好用。</p></div><a class="map" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=Nh%C3%A0+X%C6%B0a+68+Ph%C3%BA+Qu%E1%BB%91c">地圖</a></div>
+      </div>
+
+      <div class="food-panel" data-panel="vinwonders">
+        <div class="food-intro">正常／孩子累：園內吃完就撤；不為晚餐硬加 Grand World。</div>
+        <div class="food-row"><div class="food-time">園內營業時段</div><div class="food-main"><strong>園內先吃 <span class="role fallback">園內備案</span></strong><p>實際餐飲 window T−72/T−1 再查。</p></div><a class="map" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=VinWonders+Ph%C3%BA+Qu%E1%BB%91c">地圖</a></div>
+      </div>
+
+      <div class="food-panel" data-panel="south">
+        <div class="food-intro">沒有 generic Primary；到這區才依時間與需求選。</div>
+        <div class="food-row"><div class="food-time">白天／一般</div><div class="food-main"><strong>WOW QUÊ TÔI <span class="role fallback">現場備案</span></strong><p>低摩擦正餐備案，不是 Dish Carrier。</p></div><a class="map" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=WOW+QU%C3%8A+T%C3%94I+An+Th%E1%BB%9Bi+Ph%C3%BA+Qu%E1%BB%91c">地圖</a></div>
+        <div class="food-row"><div class="food-time">Cable 回島後</div><div class="food-main"><strong>BUP Seafood <span class="role conditional">Backup Carrier</span></strong><p>只有 Nhum 未完成且 stock／preparation／price 都通過才用。</p></div><a class="map" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=BUP+Seafood+An+Th%E1%BB%9Bi+Ph%C3%BA+Qu%E1%BB%91c">地圖</a></div>
+        <div class="food-row"><div class="food-time">市場開放時段</div><div class="food-main"><strong>Chợ An Thới <span class="role market">Market Node</span></strong><p>熟食／小吃優先，水果其次；目前沒有 protocol-valid 固定攤位 Carrier。</p></div><a class="map" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=Ch%E1%BB%A3+An+Th%E1%BB%9Bi+Ph%C3%BA+Qu%E1%BB%91c">地圖</a></div>
+      </div>
+
+      <div class="food-panel" data-panel="ganhdau">
+        <div class="food-intro">Safari daylight tail 到這區後再吃；不是為 Food 才選 tail。</div>
+        <div class="food-row"><div class="food-time">白天／Safari 後</div><div class="food-main"><strong>Quốc Thiên <span class="role verify">VERIFY #1</span></strong><p>目前最實用的 Gành Dầu fallback；秤重海鮮先問單價與加工費。</p></div><a class="map" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=Welcome+To+Nha+Hang+Quoc+Thien+G%C3%A0nh+D%E1%BA%A7u+Ph%C3%BA+Qu%E1%BB%91c">地圖</a></div>
+        <div class="food-row"><div class="food-time">白天～晚餐</div><div class="food-main"><strong>Phúc Ngân <span class="role verify">VERIFY #2</span></strong><p>偏 cooked local seafood；證據不足以升 Carrier。</p></div><a class="map" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=Nh%C3%A0+H%C3%A0ng+Bi%E1%BB%83n+Ph%C3%BAc+Ng%C3%A2n+G%C3%A0nh+D%E1%BA%A7u+Ph%C3%BA+Qu%E1%BB%91c">地圖</a></div>
+        <div class="food-row"><div class="food-time">早上較佳</div><div class="food-main"><strong>Chợ Gành Dầu <span class="role market">Market Node</span></strong><p>只挑當下現做、熱賣的熟食。</p></div><a class="map" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=Ch%E1%BB%A3+G%C3%A0nh+D%E1%BA%A7u+Ph%C3%BA+Qu%E1%BB%91c">地圖</a></div>
+      </div>
+
+      <div class="food-panel" data-panel="grandworld">
+        <div class="food-intro">人在 Grand World 才看；兩家都仍是 VERIFY / non-Carrier。</div>
+        <div class="food-row"><div class="food-time">約 11:00–23:00</div><div class="food-main"><strong>Bếp Nhà Restaurant <span class="role verify">VERIFY #1</span></strong><p>目前最完整的 Grand World fallback；T−72/T−1 重查。</p></div><a class="map" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=B%E1%BA%BFp+Nh%C3%A0+Restaurant+Grand+World+Ph%C3%BA+Qu%E1%BB%91c">地圖</a></div>
+        <div class="food-row"><div class="food-time">約 08:00–22:00</div><div class="food-main"><strong>Cơm Nhà Phú Quốc <span class="role verify">VERIFY #2</span></strong><p>family-style；review-integrity 有疑慮，不升 Food winner。</p></div><a class="map" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=C%C6%A1m+Nh%C3%A0+Ph%C3%BA+Qu%E1%BB%91c+Grand+World">地圖</a></div>
+      </div>
+    </div>
+    <div class="callout warm" style="margin-top:12px"><b>Food Queue 的讀法：</b>先看你在哪裡，再看現在仍可用的選項。Carrier 才是 production 選擇；VERIFY／現場備案只是可執行，不等於「認證最好吃」。</div>
+  </section>
+
+  <section class="section" id="prep">
+    <div class="section-head"><h2>出發前只查這些</h2><span>不要重新研究整趟</span></div>
+    <div class="panel pad">
+      <div class="prep-grid">
+        <div class="prep"><b>🤿 OnBird</b><span>actual pickup window、daily sea condition、go / reschedule；現場保留 safety assessment。</span></div>
+        <div class="prep"><b>🚠 Cable</b><span>October first-wave exact hours、return / last run、maintenance、weather。</span></div>
+        <div class="prep"><b>🎢 VinWonders</b><span>園內餐飲 window、direct quote、child eligibility；GW 仍 optional。</span></div>
+        <div class="prep"><b>⭐ Starfish</b><span>七項 hard gate + 48h road / starfish / water evidence。</span></div>
+        <div class="prep"><b>🦒 Safari</b><span>official hours、direct car、tail return；Gành Dầu retained driver + 17:00 hard leave。</span></div>
+        <div class="prep"><b>🍜 Food</b><span>只查明天實際會用的店：營業時間、庫存、價格。</span></div>
+      </div>
+      <div class="callout" style="margin-top:12px"><b>T−1 建議 15:00–17:00：</b>只鎖明天。若 booking、官方停駛／閉園、returnability、住宿、孩子 eligibility 都沒變，就不要重開整個 route。</div>
+    </div>
+
+    <div class="section-head" style="margin-top:20px"><h2>交通底線</h2><span>簡化成可執行規則</span></div>
+    <div class="panel pad">
+      <div class="prep-grid">
+        <div class="prep"><b>Central / Cosy + 大節點</b><span>Grab／GreenSM／taxi 三層互備；Airport、Ga Ánh Dương、VinWonders、Safari 優先 direct car。</span></div>
+        <div class="prep"><b>偏遠點／多停點</b><span>先鎖回程；無可靠 return 就 skip。</span></div>
+        <div class="prep"><b>App 叫不到</b><span>5–10 分未指派就切另一 app／taxi；bus ETA &gt;15–20 分直接切 direct。</span></div>
+        <div class="prep"><b>孩子</b><span>約 115 cm，一律後排；長程車優先三點式安全帶＋booster／child seat。</span></div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">V2 design preview · static / no React hydration · no URL hash navigation<br>Canonical production 尚未切換。</footer>
+</div>
+<script>
+(function(){
+  const sticky=document.querySelector('.sticky');
+  document.querySelectorAll('[data-jump]').forEach(btn=>btn.addEventListener('click',()=>{
+    const el=document.getElementById(btn.dataset.jump); if(!el)return;
+    const y=el.getBoundingClientRect().top+window.scrollY-(sticky.offsetHeight+8);
+    window.scrollTo(0,Math.max(0,y));
+    document.querySelectorAll('[data-jump]').forEach(x=>x.classList.remove('primary'));btn.classList.add('primary');
+  }));
+
+  const key='phq-v2-slots';
+  let saved={}; try{saved=JSON.parse(localStorage.getItem(key)||'{}')}catch(e){}
+  document.querySelectorAll('select[data-day]').forEach(sel=>{
+    if(saved[sel.dataset.day])sel.value=saved[sel.dataset.day];
+    sel.addEventListener('change',()=>{saved[sel.dataset.day]=sel.value;localStorage.setItem(key,JSON.stringify(saved))});
+  });
+  document.getElementById('resetSlots').addEventListener('click',()=>{saved={};localStorage.removeItem(key);document.querySelectorAll('select[data-day]').forEach(s=>s.value='')});
+
+  const tabs=[...document.querySelectorAll('[data-food]')];
+  tabs.forEach(tab=>tab.addEventListener('click',()=>{
+    tabs.forEach(x=>x.classList.remove('active'));tab.classList.add('active');
+    document.querySelectorAll('[data-panel]').forEach(p=>p.classList.toggle('active',p.dataset.panel===tab.dataset.food));
+  }));
+})();
+</script>
+</body>
+</html>
