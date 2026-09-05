@@ -1,0 +1,55 @@
+name: site-bottom-nav-instant-jump
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/site-bottom-nav-instant-jump.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Replace smooth-prone scroll with explicit instant jump
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import json
+          hp=Path('index.html')
+          mp=Path('SITE_SYNC_MANIFEST.json')
+          html=hp.read_text()
+          old="e.preventDefault();bnavClear();requestAnimationFrame(function(){el.scrollIntoView({behavior:'auto',block:'start'})})"
+          new="e.preventDefault();bnavClear();var root=document.documentElement,prev=root.style.scrollBehavior;root.style.scrollBehavior='auto';var top=el.getBoundingClientRect().top+window.pageYOffset;window.scrollTo(0,top);requestAnimationFrame(function(){root.style.scrollBehavior=prev})"
+          if old not in html:
+              raise SystemExit('expected capture-nav scroll source not found')
+          html=html.replace(old,new,1)
+          hp.write_text(html)
+          m=json.loads(mp.read_text())
+          m['bottom_nav_behavior_patch']='PHQ-SITE-BOTTOM-NAV-INSTANT-NOHASH-2026-09-05-03'
+          m['bottom_nav_navigation']='ANCHOR_DOM_UNCHANGED_CAPTURE_INTERCEPT_INSTANT_NO_HASH'
+          m['bottom_nav_scroll_behavior']='EXPLICIT_INSTANT_WITH_TEMP_SCROLL_BEHAVIOR_AUTO'
+          m['canonical_cutover']=False
+          mp.write_text(json.dumps(m,ensure_ascii=False,indent=2)+'\n')
+          print('INSTANT_NAV_PATCH=PASS')
+          PY
+          git diff --check
+          changed="$(git diff --name-only | sort)"
+          expected=$'SITE_SYNC_MANIFEST.json\nindex.html'
+          test "$changed" = "$expected"
+      - name: Commit safe staging follow-up
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html SITE_SYNC_MANIFEST.json
+          git diff --cached --check
+          git commit -m 'Make bottom navigation instant and hash-free'
+          git push origin HEAD:main
