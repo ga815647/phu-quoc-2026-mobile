@@ -22,67 +22,37 @@ jobs:
           set -euo pipefail
           python - <<'PY'
           from pathlib import Path
-
-          p = Path('v2.html')
-          html = p.read_text()
+          p=Path('v2.html')
+          html=p.read_text()
           if '<!-- DAY_CARD_LANDMARKS_V2 -->' in html:
               raise SystemExit('landmarks patch already applied')
-
-          css_anchor = '.callout.red{background:#f7e8e6;color:#81443e}\n.food-guide'
-          if css_anchor not in html:
-              raise SystemExit('css anchor not found')
-          css = '''.callout.red{background:#f7e8e6;color:#81443e}.place-links{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.place-link{display:inline-flex;align-items:center;text-decoration:none;border:1px solid var(--line);background:#fff;border-radius:10px;padding:6px 8px;font-size:11px;font-weight:850;color:var(--brand)}.place-note{margin-top:9px;padding:9px 10px;border-radius:11px;background:#f4f2ec;color:#6f675c;font-size:11px}\n.food-guide'''
-          html = html.replace(css_anchor, css, 1)
-
-          start = html.find('<section class="section" id="cards">')
-          end = html.find('<!-- FOOD_POOL_SIMPLE_V2 -->', start)
-          if start < 0 or end < 0:
-              raise SystemExit('cards section boundaries not found')
-
-          cards = r'''<!-- DAY_CARD_LANDMARKS_V2 -->
-<section class="section" id="cards">
-<div class="section-head"><h2>5 張 Day Cards</h2><span>下一站直接開地圖</span></div>
-<div class="cards">
-<details class="trip"><summary><div class="trip-title"><div><h3>🚠 Cable + Sunset Town</h3><div class="trip-summary">最高優先 · first-wave target · An Thới 只 optional</div><div class="badges"><span class="badge brand">必排</span><span class="badge warm">Heavy</span><span class="badge">No DD micro-stop</span></div></div><div class="arrow">＋</div></div></summary><div class="inside"><div class="timeline">
-<div class="step"><div class="time">07:00–08:15</div><div><b>Food Pool</b><p>告訴 ChatGPT 現在時間＋位置；從未吃且仍可用者挑早餐。</p><div class="place-links"><a class="place-link" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=Cosy+Bungalow+Phu+Quoc">📍 Cosy Bungalow Phú Quốc · 地圖</a></div></div></div>
-<div class="step"><div class="time">08:30–08:45</div><div><b>離開 Cosy / DD</b><p>Grab／GreenSM／taxi 直接往 Ga Ánh Dương。</p><div class="place-links"><a class="place-link" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=Cosy+Bungalow+Phu+Quoc">📍 Cosy Bungalow Phú Quốc · 地圖</a></div></div></div>
-<div class="step"><div class="time">10:30–10:45</div><div><b>Soft arrival</b><p>留 QR、廁所、量身高、排隊 buffer。</p><div class="place-links"><a class="place-link" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=Ga+Anh+Duong+Phu+Quoc">📍 Ga Ánh Dương · 地圖</a></div></div></div>
-<div class="step"><div class="time">11:00</div><div><b>Hard arrival</b><p>目前 first-wave close 11:30；T−72 重查 October exact hours。</p><div class="place-links"><a class="place-link" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=Ga+Anh+Duong+Phu+Quoc">📍 Ga Ánh Dương · 地圖</a></div></div></div>
-<div class="step"><div class="time">回本島後</div><div><b>An Thới optional</b><p>時間與孩子狀態都好才留 45–60 分；否則直接 Sunset Town。</p><div class="place-links"><a class="place-link" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=Cho+An+Thoi+Phu+Quoc">📍 Chợ An Thới · 地圖</a></div></div></div>
-<div class="step"><div class="time">Evening</div><div><b>Sunset Town</b><p>Kiss Bridge + 日落保留；免費 show 只算 bonus。</p><div class="place-links"><a class="place-link" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=Sunset+Town+Phu+Quoc">📍 Sunset Town Phú Quốc · 地圖</a><a class="place-link" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=Kiss+Bridge+Phu+Quoc">📍 Kiss Bridge / Cầu Hôn · 地圖</a></div></div></div>
-</div></div></details>
-
-<details class="trip"><summary><div class="trip-title"><div><h3>🎢 VinWonders + optional Grand World</h3><div class="trip-summary">Sea Shell first；正常／孩子累就園內吃完撤</div><div class="badges"><span class="badge brand">核心</span><span class="badge warm">Heavy</span><span class="badge">GW optional</span></div></div><div class="arrow">＋</div></div></summary><div class="inside"><div class="timeline">
-<div class="step"><div class="time">Breakfast</div><div><b>Food Pool</b><p>不固定某一家；把時間＋位置丟給 ChatGPT 再決定。</p><div class="place-links"><a class="place-link" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=Cosy+Bungalow+Phu+Quoc">📍 Cosy Bungalow Phú Quốc · 地圖</a></div></div></div>
-<div class="step"><div class="time">09:15–09:35</div><div><b>Main gate</b><p>直達叫車優先。</p><div class="place-links"><a class="place-link" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=VinWonders+Phu+Quoc">📍 VinWonders Phú Quốc · 地圖</a></div></div></div>
-<div class="step"><div class="time">10:00</div><div><b>Sea Shell first</b><p>先做全齡、高確定性內容。</p><div class="place-links"><a class="place-link" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=The+Sea+Shell+VinWonders+Phu+Quoc">📍 The Sea Shell · 地圖</a></div></div></div>
-<div class="step"><div class="time">正常／累</div><div><b>園內解決吃飯</b><p>不為晚餐硬加 Grand World。</p><div class="place-links"><a class="place-link" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=VinWonders+Phu+Quoc">📍 VinWonders Phú Quốc · 地圖</a></div></div></div>
-<div class="step"><div class="time">Early exit</div><div><b>Optional Grand World</b><p>只有孩子 Green 才接。</p><div class="place-links"><a class="place-link" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=Grand+World+Phu+Quoc">📍 Grand World Phú Quốc · 地圖</a></div></div></div>
-</div></div></details>
-
-<details class="trip" open><summary><div class="trip-title"><div><h3>🤿 OnBird + optional DD</h3><div class="trip-summary">10/11 Morning confirmed · Cosy 往返 · 回來先休息</div><div class="badges"><span class="badge brand">已確認</span><span class="badge">10/12–14 改期 buffer</span></div></div><div class="arrow">＋</div></div></summary><div class="inside"><div class="timeline">
-<div class="step"><div class="time">−90m</div><div><b>房內簡單早餐</b><p>太早就前晚備麵包、水果、奶類與水；不繞 An Thới。</p><div class="place-links"><a class="place-link" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=Cosy+Bungalow+Phu+Quoc">📍 Cosy Bungalow Phú Quốc · 地圖</a></div></div></div>
-<div class="step"><div class="time">Morning</div><div><b>Operator door-to-door</b><p>Cosy pickup／drop-off；exact window 依 OnBird 通知。</p><div class="place-links"><a class="place-link" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=Cosy+Bungalow+Phu+Quoc">📍 Cosy Bungalow Phú Quốc · 地圖</a></div></div></div>
-<div class="step"><div class="time">回 Cosy</div><div><b>洗澡＋休息</b><p>回程正常、孩子 Green 才接 Dinh Cậu／河口 + DD evening；累就留 Cosy／Long Beach。</p><div class="place-links"><a class="place-link" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=Cosy+Bungalow+Phu+Quoc">📍 Cosy Bungalow Phú Quốc · 地圖</a><a class="place-link" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=Dinh+Cau+Temple+Phu+Quoc">📍 Dinh Cậu · 地圖</a></div></div></div>
-</div><div class="callout" style="margin-top:12px">DD evening 是 optional tail，不是 OnBird 成功條件。</div></div></details>
-
-<details class="trip"><summary><div class="trip-title"><div><h3>⭐ Starfish｜Rạch Vẹm / Hàm Rồng</h3><div class="trip-summary">All-green only · 不接受「先叫車去看看」</div><div class="badges"><span class="badge red">七項 hard gate</span><span class="badge">48h 現況</span></div></div><div class="arrow">＋</div></div></summary><div class="inside"><ul class="mini-list"><li>Exact Cosy pickup／drop-off。</li><li>Road + 實際 vehicle type。</li><li>Boarding map pin + 船型／容量／上下船。</li><li>Short-boat minutes。</li><li>Child-size life jacket + child-safe boat。</li><li>同船＋同 road vehicle return。</li><li>Bad-water／no-star／road closure cancellation。</li><li>另看過去 48h 路況、星況、水色照片。</li></ul><div class="place-links"><a class="place-link" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=Cosy+Bungalow+Phu+Quoc">📍 Cosy Bungalow Phú Quốc · 地圖</a></div><div class="place-note">📍 Rạch Vẹm / Hàm Rồng：精確上船點必須等 T−48 / T−24 gate 確認 operator boarding pin；現在不放模糊導航點。</div><div class="callout red" style="margin-top:12px">任一 gate fail → 整包 fail。</div></div></details>
-
-<details class="trip"><summary><div class="trip-title"><div><h3>🦒 Safari + one north tail</h3><div class="trip-summary">Gành Dầu daylight 或 Grand World evening，二選一</div><div class="badges"><span class="badge warm">Optional</span><span class="badge">不是自動遞補</span></div></div><div class="arrow">＋</div></div></summary><div class="inside"><div class="timeline">
-<div class="step"><div class="time">07:55–08:10</div><div><b>Cosy 直達叫車</b><p>先從 Food Pool 解決早餐；不做完整 DD 散步。</p><div class="place-links"><a class="place-link" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=Cosy+Bungalow+Phu+Quoc">📍 Cosy Bungalow Phú Quốc · 地圖</a></div></div></div>
-<div class="step"><div class="time">09:00*</div><div><b>Safari arrival</b><p>保守用 09:00；T−72 重查 official hours。</p><div class="place-links"><a class="place-link" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=Vinpearl+Safari+Phu+Quoc">📍 Vinpearl Safari Phú Quốc · 地圖</a></div></div></div>
-<div class="step"><div class="time">Tail A</div><div><b>Gành Dầu daylight</b><p>retained driver；17:00 前離。</p><div class="place-links"><a class="place-link" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=Ganh+Dau+Phu+Quoc">📍 Gành Dầu · 地圖</a></div></div></div>
-<div class="step"><div class="time">Tail B</div><div><b>Grand World evening</b><p>孩子 Green 才接；不為吃飯硬選這條。</p><div class="place-links"><a class="place-link" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=Grand+World+Phu+Quoc">📍 Grand World Phú Quốc · 地圖</a></div></div></div>
-</div></div></details>
-</div>
-</section>
-
-'''
-          html = html[:start] + cards + html[end:]
-
-          if html.count('class="place-link"') < 15:
-              raise SystemExit('too few landmark links')
-          for required in ['Ga Ánh Dương','VinWonders Phú Quốc','The Sea Shell','Dinh Cậu','Vinpearl Safari Phú Quốc','精確上船點必須等']:
+          css_old='.callout.red{background:#f7e8e6;color:#81443e}\n.food-guide'
+          css_new='.callout.red{background:#f7e8e6;color:#81443e}.landmarks{display:flex;flex-wrap:wrap;gap:6px;padding:12px 0 4px}.place-link{display:inline-flex;align-items:center;text-decoration:none;border:1px solid var(--line);background:#fff;border-radius:10px;padding:6px 8px;font-size:11px;font-weight:850;color:var(--brand)}.place-note{width:100%;padding:9px 10px;border-radius:11px;background:#f4f2ec;color:#6f675c;font-size:11px}\n.food-guide'
+          if css_old not in html:
+              raise SystemExit('css anchor missing')
+          html=html.replace(css_old,css_new,1)
+          def link(label,query):
+              return f'<a class="place-link" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query={query}">📍 {label} · 地圖</a>'
+          cable='<div class="landmarks">'+link('Cosy Bungalow Phú Quốc','Cosy+Bungalow+Phu+Quoc')+link('Ga Ánh Dương','Ga+Anh+Duong+Phu+Quoc')+link('Chợ An Thới','Cho+An+Thoi+Phu+Quoc')+link('Sunset Town Phú Quốc','Sunset+Town+Phu+Quoc')+link('Kiss Bridge / Cầu Hôn','Kiss+Bridge+Phu+Quoc')+'</div>'
+          vin='<div class="landmarks">'+link('Cosy Bungalow Phú Quốc','Cosy+Bungalow+Phu+Quoc')+link('VinWonders Phú Quốc','VinWonders+Phu+Quoc')+link('The Sea Shell','The+Sea+Shell+VinWonders+Phu+Quoc')+link('Grand World Phú Quốc','Grand+World+Phu+Quoc')+'</div>'
+          onbird='<div class="landmarks">'+link('Cosy Bungalow Phú Quốc','Cosy+Bungalow+Phu+Quoc')+link('Dinh Cậu','Dinh+Cau+Temple+Phu+Quoc')+'</div>'
+          star='<div class="landmarks">'+link('Cosy Bungalow Phú Quốc','Cosy+Bungalow+Phu+Quoc')+'<div class="place-note">📍 Rạch Vẹm / Hàm Rồng：精確上船點等 T−48 / T−24 gate 確認 operator boarding pin；現在不放模糊導航點。</div></div>'
+          safari='<div class="landmarks">'+link('Cosy Bungalow Phú Quốc','Cosy+Bungalow+Phu+Quoc')+link('Vinpearl Safari Phú Quốc','Vinpearl+Safari+Phu+Quoc')+link('Gành Dầu','Ganh+Dau+Phu+Quoc')+link('Grand World Phú Quốc','Grand+World+Phu+Quoc')+'</div>'
+          reps=[
+              ('<div class="inside"><div class="timeline"><div class="step"><div class="time">07:00–08:15</div>', '<div class="inside">'+cable+'<div class="timeline"><div class="step"><div class="time">07:00–08:15</div>'),
+              ('<div class="inside"><div class="timeline"><div class="step"><div class="time">Breakfast</div>', '<div class="inside">'+vin+'<div class="timeline"><div class="step"><div class="time">Breakfast</div>'),
+              ('<div class="inside"><div class="timeline"><div class="step"><div class="time">−90m</div>', '<div class="inside">'+onbird+'<div class="timeline"><div class="step"><div class="time">−90m</div>'),
+              ('<div class="inside"><ul class="mini-list">', '<div class="inside">'+star+'<ul class="mini-list">'),
+              ('<div class="inside"><div class="timeline"><div class="step"><div class="time">07:55–08:10</div>', '<div class="inside">'+safari+'<div class="timeline"><div class="step"><div class="time">07:55–08:10</div>')
+          ]
+          for old,new in reps:
+              if old not in html:
+                  raise SystemExit('card anchor missing: '+old[:70])
+              html=html.replace(old,new,1)
+          html=html.replace('<section class="section" id="cards">','<!-- DAY_CARD_LANDMARKS_V2 -->\n<section class="section" id="cards">',1)
+          if html.count('class="place-link"') < 16:
+              raise SystemExit('landmark link count too low')
+          for required in ['Ga Ánh Dương','VinWonders Phú Quốc','The Sea Shell','Dinh Cậu','Vinpearl Safari Phú Quốc','精確上船點等']:
               if required not in html:
                   raise SystemExit('missing '+required)
           p.write_text(html)
