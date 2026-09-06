@@ -3,8 +3,13 @@
 Codex automatically discovers repo skills under `.agents/skills`.
 
 - `frontend-design` is vendored from Anthropic's official skills repository at a pinned commit. It is used for visual direction, typography, hierarchy, copy, restraint, and self-critique.
-- OpenAI's proprietary `product-design` plugin is not copied into this repository. `.agents/plugins/marketplace.json` exposes the official pinned Git subdirectory as a repo marketplace entry instead.
+- OpenAI's official `product-design` plugin is proprietary and therefore is **not vendored into this repository**. Install it from Codex's official plugin marketplace when using a Codex surface that supports plugins. Its audit workflow is useful for screenshot-backed UX, design, and accessibility review.
 
-The Product Design plugin includes screenshot-backed UX audit workflows. In ChatGPT desktop / Codex surfaces that support repo marketplaces, restart the app if needed, open the Plugins Directory, select `Phu Quoc 2026 Design Tools`, and install `Product Design`.
+For this repository, use the layers for different jobs:
 
-Keep the deterministic Playwright smoke checks even when using design skills: design review and regression testing serve different purposes.
+1. `frontend-design` — design direction and self-critique.
+2. OpenAI Product Design / audit — interactive screenshot-backed review when the plugin is installed and the required browser surface is available.
+3. `.github/workflows/v2-ux-audit.yml` — reproducible mobile journey screenshots and interaction metrics.
+4. `.github/workflows/v2-mobile-smoke.yml` — deterministic regression checks.
+
+Do not copy the proprietary Product Design plugin files into this repo. Keep the deterministic Playwright checks even when design skills/plugins are available: design review and regression testing serve different purposes.
