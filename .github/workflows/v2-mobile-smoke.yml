@@ -28,16 +28,17 @@ jobs:
             const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,deviceScaleFactor:2});
             const page=await context.newPage();
             const errors=[]; page.on('pageerror',e=>errors.push(String(e)));
-            await page.goto('https://ga815647.github.io/phu-quoc-2026-mobile/v2.html?smoke=landmarks',{waitUntil:'networkidle'});
+            await page.goto('https://ga815647.github.io/phu-quoc-2026-mobile/v2.html?smoke=landmarks2',{waitUntil:'networkidle'});
             await page.waitForTimeout(500);
-            const text=await page.locator('body').innerText();
-            if(!text.includes('美食 Pool')||!text.includes('已吃 0 / 18')||!text.includes('Bún Kèn Út Lượm')) throw new Error('pool render missing');
+            const visibleText=await page.locator('body').innerText();
+            const domText=await page.locator('body').textContent();
+            if(!visibleText.includes('美食 Pool')||!visibleText.includes('已吃 0 / 18')||!visibleText.includes('Bún Kèn Út Lượm')) throw new Error('pool render missing');
             if(await page.locator('[data-food-id]').count()!==18) throw new Error('wrong pool count');
             if(await page.locator('.place-link').count()<16) throw new Error('landmark links missing');
             for(const label of ['Ga Ánh Dương','VinWonders Phú Quốc','The Sea Shell','Dinh Cậu','Vinpearl Safari Phú Quốc','Gành Dầu']){
-              if(!text.includes(label)) throw new Error('landmark missing '+label);
+              if(!domText.includes(label)) throw new Error('landmark missing '+label);
             }
-            if(!text.includes('精確上船點等 T−48 / T−24 gate 確認 operator boarding pin')) throw new Error('starfish pin gate note missing');
+            if(!domText.includes('精確上船點等 T−48 / T−24 gate 確認 operator boarding pin')) throw new Error('starfish pin gate note missing');
             const hrefs=await page.locator('.place-link').evaluateAll(els=>els.map(e=>e.href));
             if(hrefs.some(h=>!h.startsWith('https://www.google.com/maps/search/?api=1&query='))) throw new Error('non-map landmark link');
             await page.locator('[data-jump="cards"]').click();
