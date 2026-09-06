@@ -1,0 +1,128 @@
+name: V2 UX audit capture
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/v2-ux-audit.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Capture real mobile journey
+        run: |
+          set -euo pipefail
+          npm install --no-save playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install --with-deps chromium >/dev/null 2>&1
+          mkdir -p ux-audit
+          cat > ux-audit.cjs <<'JS'
+          const { chromium } = require('playwright');
+          const fs = require('fs');
+
+          (async()=>{
+            const browser = await chromium.launch({headless:true});
+            const context = await browser.newContext({
+              viewport:{width:390,height:844},
+              isMobile:true,
+              hasTouch:true,
+              deviceScaleFactor:2
+            });
+            const page = await context.newPage();
+            const errors=[];
+            page.on('pageerror', e=>errors.push(`pageerror: ${e}`));
+            page.on('console', m=>{ if(m.type()==='error') errors.push(`console: ${m.text()}`); });
+            const base='https://ga815647.github.io/phu-quoc-2026-mobile/v2.html?ux-audit=2026-09-07';
+            await page.goto(base,{waitUntil:'networkidle'});
+            await page.evaluate(()=>localStorage.clear());
+            await page.reload({waitUntil:'networkidle'});
+            await page.waitForTimeout(250);
+
+            async function shot(name){
+              await page.screenshot({path:`ux-audit/${name}.png`,fullPage:false});
+            }
+            async function jump(id){
+              await page.locator(`[data-jump="${id}"]`).click();
+              await page.waitForTimeout(120);
+            }
+
+            await shot('01-home');
+
+            await jump('cards');
+            const cards=page.locator('details.trip');
+            if(await cards.count()!==5) throw new Error('expected 5 trip cards');
+            await cards.nth(0).locator('summary').click();
+            await page.waitForTimeout(100);
+            await shot('02-cable-open');
+
+            await cards.nth(1).locator('summary').click();
+            await page.waitForTimeout(100);
+            await cards.nth(1).scrollIntoViewIfNeeded();
+            await shot('03-vinwonders-open');
+
+            await cards.nth(2).scrollIntoViewIfNeeded();
+            if(!(await cards.nth(2).evaluate(el=>el.open))) await cards.nth(2).locator('summary').click();
+            await page.waitForTimeout(100);
+            await shot('04-onbird-open');
+
+            await jump('food');
+            await shot('05-food-pool');
+            const firstFood=page.locator('[data-food-id]').first();
+            await firstFood.locator('.eaten-btn').click();
+            await page.waitForTimeout(100);
+            await shot('06-food-eaten');
+
+            await jump('prep');
+            await shot('07-prep');
+
+            const metrics=await page.evaluate(()=>{
+              const clickables=[...document.querySelectorAll('button,a,select,summary')];
+              const small=clickables.map((el,i)=>{
+                const r=el.getBoundingClientRect();
+                return {
+                  i,
+                  tag:el.tagName.toLowerCase(),
+                  cls:el.className || '',
+                  text:(el.innerText||el.textContent||'').trim().replace(/\s+/g,' ').slice(0,90),
+                  width:Math.round(r.width*10)/10,
+                  height:Math.round(r.height*10)/10
+                };
+              }).filter(x=>x.width>0 && x.height>0 && (x.width<40 || x.height<40));
+              return {
+                viewport:{width:innerWidth,height:innerHeight},
+                document:{width:document.documentElement.scrollWidth,height:document.documentElement.scrollHeight},
+                horizontalOverflow:document.documentElement.scrollWidth>innerWidth+1,
+                stickyHeight:Math.round(document.querySelector('.sticky').getBoundingClientRect().height),
+                smallTouchTargets:small,
+                counts:{
+                  navButtons:document.querySelectorAll('[data-jump]').length,
+                  tripCards:document.querySelectorAll('details.trip').length,
+                  foodCards:document.querySelectorAll('[data-food-id]').length,
+                  mapLinks:document.querySelectorAll('.place-link,.map').length
+                },
+                repoishTerms:['CURRENT STATE','Day Cards','Food Pool','Heavy','No DD micro-stop','first-wave target','gate','optional','flex','Carrier','fallback','VERIFY','T−72','T−1'].filter(t=>document.body.innerText.includes(t))
+              };
+            });
+            metrics.errors=errors;
+            fs.writeFileSync('ux-audit/metrics.json',JSON.stringify(metrics,null,2));
+
+            if(metrics.horizontalOverflow) throw new Error('horizontal overflow detected');
+            if(errors.length) throw new Error(errors.join(' | '));
+            console.log(JSON.stringify(metrics,null,2));
+            await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          node ux-audit.cjs | tee ux-audit/run.log
+      - name: Upload UX audit evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2-ux-audit-evidence
+          path: ux-audit/
+          if-no-files-found: error
+          retention-days: 14
