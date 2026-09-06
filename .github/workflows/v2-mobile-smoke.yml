@@ -28,15 +28,26 @@ jobs:
             const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,deviceScaleFactor:2});
             const page=await context.newPage();
             const errors=[]; page.on('pageerror',e=>errors.push(String(e)));
-            await page.goto('https://ga815647.github.io/phu-quoc-2026-mobile/v2.html?smoke=food-pool',{waitUntil:'networkidle'});
+            await page.goto('https://ga815647.github.io/phu-quoc-2026-mobile/v2.html?smoke=landmarks',{waitUntil:'networkidle'});
             await page.waitForTimeout(500);
             const text=await page.locator('body').innerText();
             if(!text.includes('美食 Pool')||!text.includes('已吃 0 / 18')||!text.includes('Bún Kèn Út Lượm')) throw new Error('pool render missing');
             if(await page.locator('[data-food-id]').count()!==18) throw new Error('wrong pool count');
+            if(await page.locator('.place-link').count()<16) throw new Error('landmark links missing');
+            for(const label of ['Ga Ánh Dương','VinWonders Phú Quốc','The Sea Shell','Dinh Cậu','Vinpearl Safari Phú Quốc','Gành Dầu']){
+              if(!text.includes(label)) throw new Error('landmark missing '+label);
+            }
+            if(!text.includes('精確上船點等 T−48 / T−24 gate 確認 operator boarding pin')) throw new Error('starfish pin gate note missing');
+            const hrefs=await page.locator('.place-link').evaluateAll(els=>els.map(e=>e.href));
+            if(hrefs.some(h=>!h.startsWith('https://www.google.com/maps/search/?api=1&query='))) throw new Error('non-map landmark link');
+            await page.locator('[data-jump="cards"]').click();
+            await page.waitForTimeout(120);
+            const nav=await page.evaluate(()=>({hash:location.hash,top:document.getElementById('cards').getBoundingClientRect().top}));
+            if(nav.hash||Math.abs(nav.top)>90) throw new Error('cards nav failed '+JSON.stringify(nav));
             await page.locator('[data-jump="food"]').click();
             await page.waitForTimeout(120);
-            const nav=await page.evaluate(()=>({hash:location.hash,top:document.getElementById('food').getBoundingClientRect().top}));
-            if(nav.hash||Math.abs(nav.top)>90) throw new Error('food nav failed '+JSON.stringify(nav));
+            const navFood=await page.evaluate(()=>({hash:location.hash,top:document.getElementById('food').getBoundingClientRect().top}));
+            if(navFood.hash||Math.abs(navFood.top)>90) throw new Error('food nav failed '+JSON.stringify(navFood));
             const btn=page.locator('[data-food-id="bun-ken-ut-luom"] .eaten-btn');
             await btn.click(); await page.waitForTimeout(80);
             if((await btn.textContent()).trim()!=='✓ 吃過') throw new Error('eaten toggle failed');
