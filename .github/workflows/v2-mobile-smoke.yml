@@ -28,13 +28,15 @@ jobs:
             const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,deviceScaleFactor:2});
             const page=await context.newPage();
             const errors=[]; page.on('pageerror',e=>errors.push(String(e)));
-            await page.goto('https://ga815647.github.io/phu-quoc-2026-mobile/v2.html?smoke=landmarks2',{waitUntil:'networkidle'});
+            await page.goto('https://ga815647.github.io/phu-quoc-2026-mobile/v2.html?smoke=inline-landmarks',{waitUntil:'networkidle'});
             await page.waitForTimeout(500);
             const visibleText=await page.locator('body').innerText();
             const domText=await page.locator('body').textContent();
             if(!visibleText.includes('美食 Pool')||!visibleText.includes('已吃 0 / 18')||!visibleText.includes('Bún Kèn Út Lượm')) throw new Error('pool render missing');
             if(await page.locator('[data-food-id]').count()!==18) throw new Error('wrong pool count');
             if(await page.locator('.place-link').count()<16) throw new Error('landmark links missing');
+            if(await page.locator('.landmarks').count()!==0) throw new Error('card-top landmark strip still present');
+            if(await page.locator('.step-links').count()<12) throw new Error('inline itinerary map groups missing');
             for(const label of ['Ga Ánh Dương','VinWonders Phú Quốc','The Sea Shell','Dinh Cậu','Vinpearl Safari Phú Quốc','Gành Dầu']){
               if(!domText.includes(label)) throw new Error('landmark missing '+label);
             }
