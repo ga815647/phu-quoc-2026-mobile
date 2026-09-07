@@ -5,7 +5,9 @@ on:
   push:
     branches: [main]
     paths:
+      - 'v2.html'
       - '.github/workflows/v2-ux-audit.yml'
+      - '.github/workflows/v2-mobile-smoke.yml'
 
 permissions:
   contents: read
@@ -18,6 +20,8 @@ jobs:
       - name: Capture real mobile journey
         run: |
           set -euo pipefail
+          # A workflow-file commit also triggers the Pages build. Give the static site time to catch up.
+          sleep 20
           npm install --no-save playwright@1.55.0 >/dev/null 2>&1
           npx playwright install --with-deps chromium >/dev/null 2>&1
           mkdir -p ux-audit
@@ -26,92 +30,67 @@ jobs:
           const fs = require('fs');
 
           (async()=>{
-            const browser = await chromium.launch({headless:true});
-            const context = await browser.newContext({
-              viewport:{width:390,height:844},
-              isMobile:true,
-              hasTouch:true,
-              deviceScaleFactor:2
-            });
-            const page = await context.newPage();
+            const browser=await chromium.launch({headless:true});
+            const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,deviceScaleFactor:2});
+            const page=await context.newPage();
             const errors=[];
-            page.on('pageerror', e=>errors.push(`pageerror: ${e}`));
-            page.on('console', m=>{ if(m.type()==='error') errors.push(`console: ${m.text()}`); });
-            const base='https://ga815647.github.io/phu-quoc-2026-mobile/v2.html?ux-audit=2026-09-07';
+            page.on('pageerror',e=>errors.push(`pageerror: ${e}`));
+            page.on('console',m=>{if(m.type()==='error')errors.push(`console: ${m.text()}`)});
+            page.on('dialog',d=>d.accept());
+            const base=`https://ga815647.github.io/phu-quoc-2026-mobile/v2.html?ux-audit=polish-${Date.now()}`;
             await page.goto(base,{waitUntil:'networkidle'});
             await page.evaluate(()=>localStorage.clear());
             await page.reload({waitUntil:'networkidle'});
-            await page.waitForTimeout(250);
+            await page.waitForTimeout(350);
 
-            async function shot(name){
-              await page.screenshot({path:`ux-audit/${name}.png`,fullPage:false});
-            }
-            async function jump(id){
-              await page.locator(`[data-jump="${id}"]`).click();
-              await page.waitForTimeout(120);
-            }
+            async function shot(name){await page.screenshot({path:`ux-audit/${name}.png`,fullPage:false})}
+            async function jump(id){await page.locator(`[data-jump="${id}"]`).click();await page.waitForTimeout(160)}
 
             await shot('01-home');
-
             await jump('cards');
             const cards=page.locator('details.trip');
             if(await cards.count()!==5) throw new Error('expected 5 trip cards');
-            await cards.nth(0).locator('summary').click();
-            await page.waitForTimeout(100);
-            await shot('02-cable-open');
-
-            await cards.nth(1).locator('summary').click();
-            await page.waitForTimeout(100);
-            await cards.nth(1).scrollIntoViewIfNeeded();
-            await shot('03-vinwonders-open');
-
-            await cards.nth(2).scrollIntoViewIfNeeded();
-            if(!(await cards.nth(2).evaluate(el=>el.open))) await cards.nth(2).locator('summary').click();
-            await page.waitForTimeout(100);
-            await shot('04-onbird-open');
+            await cards.nth(0).locator('summary').click(); await page.waitForTimeout(100); await shot('02-cable-open');
+            await cards.nth(1).locator('summary').click(); await page.waitForTimeout(100); await cards.nth(1).scrollIntoViewIfNeeded(); await shot('03-vinwonders-open');
+            await cards.nth(2).scrollIntoViewIfNeeded(); if(!(await cards.nth(2).evaluate(el=>el.open))) await cards.nth(2).locator('summary').click(); await page.waitForTimeout(100); await shot('04-onbird-open');
 
             await jump('food');
             await shot('05-food-pool');
             const firstFood=page.locator('[data-food-id]').first();
+            const before=await firstFood.evaluate(el=>el.getBoundingClientRect().height);
             await firstFood.locator('.eaten-btn').click();
-            await page.waitForTimeout(100);
+            await page.waitForTimeout(120);
+            const after=await firstFood.evaluate(el=>el.getBoundingClientRect().height);
             await shot('06-food-eaten');
 
             await jump('prep');
             await shot('07-prep');
 
             const metrics=await page.evaluate(()=>{
-              const clickables=[...document.querySelectorAll('button,a,select,summary')];
-              const small=clickables.map((el,i)=>{
+              const important=[...document.querySelectorAll('.nav button,.ghost,select,.place-link,.map,.eaten-btn')];
+              const small=important.map((el,i)=>{
                 const r=el.getBoundingClientRect();
-                return {
-                  i,
-                  tag:el.tagName.toLowerCase(),
-                  cls:el.className || '',
-                  text:(el.innerText||el.textContent||'').trim().replace(/\s+/g,' ').slice(0,90),
-                  width:Math.round(r.width*10)/10,
-                  height:Math.round(r.height*10)/10
-                };
-              }).filter(x=>x.width>0 && x.height>0 && (x.width<40 || x.height<40));
+                return {i,tag:el.tagName.toLowerCase(),cls:el.className||'',text:(el.innerText||el.textContent||'').trim().replace(/\s+/g,' ').slice(0,90),width:Math.round(r.width*10)/10,height:Math.round(r.height*10)/10};
+              }).filter(x=>x.width>0&&x.height>0&&x.height<41);
               return {
                 viewport:{width:innerWidth,height:innerHeight},
                 document:{width:document.documentElement.scrollWidth,height:document.documentElement.scrollHeight},
                 horizontalOverflow:document.documentElement.scrollWidth>innerWidth+1,
                 stickyHeight:Math.round(document.querySelector('.sticky').getBoundingClientRect().height),
-                smallTouchTargets:small,
-                counts:{
-                  navButtons:document.querySelectorAll('[data-jump]').length,
-                  tripCards:document.querySelectorAll('details.trip').length,
-                  foodCards:document.querySelectorAll('[data-food-id]').length,
-                  mapLinks:document.querySelectorAll('.place-link,.map').length
-                },
-                repoishTerms:['CURRENT STATE','Day Cards','Food Pool','Heavy','No DD micro-stop','first-wave target','gate','optional','flex','Carrier','fallback','VERIFY','T−72','T−1'].filter(t=>document.body.innerText.includes(t))
+                smallImportantTouchTargets:small,
+                activeNav:document.querySelector('.nav button.primary')?.dataset.jump||null,
+                prepHasTravelerCopy:document.body.innerText.includes('前一天下午 15:00–17:00')&&document.body.innerText.includes('回程沒把握就不去'),
+                counts:{navButtons:document.querySelectorAll('[data-jump]').length,tripCards:document.querySelectorAll('details.trip').length,foodCards:document.querySelectorAll('[data-food-id]').length,mapLinks:document.querySelectorAll('.place-link,.map').length}
               };
             });
+            metrics.eatenCollapse={before,after,delta:Math.round((before-after)*10)/10};
             metrics.errors=errors;
             fs.writeFileSync('ux-audit/metrics.json',JSON.stringify(metrics,null,2));
 
             if(metrics.horizontalOverflow) throw new Error('horizontal overflow detected');
+            if(metrics.smallImportantTouchTargets.length) throw new Error('small important touch targets '+JSON.stringify(metrics.smallImportantTouchTargets.slice(0,10)));
+            if(!(after<before-25)) throw new Error(`eaten card did not meaningfully collapse ${before} -> ${after}`);
+            if(!metrics.prepHasTravelerCopy) throw new Error('traveler-facing prep copy missing');
             if(errors.length) throw new Error(errors.join(' | '));
             console.log(JSON.stringify(metrics,null,2));
             await browser.close();
