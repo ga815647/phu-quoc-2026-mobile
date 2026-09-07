@@ -1,0 +1,249 @@
+name: Apply V2 usability polish once
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/v2-polish-once.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  polish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Apply focused V2 polish
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          p = Path('v2.html')
+          s = p.read_text(encoding='utf-8')
+
+          def repl(old, new, label):
+              global s
+              n = s.count(old)
+              if n != 1:
+                  raise SystemExit(f'{label}: expected 1 match, found {n}')
+              s = s.replace(old, new, 1)
+
+          # 1) Make the hero about 20% tighter without redesigning it.
+          repl('.hero{padding:34px 4px 17px}', '.hero{padding:24px 4px 13px}', 'hero padding')
+          repl('.hero h1{margin:9px 0 8px;font-size:clamp(34px,9vw,54px);line-height:1.02;letter-spacing:-.045em}', '.hero h1{margin:7px 0 7px;font-size:clamp(30px,8vw,48px);line-height:1.02;letter-spacing:-.045em}', 'hero title')
+          repl('.hero-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:18px}', '.hero-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:13px}', 'hero grid')
+          repl('.status{background:rgba(255,255,255,.8);border:1px solid rgba(255,255,255,.95);box-shadow:var(--shadow);border-radius:18px;padding:14px}', '.status{background:rgba(255,255,255,.8);border:1px solid rgba(255,255,255,.95);box-shadow:var(--shadow);border-radius:18px;padding:12px}', 'status padding')
+          repl('.status strong{display:block;font-size:20px;margin-top:2px}', '.status strong{display:block;font-size:18px;margin-top:2px}', 'status title')
+
+          # 2) Raise important mobile controls to a comfortable touch target.
+          repl('.nav button{border:0;background:transparent;color:var(--muted);padding:9px 4px;border-radius:12px;font-size:13px;font-weight:780}', '.nav button{min-height:44px;border:0;background:transparent;color:var(--muted);padding:9px 4px;border-radius:12px;font-size:13px;font-weight:780}', 'nav touch target')
+          repl('select{width:100%;border:1px solid var(--line);background:#fff;border-radius:12px;padding:9px 10px;color:var(--ink)}', 'select{width:100%;min-height:44px;border:1px solid var(--line);background:#fff;border-radius:12px;padding:9px 10px;color:var(--ink)}', 'select touch target')
+          repl('.ghost{border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:12px;padding:9px 12px;font-weight:780}', '.ghost{min-height:44px;border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:12px;padding:9px 12px;font-weight:780}', 'ghost touch target')
+          repl('.place-link{display:inline-flex;align-items:center;text-decoration:none;border:1px solid var(--line);background:#fff;border-radius:10px;padding:6px 8px;font-size:11px;font-weight:850;color:var(--brand)}', '.place-link{min-height:44px;display:inline-flex;align-items:center;text-decoration:none;border:1px solid var(--line);background:#fff;border-radius:10px;padding:8px 11px;font-size:12px;font-weight:850;color:var(--brand)}', 'place link touch target')
+          repl('.map,.eaten-btn{display:inline-flex;align-items:center;justify-content:center;white-space:nowrap;text-decoration:none;border:1px solid var(--line);background:#fff;border-radius:11px;padding:7px 9px;font-size:11px;font-weight:850;color:var(--brand)}', '.map,.eaten-btn{min-height:44px;display:inline-flex;align-items:center;justify-content:center;white-space:nowrap;text-decoration:none;border:1px solid var(--line);background:#fff;border-radius:11px;padding:8px 11px;font-size:12px;font-weight:850;color:var(--brand)}', 'food controls touch target')
+
+          # 3) Completed food naturally collapses, while staying reversible.
+          repl('.food-card.eaten{opacity:.5;background:#f1f3ef}', '.food-card.eaten{opacity:.72;background:#f1f3ef;grid-template-columns:34px minmax(0,1fr) auto;align-items:center;padding:10px 12px}.food-card.eaten .food-meta,.food-card.eaten .food-order,.food-card.eaten .food-desc,.food-card.eaten .map{display:none}.food-card.eaten .food-rank{width:30px;height:30px;border-radius:10px}', 'eaten collapse')
+          repl('.food-actions{grid-column:2;justify-content:flex-start}', '.food-actions{grid-column:2;justify-content:flex-start}.food-card.eaten{grid-template-columns:34px minmax(0,1fr) auto}.food-card.eaten .food-actions{grid-column:auto}', 'mobile eaten layout')
+
+          # 4) Keep top nav state in sync with manual scrolling and browser scroll restoration.
+          nav_old = "document.querySelectorAll('[data-jump]').forEach(btn=>btn.addEventListener('click',()=>{const el=document.getElementById(btn.dataset.jump);if(!el)return;const y=el.getBoundingClientRect().top+window.scrollY-(sticky.offsetHeight+8);window.scrollTo(0,Math.max(0,y));document.querySelectorAll('[data-jump]').forEach(x=>x.classList.remove('primary'));btn.classList.add('primary')}));"
+          nav_new = """const navButtons=[...document.querySelectorAll('[data-jump]')];
+          const navIds=navButtons.map(btn=>btn.dataset.jump);
+          function setActiveNav(id){navButtons.forEach(btn=>btn.classList.toggle('primary',btn.dataset.jump===id))}
+          function syncNav(){const offset=sticky.offsetHeight+18;let current=navIds[0];navIds.forEach(id=>{const el=document.getElementById(id);if(el&&el.getBoundingClientRect().top<=offset)current=id});setActiveNav(current)}
+          navButtons.forEach(btn=>btn.addEventListener('click',()=>{const el=document.getElementById(btn.dataset.jump);if(!el)return;const y=el.getBoundingClientRect().top+window.scrollY-(sticky.offsetHeight+8);window.scrollTo(0,Math.max(0,y));setActiveNav(btn.dataset.jump);requestAnimationFrame(syncNav)}));
+          let navTick=false;window.addEventListener('scroll',()=>{if(navTick)return;navTick=true;requestAnimationFrame(()=>{syncNav();navTick=false})},{passive:true});window.addEventListener('resize',syncNav);syncNav();"""
+          repl(nav_old, nav_new, 'scroll-synced nav')
+
+          # 5) Destructive local resets require confirmation.
+          repl("document.getElementById('resetSlots').addEventListener('click',()=>{saved={};localStorage.removeItem(slotKey);document.querySelectorAll('select[data-day]').forEach(s=>s.value='')});", "document.getElementById('resetSlots').addEventListener('click',()=>{if(!window.confirm('清除所有暫排行程？'))return;saved={};localStorage.removeItem(slotKey);document.querySelectorAll('select[data-day]').forEach(s=>s.value='')});", 'slot reset confirmation')
+          repl("document.getElementById('resetFood').addEventListener('click',()=>{eaten={};localStorage.removeItem(foodKey);renderFood()});", "document.getElementById('resetFood').addEventListener('click',()=>{if(!window.confirm('清除所有「吃過」紀錄？'))return;eaten={};localStorage.removeItem(foodKey);renderFood()});", 'food reset confirmation')
+
+          # 6) Only the Prep section gets a traveler-facing language pass.
+          replacements = {
+              'actual pickup window、daily sea condition、go / reschedule；現場保留 safety assessment。': '接送時間、當天海況、是否照常出發；現場仍依教練安全評估。',
+              'October first-wave exact hours、return / last run、maintenance、weather。': '10 月第一波纜車時段、回程／末班、是否維修、天氣。',
+              '園內餐飲 window、direct quote、child eligibility；GW 仍 optional。': '園區營業與餐飲時段、票價／直訂價格、兒童設施限制；Grand World 仍是有體力才接。',
+              '七項 hard gate + 48h road / starfish / water evidence。': '前 48 小時確認路況、海星、水色、船與回程；七項條件全過才去。',
+              'official hours、direct car、tail return；Gành Dầu retained driver + 17:00 hard leave。': '營業時間、直達叫車與北島回程；若去 Gành Dầu，先把回程車談好並在 17:00 前離開。',
+              '只查明天實際會用到的候選：營業、庫存、價格；真正決定時直接問 ChatGPT。': '只查明天可能吃的店：是否營業、想點的東西有沒有、價格；真的要吃時再問 ChatGPT。',
+              '<b>T−1 建議 15:00–17:00：</b>只鎖明天。若 booking、官方停駛／閉園、returnability、住宿、孩子 eligibility 都沒變，就不要重開整個 route。': '<b>前一天下午 15:00–17:00：</b>只確認明天。若預約、官方營運、回程交通、住宿與孩子限制都沒變，就不要重新研究整趟。',
+              '<b>Central / Cosy + 大節點</b><span>Grab／GreenSM／taxi 三層互備；Airport、Ga Ánh Dương、VinWonders、Safari 優先 direct car。</span>': '<b>市區／主要景點</b><span>Grab／GreenSM／taxi 都可；機場、Ga Ánh Dương、VinWonders、Safari 直接叫車。</span>',
+              '<b>偏遠點／多停點</b><span>先鎖回程；無可靠 return 就 skip。</span>': '<b>偏遠地點／多停點</b><span>出發前先確認回程；回程沒把握就不去。</span>',
+              '<b>App 叫不到</b><span>5–10 分未指派就切另一 app／taxi；bus ETA &gt;15–20 分直接切 direct。</span>': '<b>App 叫不到</b><span>5–10 分鐘還沒派車就換另一個 app 或 taxi；巴士還要等 15–20 分鐘以上就改叫車。</span>',
+              '<b>孩子</b><span>約 115 cm，一律後排；長程車優先三點式安全帶＋booster／child seat。</span>': '<b>孩子</b><span>約 115 cm，全程後座；長程優先三點式安全帶＋增高墊／兒童座椅。</span>',
+          }
+          for old, new in replacements.items():
+              repl(old, new, f'prep copy: {old[:24]}')
+
+          p.write_text(s, encoding='utf-8')
+          PY
+
+      - name: Refresh mobile smoke for the polished behavior
+        run: |
+          cat > .github/workflows/v2-mobile-smoke.yml <<'EOF'
+          name: V2 mobile smoke
+
+          on:
+            push:
+              branches: [main]
+              paths:
+                - 'v2.html'
+                - '.github/workflows/v2-mobile-smoke.yml'
+            workflow_dispatch:
+
+          permissions:
+            contents: read
+
+          jobs:
+            mobile-smoke:
+              runs-on: ubuntu-latest
+              steps:
+                - uses: actions/checkout@v4
+                - name: Check live V2 on mobile Chromium
+                  run: |
+                    set -euo pipefail
+                    npm install --no-save playwright@1.55.0 >/dev/null 2>&1
+                    npx playwright install --with-deps chromium >/dev/null 2>&1
+                    cat > mobile-smoke.cjs <<'JS'
+                    const { chromium } = require('playwright');
+                    (async()=>{
+                      const browser=await chromium.launch({headless:true});
+                      const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,deviceScaleFactor:2});
+                      const page=await context.newPage();
+                      const errors=[]; page.on('pageerror',e=>errors.push(String(e))); page.on('dialog',d=>d.accept());
+                      await page.goto('https://ga815647.github.io/phu-quoc-2026-mobile/v2.html?smoke=polish',{waitUntil:'networkidle'});
+                      await page.evaluate(()=>localStorage.clear());
+                      await page.reload({waitUntil:'networkidle'}); await page.waitForTimeout(350);
+                      const visibleText=await page.locator('body').innerText();
+                      const domText=await page.locator('body').textContent();
+                      if(!visibleText.includes('美食 Pool')||!visibleText.includes('已吃 0 / 18')||!visibleText.includes('Bún Kèn Út Lượm')) throw new Error('pool render missing');
+                      if(await page.locator('[data-food-id]').count()!==18) throw new Error('wrong pool count');
+                      if(await page.locator('.place-link').count()<16) throw new Error('landmark links missing');
+                      if(await page.locator('.landmarks').count()!==0) throw new Error('card-top landmark strip still present');
+                      if(await page.locator('.step-links').count()<12) throw new Error('inline itinerary map groups missing');
+                      for(const label of ['Ga Ánh Dương','VinWonders Phú Quốc','The Sea Shell','Dinh Cậu','Vinpearl Safari Phú Quốc','Gành Dầu']) if(!domText.includes(label)) throw new Error('landmark missing '+label);
+                      const hrefs=await page.locator('.place-link').evaluateAll(els=>els.map(e=>e.href));
+                      if(hrefs.some(h=>!h.startsWith('https://www.google.com/maps/search/?api=1&query='))) throw new Error('non-map landmark link');
+
+                      const small=await page.locator('.nav button,.ghost,select,.place-link,.map,.eaten-btn').evaluateAll(els=>els.map(el=>{const r=el.getBoundingClientRect();return {text:(el.innerText||el.textContent||'').trim(),h:r.height,w:r.width}}).filter(x=>x.h>0&&x.h<41));
+                      if(small.length) throw new Error('important touch target too small '+JSON.stringify(small.slice(0,8)));
+
+                      await page.locator('[data-jump="cards"]').click(); await page.waitForTimeout(120);
+                      const nav=await page.evaluate(()=>({hash:location.hash,top:document.getElementById('cards').getBoundingClientRect().top}));
+                      if(nav.hash||Math.abs(nav.top)>90) throw new Error('cards nav failed '+JSON.stringify(nav));
+                      await page.evaluate(()=>window.scrollTo(0,document.getElementById('food').offsetTop+160)); await page.waitForTimeout(180);
+                      const activeAfterScroll=await page.locator('.nav button.primary').getAttribute('data-jump');
+                      if(activeAfterScroll!=='food') throw new Error('scroll-synced nav failed '+activeAfterScroll);
+                      await page.locator('[data-jump="food"]').click(); await page.waitForTimeout(120);
+
+                      const card=page.locator('[data-food-id="bun-ken-ut-luom"]');
+                      const before=await card.evaluate(el=>el.getBoundingClientRect().height);
+                      const btn=card.locator('.eaten-btn'); await btn.click(); await page.waitForTimeout(100);
+                      if((await btn.textContent()).trim()!=='✓ 吃過') throw new Error('eaten toggle failed');
+                      const after=await card.evaluate(el=>el.getBoundingClientRect().height);
+                      if(!(after<before-25)) throw new Error(`eaten card did not collapse ${before} -> ${after}`);
+                      if(await card.locator('.food-desc').isVisible()) throw new Error('eaten detail still visible');
+
+                      await page.reload({waitUntil:'networkidle'}); await page.waitForTimeout(250);
+                      if(!(await card.evaluate(el=>el.classList.contains('eaten')))) throw new Error('eaten persistence failed');
+                      await page.locator('#resetFood').click(); await page.waitForTimeout(100);
+                      if(!(await page.locator('#foodProgress').innerText()).includes('0 / 18')) throw new Error('confirmed reset failed');
+                      if(errors.length) throw new Error('pageerror '+errors.join(' | '));
+                      console.log('V2_MOBILE_SMOKE=PASS');
+                      await browser.close();
+                    })().catch(e=>{console.error(e);process.exit(1)});
+                    JS
+                    node mobile-smoke.cjs
+          EOF
+
+      - name: Refresh screenshot-backed UX audit
+        run: |
+          cat > .github/workflows/v2-ux-audit.yml <<'EOF'
+          name: V2 UX audit capture
+
+          on:
+            workflow_dispatch:
+            push:
+              branches: [main]
+              paths:
+                - 'v2.html'
+                - '.github/workflows/v2-ux-audit.yml'
+                - '.github/workflows/v2-mobile-smoke.yml'
+
+          permissions:
+            contents: read
+
+          jobs:
+            audit:
+              runs-on: ubuntu-latest
+              steps:
+                - uses: actions/checkout@v4
+                - name: Capture real mobile journey
+                  run: |
+                    set -euo pipefail
+                    npm install --no-save playwright@1.55.0 >/dev/null 2>&1
+                    npx playwright install --with-deps chromium >/dev/null 2>&1
+                    mkdir -p ux-audit
+                    cat > ux-audit.cjs <<'JS'
+                    const { chromium } = require('playwright');
+                    const fs = require('fs');
+                    (async()=>{
+                      const browser=await chromium.launch({headless:true});
+                      const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,deviceScaleFactor:2});
+                      const page=await context.newPage();
+                      const errors=[]; page.on('pageerror',e=>errors.push(`pageerror: ${e}`)); page.on('console',m=>{if(m.type()==='error')errors.push(`console: ${m.text()}`)}); page.on('dialog',d=>d.accept());
+                      const base='https://ga815647.github.io/phu-quoc-2026-mobile/v2.html?ux-audit=polish';
+                      await page.goto(base,{waitUntil:'networkidle'}); await page.evaluate(()=>localStorage.clear()); await page.reload({waitUntil:'networkidle'}); await page.waitForTimeout(300);
+                      async function shot(name){await page.screenshot({path:`ux-audit/${name}.png`,fullPage:false})}
+                      async function jump(id){await page.locator(`[data-jump="${id}"]`).click();await page.waitForTimeout(140)}
+                      await shot('01-home');
+                      await jump('cards'); const cards=page.locator('details.trip'); if(await cards.count()!==5) throw new Error('expected 5 trip cards');
+                      await cards.nth(0).locator('summary').click(); await page.waitForTimeout(100); await shot('02-cable-open');
+                      await cards.nth(1).locator('summary').click(); await page.waitForTimeout(100); await cards.nth(1).scrollIntoViewIfNeeded(); await shot('03-vinwonders-open');
+                      await cards.nth(2).scrollIntoViewIfNeeded(); if(!(await cards.nth(2).evaluate(el=>el.open))) await cards.nth(2).locator('summary').click(); await page.waitForTimeout(100); await shot('04-onbird-open');
+                      await jump('food'); await shot('05-food-pool'); const firstFood=page.locator('[data-food-id]').first(); const before=await firstFood.evaluate(el=>el.getBoundingClientRect().height); await firstFood.locator('.eaten-btn').click(); await page.waitForTimeout(100); const after=await firstFood.evaluate(el=>el.getBoundingClientRect().height); await shot('06-food-eaten');
+                      await jump('prep'); await shot('07-prep');
+                      const metrics=await page.evaluate(()=>{const clickables=[...document.querySelectorAll('button,a,select,summary')];const small=clickables.map((el,i)=>{const r=el.getBoundingClientRect();return {i,tag:el.tagName.toLowerCase(),cls:el.className||'',text:(el.innerText||el.textContent||'').trim().replace(/\s+/g,' ').slice(0,90),width:Math.round(r.width*10)/10,height:Math.round(r.height*10)/10}}).filter(x=>x.width>0&&x.height>0&&(x.width<44||x.height<44));return {viewport:{width:innerWidth,height:innerHeight},document:{width:document.documentElement.scrollWidth,height:document.documentElement.scrollHeight},horizontalOverflow:document.documentElement.scrollWidth>innerWidth+1,stickyHeight:Math.round(document.querySelector('.sticky').getBoundingClientRect().height),smallTouchTargets:small,activeNav:document.querySelector('.nav button.primary')?.dataset.jump||null,counts:{navButtons:document.querySelectorAll('[data-jump]').length,tripCards:document.querySelectorAll('details.trip').length,foodCards:document.querySelectorAll('[data-food-id]').length,mapLinks:document.querySelectorAll('.place-link,.map').length}}});
+                      metrics.eatenCollapse={before,after,delta:Math.round((before-after)*10)/10}; metrics.errors=errors; fs.writeFileSync('ux-audit/metrics.json',JSON.stringify(metrics,null,2));
+                      if(metrics.horizontalOverflow) throw new Error('horizontal overflow detected');
+                      if(metrics.smallTouchTargets.length) throw new Error('small touch targets '+JSON.stringify(metrics.smallTouchTargets.slice(0,10)));
+                      if(!(after<before-25)) throw new Error('eaten card did not meaningfully collapse');
+                      if(errors.length) throw new Error(errors.join(' | '));
+                      console.log(JSON.stringify(metrics,null,2)); await browser.close();
+                    })().catch(e=>{console.error(e);process.exit(1)});
+                    JS
+                    node ux-audit.cjs | tee ux-audit/run.log
+                - name: Upload UX audit evidence
+                  if: always()
+                  uses: actions/upload-artifact@v4
+                  with:
+                    name: v2-ux-audit-evidence
+                    path: ux-audit/
+                    if-no-files-found: error
+                    retention-days: 14
+          EOF
+
+      - name: Local structural checks
+        run: |
+          set -euo pipefail
+          grep -q "清除所有「吃過」紀錄" v2.html
+          grep -q "function syncNav" v2.html
+          grep -q "food-card.eaten .food-meta" v2.html
+          grep -q "前一天下午 15:00–17:00" v2.html
+          grep -q "min-height:44px" v2.html
+          grep -q "eaten card did not collapse" .github/workflows/v2-mobile-smoke.yml
+
+      - name: Commit polished candidate and remove this one-shot workflow
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/v2-polish-once.yml
+          git add v2.html .github/workflows/v2-mobile-smoke.yml .github/workflows/v2-ux-audit.yml
+          git commit -m 'Polish V2 mobile usability after UX audit'
+          git push
