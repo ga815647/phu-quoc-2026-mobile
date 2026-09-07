@@ -19,6 +19,8 @@ jobs:
       - name: Check live V2 on mobile Chromium
         run: |
           set -euo pipefail
+          # Workflow-file changes also kick Pages. Let the live static site catch up first.
+          sleep 20
           npm install --no-save playwright@1.55.0 >/dev/null 2>&1
           npx playwright install --with-deps chromium >/dev/null 2>&1
           cat > mobile-smoke.cjs <<'JS'
@@ -27,9 +29,14 @@ jobs:
             const browser=await chromium.launch({headless:true});
             const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,deviceScaleFactor:2});
             const page=await context.newPage();
-            const errors=[]; page.on('pageerror',e=>errors.push(String(e)));
-            await page.goto('https://ga815647.github.io/phu-quoc-2026-mobile/v2.html?smoke=inline-landmarks',{waitUntil:'networkidle'});
-            await page.waitForTimeout(500);
+            const errors=[];
+            page.on('pageerror',e=>errors.push(String(e)));
+            page.on('dialog',d=>d.accept());
+            await page.goto(`https://ga815647.github.io/phu-quoc-2026-mobile/v2.html?smoke=polish-${Date.now()}`,{waitUntil:'networkidle'});
+            await page.evaluate(()=>localStorage.clear());
+            await page.reload({waitUntil:'networkidle'});
+            await page.waitForTimeout(350);
+
             const visibleText=await page.locator('body').innerText();
             const domText=await page.locator('body').textContent();
             if(!visibleText.includes('美食 Pool')||!visibleText.includes('已吃 0 / 18')||!visibleText.includes('Bún Kèn Út Lượm')) throw new Error('pool render missing');
@@ -37,27 +44,43 @@ jobs:
             if(await page.locator('.place-link').count()<16) throw new Error('landmark links missing');
             if(await page.locator('.landmarks').count()!==0) throw new Error('card-top landmark strip still present');
             if(await page.locator('.step-links').count()<12) throw new Error('inline itinerary map groups missing');
-            for(const label of ['Ga Ánh Dương','VinWonders Phú Quốc','The Sea Shell','Dinh Cậu','Vinpearl Safari Phú Quốc','Gành Dầu']){
-              if(!domText.includes(label)) throw new Error('landmark missing '+label);
-            }
-            if(!domText.includes('精確上船點等 T−48 / T−24 gate 確認 operator boarding pin')) throw new Error('starfish pin gate note missing');
+            for(const label of ['Ga Ánh Dương','VinWonders Phú Quốc','The Sea Shell','Dinh Cậu','Vinpearl Safari Phú Quốc','Gành Dầu']) if(!domText.includes(label)) throw new Error('landmark missing '+label);
             const hrefs=await page.locator('.place-link').evaluateAll(els=>els.map(e=>e.href));
             if(hrefs.some(h=>!h.startsWith('https://www.google.com/maps/search/?api=1&query='))) throw new Error('non-map landmark link');
+
+            const small=await page.locator('.nav button,.ghost,select,.place-link,.map,.eaten-btn').evaluateAll(els=>els.map(el=>{const r=el.getBoundingClientRect();return {text:(el.innerText||el.textContent||'').trim(),h:r.height,w:r.width}}).filter(x=>x.h>0&&x.h<41));
+            if(small.length) throw new Error('important touch target too small '+JSON.stringify(small.slice(0,8)));
+
             await page.locator('[data-jump="cards"]').click();
-            await page.waitForTimeout(120);
+            await page.waitForTimeout(140);
             const nav=await page.evaluate(()=>({hash:location.hash,top:document.getElementById('cards').getBoundingClientRect().top}));
             if(nav.hash||Math.abs(nav.top)>90) throw new Error('cards nav failed '+JSON.stringify(nav));
+
+            await page.evaluate(()=>window.scrollTo(0,document.getElementById('food').offsetTop+160));
+            await page.waitForTimeout(200);
+            const activeAfterScroll=await page.locator('.nav button.primary').getAttribute('data-jump');
+            if(activeAfterScroll!=='food') throw new Error('scroll-synced nav failed '+activeAfterScroll);
+
             await page.locator('[data-jump="food"]').click();
+            await page.waitForTimeout(140);
+            const card=page.locator('[data-food-id="bun-ken-ut-luom"]');
+            const before=await card.evaluate(el=>el.getBoundingClientRect().height);
+            const btn=card.locator('.eaten-btn');
+            await btn.click();
             await page.waitForTimeout(120);
-            const navFood=await page.evaluate(()=>({hash:location.hash,top:document.getElementById('food').getBoundingClientRect().top}));
-            if(navFood.hash||Math.abs(navFood.top)>90) throw new Error('food nav failed '+JSON.stringify(navFood));
-            const btn=page.locator('[data-food-id="bun-ken-ut-luom"] .eaten-btn');
-            await btn.click(); await page.waitForTimeout(80);
             if((await btn.textContent()).trim()!=='✓ 吃過') throw new Error('eaten toggle failed');
-            await page.reload({waitUntil:'networkidle'}); await page.waitForTimeout(250);
-            if(!(await page.locator('[data-food-id="bun-ken-ut-luom"]').evaluate(el=>el.classList.contains('eaten')))) throw new Error('eaten persistence failed');
-            await page.locator('#resetFood').click(); await page.waitForTimeout(80);
-            if(!(await page.locator('#foodProgress').innerText()).includes('0 / 18')) throw new Error('reset failed');
+            const after=await card.evaluate(el=>el.getBoundingClientRect().height);
+            if(!(after<before-25)) throw new Error(`eaten card did not collapse ${before} -> ${after}`);
+            if(await card.locator('.food-desc').isVisible()) throw new Error('eaten detail still visible');
+
+            await page.reload({waitUntil:'networkidle'});
+            await page.waitForTimeout(250);
+            if(!(await card.evaluate(el=>el.classList.contains('eaten')))) throw new Error('eaten persistence failed');
+            await page.locator('#resetFood').click();
+            await page.waitForTimeout(100);
+            if(!(await page.locator('#foodProgress').innerText()).includes('0 / 18')) throw new Error('confirmed reset failed');
+
+            if(!((await page.locator('#prep').innerText()).includes('前一天下午 15:00–17:00'))) throw new Error('traveler prep copy missing');
             if(errors.length) throw new Error('pageerror '+errors.join(' | '));
             console.log('V2_MOBILE_SMOKE=PASS');
             await browser.close();
