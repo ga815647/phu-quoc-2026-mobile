@@ -1,0 +1,42 @@
+name: Apply OnBird DD evening preplan once
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/v2-onbird-dd-plan-once.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch V2 OnBird evening plan
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('v2.html')
+          s=p.read_text(encoding='utf-8')
+          replacements={
+            '回 Cosy 先休息；狀態好才接 optional DD evening':'回 Cosy 先休息；預排 Dinh Cậu／河口 + DD evening，累就取消',
+            '<small>confirmed</small></div><div class="locked">🤿 OnBird + optional DD</div>':'<small>OnBird confirmed</small></div><div class="locked">🤿 OnBird + Dinh Cậu／河口 + DD evening</div>',
+            '<h3>🤿 OnBird + optional DD</h3>':'<h3>🤿 OnBird + Dinh Cậu／河口 + DD evening</h3>',
+            '回程正常、孩子 Green 才接 Dinh Cậu／河口 + DD evening；累就留 Cosy／Long Beach。':'休息後預排 Dinh Cậu／河口 + DD evening；若回程太晚或孩子累，就取消這段留 Cosy／Long Beach。',
+            'DD evening 是 optional tail，不是 OnBird 成功條件。':'Dinh Cậu／河口 + DD evening 先排上；若回程晚、下雨或孩子累，現場直接取消。'
+          }
+          for old,new in replacements.items():
+              n=s.count(old)
+              if n!=1:
+                  raise SystemExit(f'expected 1 match for {old!r}, found {n}')
+              s=s.replace(old,new,1)
+          p.write_text(s,encoding='utf-8')
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add v2.html
+          git commit -m 'Preplan Dinh Cau and Duong Dong evening after OnBird'
+          git push
