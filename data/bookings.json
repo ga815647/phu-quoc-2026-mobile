@@ -60,13 +60,23 @@
   "evidence_as_of": "2026-09-20"
  },
  {
+  "slug": "sim-viettel-6d2gb",
+  "kind": "connectivity",
+  "title": "Mysimcard Viettel 6天 每天2GB 實體SIM x1",
+  "detail": "Viettel原生 6天制 10/10落地開卡；訂單260920HXA4N5M0；街口支付",
+  "amount": "NT$339",
+  "status": "Confirmed",
+  "evidence": "Shopee Mysimcard 訂單截圖 2026-09-20",
+  "evidence_as_of": "2026-09-20"
+ },
+ {
   "slug": "tw-transport",
   "kind": "transport",
-  "title": "光復↔桃園 domestic",
-  "detail": "去回程台鐵候選見Notion DB；待10月班表重驗",
-  "amount": "未鎖",
-  "status": "Open",
-  "evidence": "2026-08班表基準",
+  "title": "台鐵 壽豐↔台北 10/10去 10/15回 2人",
+  "detail": "去程10/10 07:08壽豐-10:08台北 自強3000 207 訂票代碼4404676 NT$938；回程10/15 16:02台北-19:14光復 自強3000 434 訂票代碼5689210 NT$1032；皆已付款未取票",
+  "amount": "NT$1,970 2人來回",
+  "status": "Confirmed",
+  "evidence": "台鐵訂票截圖 2026-09-20",
   "evidence_as_of": "2026-09-20"
  }
 ]
