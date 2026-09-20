@@ -1,0 +1,97 @@
+name: data-driven site smoke
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'data.html'
+      - 'data/*.json'
+      - 'tools/build_site.py'
+      - 'tools/site.css'
+      - '.github/workflows/data-smoke.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  data-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check live data.html on mobile Chromium
+        run: |
+          set -euo pipefail
+          # Workflow-file changes also kick Pages. Let the live static site catch up first.
+          sleep 20
+          npm install --no-save playwright@1.55.0 >/dev/null 2>&1
+          npx playwright install --with-deps chromium >/dev/null 2>&1
+          cat > data-smoke.cjs <<'JS'
+          const { chromium } = require('playwright');
+          (async()=>{
+            const browser=await chromium.launch({headless:true});
+            const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,deviceScaleFactor:2});
+            const page=await context.newPage();
+            const errors=[];
+            page.on('pageerror',e=>errors.push(String(e)));
+            page.on('dialog',d=>d.accept());
+            await page.goto(`https://ga815647.github.io/phu-quoc-2026-mobile/data.html?smoke=data-${Date.now()}`,{waitUntil:'networkidle'});
+            await page.evaluate(()=>localStorage.clear());
+            await page.reload({waitUntil:'networkidle'});
+            await page.waitForTimeout(600);
+
+            // food pool: 18 cards, DB badges present
+            const visibleText=await page.locator('body').innerText();
+            if(!visibleText.includes('美食 Pool')||!visibleText.includes('已吃 0 / 18')||!visibleText.includes('Bún Kèn Út Lượm')) throw new Error('pool render missing');
+            if(await page.locator('[data-food-id]').count()!==18) throw new Error('wrong pool count');
+            const domText=await page.locator('body').textContent();
+            if(!domText.includes('ACTIVE')&&!domText.includes('VERIFY')) throw new Error('DB status badges missing');
+            if(!domText.includes('驗證 2026-09-0')) throw new Error('verified-date badges missing');
+            const hrefs=await page.locator('.map').evaluateAll(els=>els.map(e=>e.href));
+            if(hrefs.some(h=>!h.startsWith('https://www.google.com/maps/search/?api=1&query='))) throw new Error('non-map link');
+
+            // cards: 5 ACTIVE client-rendered from cards.json
+            await page.locator('[data-jump="cards"]').click();
+            await page.waitForTimeout(300);
+            const tripCount=await page.locator('details.trip').count();
+            if(tripCount!==5) throw new Error('wrong active card count '+tripCount);
+            if(!domText.includes('Cable + Sunset Town')) throw new Error('cable card missing');
+
+            // touch targets >= 41px
+            const small=await page.locator('.nav button,.ghost,select,.place-link,.map,.eaten-btn').evaluateAll(els=>els.map(el=>{const r=el.getBoundingClientRect();return {text:(el.innerText||el.textContent||'').trim(),h:r.height,w:r.width}}).filter(x=>x.h>0&&x.h<41));
+            if(small.length) throw new Error('important touch target too small '+JSON.stringify(small.slice(0,8)));
+
+            // no-hash nav
+            await page.locator('[data-jump="food"]').click();
+            await page.waitForTimeout(140);
+            const nav=await page.evaluate(()=>({hash:location.hash,top:document.getElementById('food').getBoundingClientRect().top}));
+            if(nav.hash||Math.abs(nav.top)>90) throw new Error('food nav failed '+JSON.stringify(nav));
+
+            // eaten toggle + collapse + persistence + reset
+            const card=page.locator('[data-food-id="bun-ken-ut-luom"]');
+            const before=await card.evaluate(el=>el.getBoundingClientRect().height);
+            const btn=card.locator('.eaten-btn');
+            await btn.click();
+            await page.waitForTimeout(120);
+            if((await btn.textContent()).trim()!=='✓ 吃過') throw new Error('eaten toggle failed');
+            const after=await card.evaluate(el=>el.getBoundingClientRect().height);
+            if(!(after<before-25)) throw new Error(`eaten card did not collapse ${before} -> ${after}`);
+            if(await card.locator('.food-desc').isVisible()) throw new Error('eaten detail still visible');
+            await page.reload({waitUntil:'networkidle'});
+            await page.waitForTimeout(400);
+            if(!(await card.evaluate(el=>el.classList.contains('eaten')))) throw new Error('eaten persistence failed');
+            await page.locator('#resetFood').click();
+            await page.waitForTimeout(100);
+            if(!(await page.locator('#foodProgress').innerText()).includes('0 / 18')) throw new Error('confirmed reset failed');
+
+            // no horizontal overflow at 390px
+            const overflow=await page.evaluate(()=>document.documentElement.scrollWidth+'/'+document.documentElement.clientWidth);
+            const [sw,cw]=overflow.split('/').map(Number);
+            if(sw>cw+1) throw new Error('horizontal overflow '+overflow);
+
+            if(errors.length) throw new Error('pageerror '+errors.join(' | '));
+            console.log('DATA_SMOKE=PASS');
+            await browser.close();
+          })().catch(e=>{console.error(e);process.exit(1)});
+          JS
+          node data-smoke.cjs
