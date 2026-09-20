@@ -24,7 +24,7 @@ def main():
         grade, name""")
     carriers = rows(db, "SELECT title,dish_id,place_id,role,status,scope,food_conf,evidence_as_of,accepted_at FROM dish_carriers")
     points = rows(db, "SELECT slug,name,area,interest,mandatory,trip_priority,condition_gate,returnability,play_mode,durable_note,status,evidence_as_of FROM points")
-    cards = rows(db, "SELECT slug,name,status,route,gates,transport,notes,evidence_as_of FROM cards")
+    cards = rows(db, "SELECT slug,name,status,route,gates,transport,notes,summary,key_times,badges,stops,transport_out,transport_back,kid_note,dining,cut_order,callout,evidence_as_of FROM cards")
     bookings = rows(db, "SELECT slug,kind,title,detail,amount,status,evidence,evidence_as_of FROM bookings")
     transport = rows(db, "SELECT slug,direction,plan,station,status,priority,note,evidence_as_of FROM transport_options")
     snap = {"foods": foods, "carriers": carriers, "points": points, "cards": cards,

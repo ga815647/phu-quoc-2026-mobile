@@ -100,6 +100,16 @@ CREATE TABLE IF NOT EXISTS cards (
   gates TEXT,                -- JSON array of admission gates
   transport TEXT,
   notes TEXT,
+  summary TEXT,              -- 主頁瘦身卡用：一行路線摘要
+  key_times TEXT,            -- JSON array：1-2 個關鍵時刻（末班/秀/關門）
+  badges TEXT,               -- JSON array of {tone,text}
+  stops TEXT,                -- JSON array of {time,title,desc,maps:[{label,query}]}
+  transport_out TEXT,        -- JSON array of {title,desc}：去程獨立塊
+  transport_back TEXT,       -- JSON array of {title,desc}：回程獨立塊
+  kid_note TEXT,             -- 親子標註（115cm／安全座椅）
+  dining TEXT,               -- JSON array of {meal,place,note}
+  cut_order TEXT,            -- JSON array：時間不夠時怎麼砍
+  callout TEXT,              -- JSON {tone,text} or NULL
   evidence_as_of TEXT DEFAULT '2026-09-20',
   updated_at TEXT DEFAULT (datetime('now'))
 );
@@ -151,7 +161,7 @@ SELECT name, area, interest, mandatory, status, condition_gate, returnability, k
 FROM points WHERE status IN ('ACTIVE','OPTIONAL') ORDER BY interest DESC, name;
 
 CREATE VIEW IF NOT EXISTS v_cards_gates AS
-SELECT slug, name, status, route, gates, transport FROM cards ORDER BY slug;
+SELECT slug, name, status, route, gates, transport, summary FROM cards ORDER BY slug;
 
 CREATE VIEW IF NOT EXISTS v_order_gaps AS
 SELECT kind, title, detail, amount, status FROM bookings ORDER BY kind, title;

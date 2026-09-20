@@ -5,9 +5,11 @@ on:
     branches: [main]
     paths:
       - 'data.html'
+      - 'card.html'
       - 'data/*.json'
       - 'tools/build_site.py'
       - 'tools/site.css'
+      - 'tools/seed_card_details.py'
       - '.github/workflows/data-smoke.yml'
   workflow_dispatch:
 
@@ -50,12 +52,18 @@ jobs:
             const hrefs=await page.locator('.map').evaluateAll(els=>els.map(e=>e.href));
             if(hrefs.some(h=>!h.startsWith('https://www.google.com/maps/search/?api=1&query='))) throw new Error('non-map link');
 
-            // cards: 5 ACTIVE client-rendered from cards.json
+            // cards: 5 ACTIVE slim link cards -> card.html?slug=
             await page.locator('[data-jump="cards"]').click();
             await page.waitForTimeout(300);
-            const tripCount=await page.locator('details.trip').count();
-            if(tripCount!==5) throw new Error('wrong active card count '+tripCount);
+            const linkCount=await page.locator('a.link-card').count();
+            if(linkCount!==5) throw new Error('wrong active card count '+linkCount);
             if(!domText.includes('Cable + Sunset Town')) throw new Error('cable card missing');
+            const hrefs2=await page.locator('a.link-card').evaluateAll(els=>els.map(e=>e.getAttribute('href')));
+            for(const s of ['cable','vinwonders','onbird','starfish','safari']){
+              if(!hrefs2.includes(`./card.html?slug=${s}`)) throw new Error('missing card link '+s);
+            }
+
+            // (card detail pages run last: navigation leaves data.html; see below)
 
             // touch targets >= 41px
             const small=await page.locator('.nav button,.ghost,select,.place-link,.map,.eaten-btn').evaluateAll(els=>els.map(el=>{const r=el.getBoundingClientRect();return {text:(el.innerText||el.textContent||'').trim(),h:r.height,w:r.width}}).filter(x=>x.h>0&&x.h<41));
@@ -88,6 +96,26 @@ jobs:
             const overflow=await page.evaluate(()=>document.documentElement.scrollWidth+'/'+document.documentElement.clientWidth);
             const [sw,cw]=overflow.split('/').map(Number);
             if(sw>cw+1) throw new Error('horizontal overflow '+overflow);
+
+            // card detail pages (runs last: navigation leaves data.html)
+            const base='https://ga815647.github.io/phu-quoc-2026-mobile';
+            for(const [s,probe] of [['cable','Soft arrival'],['vinwonders','Sea Shell first'],['onbird','Operator door-to-door'],['starfish','Child-size life jacket'],['safari','Safari arrival']]){
+              await page.goto(`${base}/card.html?slug=${s}&smoke=data-${Date.now()}`,{waitUntil:'networkidle'});
+              await page.waitForTimeout(500);
+              const t=await page.locator('body').innerText();
+              for(const need of [probe,'交通','當日吃飯','怎麼砍','Gate 條件']){
+                if(!t.includes(need)) throw new Error(`card ${s} missing ${need}`);
+              }
+              const mapLinks=await page.locator('.step-links .place-link').count();
+              if(mapLinks<1) throw new Error(`card ${s} missing map links`);
+              const ov=await page.evaluate(()=>document.documentElement.scrollWidth+'/'+document.documentElement.clientWidth);
+              const [sw2,cw2]=ov.split('/').map(Number);
+              if(sw2>cw2+1) throw new Error(`card ${s} overflow `+ov);
+            }
+            // unknown slug shows friendly fallback
+            await page.goto(`${base}/card.html?slug=nope&smoke=data-${Date.now()}`,{waitUntil:'networkidle'});
+            await page.waitForTimeout(400);
+            if(!(await page.locator('body').innerText()).includes('找不到這張卡')) throw new Error('bad slug fallback missing');
 
             if(errors.length) throw new Error('pageerror '+errors.join(' | '));
             console.log('DATA_SMOKE=PASS');

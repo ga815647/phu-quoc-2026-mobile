@@ -16,6 +16,26 @@
 .prep-grid{display:grid;gap:10px}.prep{border:1px solid var(--line);border-radius:16px;padding:13px 14px;background:#fff}.prep b{display:block;font-size:14px}.prep span{display:block;color:var(--muted);font-size:12px;margin-top:3px}.footer{margin-top:26px;text-align:center;color:var(--muted);font-size:11px;padding:20px 12px}
 @media(max-width:520px){.hero-grid{grid-template-columns:1fr}.choice-grid{grid-template-columns:1fr}.food-card{grid-template-columns:38px minmax(0,1fr)}.food-rank{width:34px;height:34px}.food-actions{grid-column:2;justify-content:flex-start}.food-card.eaten{grid-template-columns:34px minmax(0,1fr) auto}.food-card.eaten .food-actions{grid-column:auto}.step{grid-template-columns:78px 1fr}.slot{grid-template-columns:82px 1fr}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+.link-card{display:block;text-decoration:none;color:inherit;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:17px;overflow:hidden}
+.link-card:active{transform:scale(.99)}
+.key-times{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
+.key-time{display:inline-flex;border-radius:999px;padding:5px 9px;background:#e7f2ee;color:#255f55;font-size:11px;font-weight:850}
+.key-time.warn{background:#f7e8e6;color:#81443e}
+.detail-hero{padding:22px 4px 8px}
+.back-link{display:inline-flex;align-items:center;min-height:44px;text-decoration:none;font-weight:850;font-size:13px;color:var(--brand);border:1px solid var(--line);background:#fff;border-radius:12px;padding:9px 13px;margin-bottom:12px}
+.t-block{margin-top:16px}
+.t-block h4{margin:0 0 8px;font-size:15px}
+.t-leg{border:1px solid var(--line);border-radius:16px;padding:13px 14px;background:#fff;margin-bottom:8px}
+.t-leg b{display:block;font-size:14px}
+.t-leg span{display:block;color:var(--muted);font-size:13px;margin-top:3px}
+.meal-row{display:grid;grid-template-columns:86px 1fr;gap:10px;padding:11px 0;border-bottom:1px dashed var(--line);font-size:13px}
+.meal-row:last-child{border-bottom:0}
+.meal-row .m{font-weight:850;color:var(--brand);font-size:12px}
+.meal-row p{margin:2px 0 0;color:var(--muted)}
+.cut-list{margin:8px 0 0;padding-left:20px;color:var(--muted);font-size:13px}
+.kid-line{display:flex;gap:8px;align-items:flex-start;border-radius:16px;padding:12px 14px;background:#fff7ec;color:#795025;font-size:13px;margin-top:14px}
+.detail-sub{color:var(--muted);font-size:13px;margin:6px 0 0}
 </style>
 </head>
 <body>
@@ -39,7 +59,7 @@
 <div class="panel pad"><div class="slot-list"><div class="slot"><div class="date"><b>10/11 Sun</b><small>OnBird confirmed</small></div><div class="locked">🤿 OnBird + Dinh Cậu／河口 + DD evening</div></div><div class="slot"><div class="date"><b>10/12 Mon</b><small>flex</small></div><select data-day="10/12"><option value="">尚未鎖定</option><option>Cable + Sunset Town</option><option>VinWonders</option><option>Starfish conditional</option><option>Safari</option><option>Free / Recovery</option></select></div><div class="slot"><div class="date"><b>10/13 Tue</b><small>flex</small></div><select data-day="10/13"><option value="">尚未鎖定</option><option>Cable + Sunset Town</option><option>VinWonders</option><option>Starfish conditional</option><option>Safari</option><option>Free / Recovery</option></select></div><div class="slot"><div class="date"><b>10/14 Wed</b><small>flex</small></div><select data-day="10/14"><option value="">尚未鎖定</option><option>Cable + Sunset Town</option><option>VinWonders</option><option>Starfish conditional</option><option>Safari</option><option>Free / Recovery</option></select></div></div><div class="row-actions"><button class="ghost" id="resetSlots">清除暫排</button></div></div>
 </section>
 <section class="section" id="cards">
-<div class="section-head"><h2>5 張 Day Cards</h2><span>點開才看細節 · 資料來自 SQLite 快照</span></div>
+<div class="section-head"><h2>5 張 Day Cards</h2><span>點卡進詳細時間表 · 資料來自 SQLite 快照</span></div>
 <div class="cards" id="cardsMount"></div>
 </section>
 <section class="section" id="food">
@@ -93,13 +113,13 @@ fetch('./data/cards.json').then(r=>r.json()).then(cards=>{
   const mount=document.getElementById('cardsMount');
   const active=cards.filter(c=>c.status==='ACTIVE');
   mount.innerHTML=active.map(c=>{
-    let gates=[];try{gates=JSON.parse(c.gates||'[]')}catch(e){}
-    return `<details class="trip"><summary><div class="trip-title"><div><h3>${c.name}</h3>`
-      +`<div class="trip-summary">${c.notes||''} · 驗證 ${c.evidence_as_of||''}</div>`
-      +`<div class="badges"><span class="badge brand">${c.status}</span></div></div><div class="arrow">＋</div></div></summary>`
-      +`<div class="inside"><div class="timeline"><div class="step"><div class="time">路線</div><div><b>Route</b><p>${c.route||''}</p></div></div>`
-      +`<div class="step"><div class="time">交通</div><div><b>Transport</b><p>${c.transport||''}</p></div></div></div>`
-      +`<ul class="mini-list">${gates.map(g=>`<li>${g}</li>`).join('')}</ul></div></details>`;
+    function jparse(s,fb){try{const v=JSON.parse(s);return v??fb}catch(e){return fb}}
+    const badges=jparse(c.badges,[]),keyTimes=jparse(c.key_times,[]);
+    return `<a class="link-card" href="./card.html?slug=${c.slug}"><div class="trip-title"><div><h3>${c.name}</h3>`
+      +`<div class="trip-summary">${c.summary||c.notes||''} · 驗證 ${c.evidence_as_of||''}</div>`
+      +`<div class="badges">${badges.map(b=>`<span class="badge ${b.tone||''}">${b.text}</span>`).join('')}</div>`
+      +`<div class="key-times">${keyTimes.map(t=>`<span class="key-time">${t}</span>`).join('')}</div>`
+      +`</div><div class="arrow">›</div></div></a>`;
   }).join('');
 }).catch(()=>{document.getElementById('cardsMount').innerHTML='<div class="callout red">cards.json 載入失敗（file:// 直開會擋 fetch，請用 Pages 或本地 server 看）。</div>'});
 })();

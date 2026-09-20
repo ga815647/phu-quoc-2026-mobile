@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f4f6f1">
+<title>Day Card｜富國島 2026</title>
+<style>
+:root{--bg:#f4f6f1;--surface:#fff;--surface2:#edf2ed;--ink:#1d2923;--muted:#68746d;--line:#dbe4dc;--brand:#0d7467;--warm:#e99a4e;--danger:#a9554f;--shadow:0 12px 34px rgba(28,47,37,.075);--r:22px}
+*{box-sizing:border-box}html{scroll-behavior:auto;background:var(--bg)}body{margin:0;background:linear-gradient(180deg,#f0f6f2 0,#f8f6ef 28rem,var(--bg) 100%);color:var(--ink);font-family:ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC","PingFang TC",sans-serif;line-height:1.55}button,select,a{font:inherit}a{color:inherit}.wrap{width:min(760px,100%);margin:auto;padding:0 16px 92px}.hero{padding:24px 4px 13px}.eyebrow{font-size:12px;font-weight:850;letter-spacing:.14em;color:var(--brand)}.hero h1{margin:7px 0 7px;font-size:clamp(30px,8vw,48px);line-height:1.02;letter-spacing:-.045em}.hero p{margin:0;color:var(--muted);font-size:15px}.hero-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:13px}.status{background:rgba(255,255,255,.8);border:1px solid rgba(255,255,255,.95);box-shadow:var(--shadow);border-radius:18px;padding:12px}.status b{display:block;font-size:12px;color:var(--muted)}.status strong{display:block;font-size:18px;margin-top:2px}.status span{font-size:12px;color:var(--muted)}
+.sticky{position:sticky;top:0;z-index:30;margin:0;padding:8px 16px;background:rgba(244,246,241,.88);backdrop-filter:blur(18px);border-bottom:1px solid rgba(219,228,220,.72)}.nav{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;max-width:760px;margin:auto}.nav button{min-height:44px;border:0;background:transparent;color:var(--muted);padding:9px 4px;border-radius:12px;font-size:13px;font-weight:780}.nav button:active{transform:scale(.98)}.nav button.primary{background:var(--ink);color:white}
+.section{padding-top:24px;scroll-margin-top:72px}.section-head{display:flex;align-items:end;justify-content:space-between;gap:10px;margin-bottom:12px}.section-head h2{margin:0;font-size:25px;letter-spacing:-.03em}.section-head span{color:var(--muted);font-size:12px;text-align:right}.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden}.pad{padding:17px}.label{font-size:11px;font-weight:850;letter-spacing:.09em;color:var(--muted)}.today-big{font-size:24px;font-weight:880;letter-spacing:-.025em;margin:4px 0 3px}.tiny{font-size:11px;color:var(--muted)}.choice-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}.choice{border:1px solid var(--line);border-radius:16px;padding:13px;background:linear-gradient(180deg,#fff,#fbfcfa)}.choice strong{display:block}.choice span{display:block;color:var(--muted);font-size:12px;margin-top:3px}
+.slot-list{display:grid;gap:9px}.slot{display:grid;grid-template-columns:92px 1fr;gap:10px;align-items:center;border:1px solid var(--line);border-radius:15px;padding:10px 12px}.slot .date b{display:block}.slot .date small{color:var(--muted)}select{width:100%;min-height:44px;border:1px solid var(--line);background:#fff;border-radius:12px;padding:9px 10px;color:var(--ink)}.locked{font-size:13px;font-weight:850;color:var(--brand)}.ghost{min-height:44px;border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:12px;padding:9px 12px;font-weight:780}.row-actions{display:flex;justify-content:flex-end;margin-top:10px}
+.cards{display:grid;gap:12px}details.trip{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden}details.trip>summary{list-style:none;cursor:pointer;padding:17px}details.trip>summary::-webkit-details-marker{display:none}.trip-title{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.trip-title h3{margin:0;font-size:20px;letter-spacing:-.02em}.trip-title .arrow{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:var(--surface2);font-weight:900;color:var(--muted)}details[open] .arrow{transform:rotate(45deg)}.trip-summary{color:var(--muted);font-size:13px;margin-top:5px}.badges{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}.badge{display:inline-flex;border-radius:999px;padding:5px 8px;background:var(--surface2);font-size:11px;font-weight:820;color:#4c5952}.badge.brand{background:#dff0e9;color:#276455}.badge.warm{background:#fff0df;color:#80511d}.badge.red{background:#f6e5e2;color:#82443f}.inside{padding:0 17px 17px;border-top:1px solid var(--line)}.timeline{display:grid}.step{display:grid;grid-template-columns:94px 1fr;gap:12px;padding:13px 0;border-bottom:1px dashed var(--line)}.step:last-child{border-bottom:0}.time{font-size:12px;font-weight:850;color:var(--brand)}.step b{font-size:14px}.step p{margin:3px 0 0;color:var(--muted);font-size:13px}.mini-list{margin:10px 0 0;padding-left:20px;color:var(--muted);font-size:13px}.callout{border-radius:18px;padding:14px 15px;background:#e7f2ee;color:#255f55;font-size:13px}.callout.warm{background:#fff0e2;color:#795025}.callout.red{background:#f7e8e6;color:#81443e}.step-links{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px}.place-link{min-height:44px;display:inline-flex;align-items:center;text-decoration:none;border:1px solid var(--line);background:#fff;border-radius:10px;padding:8px 11px;font-size:12px;font-weight:850;color:var(--brand)}.place-note{display:block;margin-top:6px;padding:9px 10px;border-radius:11px;background:#f4f2ec;color:#6f675c;font-size:11px}
+.food-guide{background:linear-gradient(135deg,#e7f2ee,#f4f7ef);border:1px solid #d7e6de;border-radius:18px;padding:14px 15px;margin-bottom:12px}.food-guide b{display:block;font-size:14px}.food-guide p{margin:4px 0 0;color:#4f655c;font-size:12px}.pool-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 2px 10px}.pool-progress{font-size:12px;font-weight:850;color:var(--brand)}.food-pool{display:grid;gap:10px}.pool-divider{padding:10px 2px 2px;font-size:11px;font-weight:900;letter-spacing:.08em;color:var(--muted)}.food-card{display:grid;grid-template-columns:42px minmax(0,1fr) auto;gap:11px;align-items:start;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:13px;box-shadow:0 6px 22px rgba(31,49,40,.045);transition:opacity .16s ease,background .16s ease}.food-card.eaten{opacity:.72;background:#f1f3ef;grid-template-columns:34px minmax(0,1fr) auto;align-items:center;padding:10px 12px}.food-card.eaten .food-meta,.food-card.eaten .food-order,.food-card.eaten .food-desc,.food-card.eaten .map{display:none}.food-card.eaten .food-rank{width:30px;height:30px;border-radius:10px}.food-rank{width:38px;height:38px;border-radius:13px;display:grid;place-items:center;background:var(--ink);color:#fff;font-size:12px;font-weight:900}.food-card.eaten .food-rank{background:#98a39d}.food-info{min-width:0}.food-name{font-size:15px;font-weight:880;letter-spacing:-.01em}.food-meta{display:flex;flex-wrap:wrap;gap:5px;align-items:center;margin:5px 0 7px}.food-region{display:inline-flex;border-radius:999px;padding:3px 7px;background:var(--surface2);font-size:10px;font-weight:800;color:#526059}.role{display:inline-flex;border-radius:999px;padding:3px 6px;font-size:10px;font-weight:850}.carrier{background:#dff1e9;color:#246553}.conditional{background:#fff0dc;color:#8a591d}.verify{background:#e8eef7;color:#4a6280}.fallback{background:#f0f0ed;color:#59615c}.market{background:#efe6f6;color:#70547e}.food-order{margin:0;font-size:13px;font-weight:820;color:#26362f}.food-order span{color:var(--brand)}.food-desc{margin:4px 0 0;color:var(--muted);font-size:12px}.food-actions{display:flex;gap:6px;align-items:center}.map,.eaten-btn{min-height:44px;display:inline-flex;align-items:center;justify-content:center;white-space:nowrap;text-decoration:none;border:1px solid var(--line);background:#fff;border-radius:11px;padding:8px 11px;font-size:12px;font-weight:850;color:var(--brand)}.eaten-btn{cursor:pointer;color:#59645e}.eaten-btn[aria-pressed="true"]{background:#e4eee8;color:#356052;border-color:#d2e2d8}.pool-note{margin-top:12px;color:var(--muted);font-size:11px;padding:0 3px}
+.prep-grid{display:grid;gap:10px}.prep{border:1px solid var(--line);border-radius:16px;padding:13px 14px;background:#fff}.prep b{display:block;font-size:14px}.prep span{display:block;color:var(--muted);font-size:12px;margin-top:3px}.footer{margin-top:26px;text-align:center;color:var(--muted);font-size:11px;padding:20px 12px}
+@media(max-width:520px){.hero-grid{grid-template-columns:1fr}.choice-grid{grid-template-columns:1fr}.food-card{grid-template-columns:38px minmax(0,1fr)}.food-rank{width:34px;height:34px}.food-actions{grid-column:2;justify-content:flex-start}.food-card.eaten{grid-template-columns:34px minmax(0,1fr) auto}.food-card.eaten .food-actions{grid-column:auto}.step{grid-template-columns:78px 1fr}.slot{grid-template-columns:82px 1fr}}
+@media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+.link-card{display:block;text-decoration:none;color:inherit;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:17px;overflow:hidden}
+.link-card:active{transform:scale(.99)}
+.key-times{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
+.key-time{display:inline-flex;border-radius:999px;padding:5px 9px;background:#e7f2ee;color:#255f55;font-size:11px;font-weight:850}
+.key-time.warn{background:#f7e8e6;color:#81443e}
+.detail-hero{padding:22px 4px 8px}
+.back-link{display:inline-flex;align-items:center;min-height:44px;text-decoration:none;font-weight:850;font-size:13px;color:var(--brand);border:1px solid var(--line);background:#fff;border-radius:12px;padding:9px 13px;margin-bottom:12px}
+.t-block{margin-top:16px}
+.t-block h4{margin:0 0 8px;font-size:15px}
+.t-leg{border:1px solid var(--line);border-radius:16px;padding:13px 14px;background:#fff;margin-bottom:8px}
+.t-leg b{display:block;font-size:14px}
+.t-leg span{display:block;color:var(--muted);font-size:13px;margin-top:3px}
+.meal-row{display:grid;grid-template-columns:86px 1fr;gap:10px;padding:11px 0;border-bottom:1px dashed var(--line);font-size:13px}
+.meal-row:last-child{border-bottom:0}
+.meal-row .m{font-weight:850;color:var(--brand);font-size:12px}
+.meal-row p{margin:2px 0 0;color:var(--muted)}
+.cut-list{margin:8px 0 0;padding-left:20px;color:var(--muted);font-size:13px}
+.kid-line{display:flex;gap:8px;align-items:flex-start;border-radius:16px;padding:12px 14px;background:#fff7ec;color:#795025;font-size:13px;margin-top:14px}
+.detail-sub{color:var(--muted);font-size:13px;margin:6px 0 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+<a class="back-link" href="./data.html#cards">← 回 5 張 Day Cards</a>
+<div id="cardMount"><div class="panel pad"><div class="tiny">載入中…</div></div></div>
+<footer class="footer">data-driven build · 詳細頁吃同一份 data/cards.json · 吃過／暫排只存這支手機。</footer>
+</div>
+<script>
+(function(){
+const mount=document.getElementById('cardMount');
+const slug=new URLSearchParams(location.search).get('slug')||'';
+function esc(s){return String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+function jparse(s,fb){try{const v=JSON.parse(s);return v??fb}catch(e){return fb}}
+function gmap(query,label){const q=encodeURIComponent((query||label)+' Phú Quốc');return `<a class="place-link" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=${q}">${esc(label)}</a>`}
+fetch('./data/cards.json').then(r=>r.json()).then(cards=>{
+  const c=cards.find(x=>x.slug===slug&&x.status==='ACTIVE');
+  if(!c){mount.innerHTML='<div class="callout red">找不到這張卡（slug='+esc(slug)+'）。<a href="./data.html#cards">回主頁</a></div>';return}
+  document.title=c.name+'｜富國島 2026';
+  const badges=jparse(c.badges,[]),keyTimes=jparse(c.key_times,[]),
+        stops=jparse(c.stops,[]),out=jparse(c.transport_out,[]),
+        back=jparse(c.transport_back,[]),dining=jparse(c.dining,[]),
+        cut=jparse(c.cut_order,[]),gates=jparse(c.gates,[]),
+        callout=jparse(c.callout,null);
+  const steps=stops.map(s=>`<div class="step"><div class="time">${esc(s.time)}</div><div><b>${esc(s.title)}</b><p>${esc(s.desc)}</p>${(s.maps||[]).length?`<div class="step-links">${(s.maps||[]).map(m=>gmap(m.query,m.label)).join('')}</div>`:''}</div></div>`).join('');
+  const legs=[...out.map(t=>`<div class="t-leg"><b>🚗 ${esc(t.title)}</b><span>${esc(t.desc)}</span></div>`),
+              ...back.map(t=>`<div class="t-leg"><b>🔙 ${esc(t.title)}</b><span>${esc(t.desc)}</span></div>`)].join('');
+  const meals=dining.map(d=>`<div class="meal-row"><div class="m">${esc(d.meal)}</div><div><b>${esc(d.place)}</b><p>${esc(d.note)}</p></div></div>`).join('');
+  mount.innerHTML=
+    `<div class="detail-hero"><div class="eyebrow">DAY CARD · ${esc(c.status)}</div><h1 style="margin:6px 0;font-size:clamp(26px,7vw,38px);letter-spacing:-.03em">${esc(c.name)}</h1>`
+    +`<p class="detail-sub">${esc(c.summary||c.route||'')}</p>`
+    +`<div class="badges">${badges.map(b=>`<span class="badge ${esc(b.tone||'')}">${esc(b.text)}</span>`).join('')}<span class="food-region">驗證 ${esc(c.evidence_as_of||'')}</span></div></div>`
+    +`<div class="panel pad"><div class="label">TIMELINE</div><div class="timeline">${steps}</div></div>`
+    +(callout?`<div class="callout ${esc(callout.tone||'')}" style="margin-top:12px">${esc(callout.text)}</div>`:'')
+    +`<div class="section-head t-block"><h2>交通</h2><span>去／回分開看</span></div><div>${legs||'<div class="tiny">—</div>'}</div>`
+    +(c.kid_note?`<div class="kid-line">🧒 <span>${esc(c.kid_note)}</span></div>`:'')
+    +`<div class="section-head t-block"><h2>當日吃飯</h2><span>人在哪區吃哪區</span></div><div class="panel pad">${meals||'<div class="tiny">—</div>'}</div>`
+    +`<div class="section-head t-block"><h2>時間不夠時怎麼砍</h2><span>照順序砍</span></div><div class="panel pad"><ul class="cut-list">${cut.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`
+    +`<div class="section-head t-block"><h2>Gate 條件</h2><span>全綠才成立</span></div><div class="panel pad"><ul class="cut-list">${gates.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`;
+}).catch(()=>{mount.innerHTML='<div class="callout red">cards.json 載入失敗（file:// 直開會擋 fetch，請用 Pages 或本地 server 看）。</div>'});
+})();
+</script>
+</body>
+</html>

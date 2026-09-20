@@ -2,12 +2,16 @@
 
 Reads: data/snapshot.json (foods/carriers/points/cards/bookings/transport/meta)
 Writes: data.html (single-file, inline CSS/JS, fetch()es data/*.json at runtime)
+        card.html (single detail template, ?slug=, renders stops/transport/dining
+        client-side from data/cards.json)
 
 Design contract (from v2.html, keep):
 - sticky nav: 今天 / Cards / 美食 / 出發前，instant scroll, no hash
 - localStorage: slot picks + eaten ticks, per-device, reset buttons
 - food pool order + copy stays human-curated here; DB supplies status/grade/maps/verified badges
 - 5 cards; anthoi=optional satellite; khem=retired (not rendered as card)
+- main page cards are slim link cards (summary + key_times + badges -> card.html);
+  full timeline lives only in card.html detail pages
 """
 import json
 import html as h
@@ -132,6 +136,82 @@ def build_food_pool(byname):
 
 CSS = open(ROOT / "tools" / "site.css").read() if (ROOT / "tools" / "site.css").exists() else ""
 
+CARD_CSS = """
+.link-card{display:block;text-decoration:none;color:inherit;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:17px;overflow:hidden}
+.link-card:active{transform:scale(.99)}
+.key-times{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
+.key-time{display:inline-flex;border-radius:999px;padding:5px 9px;background:#e7f2ee;color:#255f55;font-size:11px;font-weight:850}
+.key-time.warn{background:#f7e8e6;color:#81443e}
+.detail-hero{padding:22px 4px 8px}
+.back-link{display:inline-flex;align-items:center;min-height:44px;text-decoration:none;font-weight:850;font-size:13px;color:var(--brand);border:1px solid var(--line);background:#fff;border-radius:12px;padding:9px 13px;margin-bottom:12px}
+.t-block{margin-top:16px}
+.t-block h4{margin:0 0 8px;font-size:15px}
+.t-leg{border:1px solid var(--line);border-radius:16px;padding:13px 14px;background:#fff;margin-bottom:8px}
+.t-leg b{display:block;font-size:14px}
+.t-leg span{display:block;color:var(--muted);font-size:13px;margin-top:3px}
+.meal-row{display:grid;grid-template-columns:86px 1fr;gap:10px;padding:11px 0;border-bottom:1px dashed var(--line);font-size:13px}
+.meal-row:last-child{border-bottom:0}
+.meal-row .m{font-weight:850;color:var(--brand);font-size:12px}
+.meal-row p{margin:2px 0 0;color:var(--muted)}
+.cut-list{margin:8px 0 0;padding-left:20px;color:var(--muted);font-size:13px}
+.kid-line{display:flex;gap:8px;align-items:flex-start;border-radius:16px;padding:12px 14px;background:#fff7ec;color:#795025;font-size:13px;margin-top:14px}
+.detail-sub{color:var(--muted);font-size:13px;margin:6px 0 0}
+"""
+
+
+def build_card_page():
+    return f"""<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f4f6f1">
+<title>Day Card｜富國島 2026</title>
+<style>{CSS}{CARD_CSS}</style>
+</head>
+<body>
+<div class="wrap">
+<a class="back-link" href="./data.html#cards">← 回 5 張 Day Cards</a>
+<div id="cardMount"><div class="panel pad"><div class="tiny">載入中…</div></div></div>
+<footer class="footer">data-driven build · 詳細頁吃同一份 data/cards.json · 吃過／暫排只存這支手機。</footer>
+</div>
+<script>
+(function(){{
+const mount=document.getElementById('cardMount');
+const slug=new URLSearchParams(location.search).get('slug')||'';
+function esc(s){{return String(s??'').replace(/[&<>"]/g,c=>({{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}}[c]))}}
+function jparse(s,fb){{try{{const v=JSON.parse(s);return v??fb}}catch(e){{return fb}}}}
+function gmap(query,label){{const q=encodeURIComponent((query||label)+' Phú Quốc');return `<a class="place-link" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=${{q}}">${{esc(label)}}</a>`}}
+fetch('./data/cards.json').then(r=>r.json()).then(cards=>{{
+  const c=cards.find(x=>x.slug===slug&&x.status==='ACTIVE');
+  if(!c){{mount.innerHTML='<div class="callout red">找不到這張卡（slug='+esc(slug)+'）。<a href="./data.html#cards">回主頁</a></div>';return}}
+  document.title=c.name+'｜富國島 2026';
+  const badges=jparse(c.badges,[]),keyTimes=jparse(c.key_times,[]),
+        stops=jparse(c.stops,[]),out=jparse(c.transport_out,[]),
+        back=jparse(c.transport_back,[]),dining=jparse(c.dining,[]),
+        cut=jparse(c.cut_order,[]),gates=jparse(c.gates,[]),
+        callout=jparse(c.callout,null);
+  const steps=stops.map(s=>`<div class="step"><div class="time">${{esc(s.time)}}</div><div><b>${{esc(s.title)}}</b><p>${{esc(s.desc)}}</p>${{(s.maps||[]).length?`<div class="step-links">${{(s.maps||[]).map(m=>gmap(m.query,m.label)).join('')}}</div>`:''}}</div></div>`).join('');
+  const legs=[...out.map(t=>`<div class="t-leg"><b>🚗 ${{esc(t.title)}}</b><span>${{esc(t.desc)}}</span></div>`),
+              ...back.map(t=>`<div class="t-leg"><b>🔙 ${{esc(t.title)}}</b><span>${{esc(t.desc)}}</span></div>`)].join('');
+  const meals=dining.map(d=>`<div class="meal-row"><div class="m">${{esc(d.meal)}}</div><div><b>${{esc(d.place)}}</b><p>${{esc(d.note)}}</p></div></div>`).join('');
+  mount.innerHTML=
+    `<div class="detail-hero"><div class="eyebrow">DAY CARD · ${{esc(c.status)}}</div><h1 style="margin:6px 0;font-size:clamp(26px,7vw,38px);letter-spacing:-.03em">${{esc(c.name)}}</h1>`
+    +`<p class="detail-sub">${{esc(c.summary||c.route||'')}}</p>`
+    +`<div class="badges">${{badges.map(b=>`<span class="badge ${{esc(b.tone||'')}}">${{esc(b.text)}}</span>`).join('')}}<span class="food-region">驗證 ${{esc(c.evidence_as_of||'')}}</span></div></div>`
+    +`<div class="panel pad"><div class="label">TIMELINE</div><div class="timeline">${{steps}}</div></div>`
+    +(callout?`<div class="callout ${{esc(callout.tone||'')}}" style="margin-top:12px">${{esc(callout.text)}}</div>`:'')
+    +`<div class="section-head t-block"><h2>交通</h2><span>去／回分開看</span></div><div>${{legs||'<div class="tiny">—</div>'}}</div>`
+    +(c.kid_note?`<div class="kid-line">🧒 <span>${{esc(c.kid_note)}}</span></div>`:'')
+    +`<div class="section-head t-block"><h2>當日吃飯</h2><span>人在哪區吃哪區</span></div><div class="panel pad">${{meals||'<div class="tiny">—</div>'}}</div>`
+    +`<div class="section-head t-block"><h2>時間不夠時怎麼砍</h2><span>照順序砍</span></div><div class="panel pad"><ul class="cut-list">${{cut.map(x=>`<li>${{esc(x)}}</li>`).join('')}}</ul></div>`
+    +`<div class="section-head t-block"><h2>Gate 條件</h2><span>全綠才成立</span></div><div class="panel pad"><ul class="cut-list">${{gates.map(x=>`<li>${{esc(x)}}</li>`).join('')}}</ul></div>`;
+}}).catch(()=>{{mount.innerHTML='<div class="callout red">cards.json 載入失敗（file:// 直開會擋 fetch，請用 Pages 或本地 server 看）。</div>'}});
+}})();
+</script>
+</body>
+</html>"""
+
 
 def main():
     snap, byname = load()
@@ -147,7 +227,7 @@ def main():
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#f4f6f1">
 <title>富國島 2026｜執行站（data-driven）</title>
-<style>{CSS}</style>
+<style>{CSS}{CARD_CSS}</style>
 </head>
 <body>
 <div class="wrap">
@@ -170,7 +250,7 @@ def main():
 <div class="panel pad"><div class="slot-list"><div class="slot"><div class="date"><b>10/11 Sun</b><small>OnBird confirmed</small></div><div class="locked">🤿 OnBird + Dinh Cậu／河口 + DD evening</div></div><div class="slot"><div class="date"><b>10/12 Mon</b><small>flex</small></div><select data-day="10/12"><option value="">尚未鎖定</option><option>Cable + Sunset Town</option><option>VinWonders</option><option>Starfish conditional</option><option>Safari</option><option>Free / Recovery</option></select></div><div class="slot"><div class="date"><b>10/13 Tue</b><small>flex</small></div><select data-day="10/13"><option value="">尚未鎖定</option><option>Cable + Sunset Town</option><option>VinWonders</option><option>Starfish conditional</option><option>Safari</option><option>Free / Recovery</option></select></div><div class="slot"><div class="date"><b>10/14 Wed</b><small>flex</small></div><select data-day="10/14"><option value="">尚未鎖定</option><option>Cable + Sunset Town</option><option>VinWonders</option><option>Starfish conditional</option><option>Safari</option><option>Free / Recovery</option></select></div></div><div class="row-actions"><button class="ghost" id="resetSlots">清除暫排</button></div></div>
 </section>
 <section class="section" id="cards">
-<div class="section-head"><h2>5 張 Day Cards</h2><span>點開才看細節 · 資料來自 SQLite 快照</span></div>
+<div class="section-head"><h2>5 張 Day Cards</h2><span>點卡進詳細時間表 · 資料來自 SQLite 快照</span></div>
 <div class="cards" id="cardsMount"></div>
 </section>
 <section class="section" id="food">
@@ -205,13 +285,13 @@ fetch('./data/cards.json').then(r=>r.json()).then(cards=>{{
   const mount=document.getElementById('cardsMount');
   const active=cards.filter(c=>c.status==='ACTIVE');
   mount.innerHTML=active.map(c=>{{
-    let gates=[];try{{gates=JSON.parse(c.gates||'[]')}}catch(e){{}}
-    return `<details class="trip"><summary><div class="trip-title"><div><h3>${{c.name}}</h3>`
-      +`<div class="trip-summary">${{c.notes||''}} · 驗證 ${{c.evidence_as_of||''}}</div>`
-      +`<div class="badges"><span class="badge brand">${{c.status}}</span></div></div><div class="arrow">＋</div></div></summary>`
-      +`<div class="inside"><div class="timeline"><div class="step"><div class="time">路線</div><div><b>Route</b><p>${{c.route||''}}</p></div></div>`
-      +`<div class="step"><div class="time">交通</div><div><b>Transport</b><p>${{c.transport||''}}</p></div></div></div>`
-      +`<ul class="mini-list">${{gates.map(g=>`<li>${{g}}</li>`).join('')}}</ul></div></details>`;
+    function jparse(s,fb){{try{{const v=JSON.parse(s);return v??fb}}catch(e){{return fb}}}}
+    const badges=jparse(c.badges,[]),keyTimes=jparse(c.key_times,[]);
+    return `<a class="link-card" href="./card.html?slug=${{c.slug}}"><div class="trip-title"><div><h3>${{c.name}}</h3>`
+      +`<div class="trip-summary">${{c.summary||c.notes||''}} · 驗證 ${{c.evidence_as_of||''}}</div>`
+      +`<div class="badges">${{badges.map(b=>`<span class="badge ${{b.tone||''}}">${{b.text}}</span>`).join('')}}</div>`
+      +`<div class="key-times">${{keyTimes.map(t=>`<span class="key-time">${{t}}</span>`).join('')}}</div>`
+      +`</div><div class="arrow">›</div></div></a>`;
   }}).join('');
 }}).catch(()=>{{document.getElementById('cardsMount').innerHTML='<div class="callout red">cards.json 載入失敗（file:// 直開會擋 fetch，請用 Pages 或本地 server 看）。</div>'}});
 }})();
@@ -219,6 +299,7 @@ fetch('./data/cards.json').then(r=>r.json()).then(cards=>{{
 </body>
 </html>"""
     (ROOT / "data.html").write_text(page)
+    (ROOT / "card.html").write_text(build_card_page())
     print("wrote data.html", len(page), "bytes;", n_food, "food cards;",
           len(cards), "active cards rendered client-side")
 
