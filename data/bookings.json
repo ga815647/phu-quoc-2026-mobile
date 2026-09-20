@@ -1,0 +1,72 @@
+[
+ {
+  "slug": "vjl845",
+  "kind": "flight",
+  "title": "VJ845 TPE→PQC 2026-10-10 14:10-16:50",
+  "detail": "1成人+1兒童，Economy，手提7kg/人，無托運，不可退",
+  "amount": "NT$10,914 來回2人",
+  "status": "Confirmed",
+  "evidence": "ezfly開票+VJ官網反查Confirmed/Paid",
+  "evidence_as_of": "2026-09-20"
+ },
+ {
+  "slug": "vjl844",
+  "kind": "flight",
+  "title": "VJ844 PQC→TPE 2026-10-15 08:20-13:00",
+  "detail": "同上；05:10-05:20離Cosy，05:40-05:50到PQC",
+  "amount": "含上",
+  "status": "Confirmed",
+  "evidence": "同上",
+  "evidence_as_of": "2026-09-20"
+ },
+ {
+  "slug": "cosy",
+  "kind": "hotel",
+  "title": "Cosy Bungalow 5晚 2026-10-10→15 單一基地",
+  "detail": "71B Trần Hưng Đạo；Bungalow Double；Agoda 1766889576；不含早；9/24扣款316.366萬VND，9/26前免費取消",
+  "amount": "316.366萬VND future-price",
+  "status": "Confirmed",
+  "evidence": "Agoda有效+使用者鎖定不換",
+  "evidence_as_of": "2026-09-20"
+ },
+ {
+  "slug": "onbird",
+  "kind": "activity",
+  "title": "OnBird南島浮潛 2026-10-11 Morning",
+  "detail": "Small-group max10；Cosy接送；尾款120.8萬VND現金；3天前退訂金全退",
+  "amount": "241.5萬VND(訂金120.7已付)",
+  "status": "Confirmed",
+  "evidence": "業者書面接受1大1小+Morning約定",
+  "evidence_as_of": "2026-09-20"
+ },
+ {
+  "slug": "island-transport",
+  "kind": "transport",
+  "title": "島上交通",
+  "detail": "Grab/GreenSM/taxi三層；remote須round-trip/retained，前一晚鎖",
+  "amount": "未鎖",
+  "status": "Open",
+  "evidence": "T-72/T-1 live quote",
+  "evidence_as_of": "2026-09-20"
+ },
+ {
+  "slug": "insurance",
+  "kind": "insurance",
+  "title": "旅行保險",
+  "detail": "先確認信用卡附帶，只補缺口",
+  "amount": "未鎖",
+  "status": "Open",
+  "evidence": "待辦",
+  "evidence_as_of": "2026-09-20"
+ },
+ {
+  "slug": "tw-transport",
+  "kind": "transport",
+  "title": "光復↔桃園 domestic",
+  "detail": "去回程台鐵候選見Notion DB；待10月班表重驗",
+  "amount": "未鎖",
+  "status": "Open",
+  "evidence": "2026-08班表基準",
+  "evidence_as_of": "2026-09-20"
+ }
+]

@@ -1,0 +1,72 @@
+[
+ {
+  "slug": "cable",
+  "name": "Cable + Sunset Town",
+  "status": "ACTIVE",
+  "route": "Cosy → 早餐queue → Dinh Cậu micro-stop(可選) → Ga Ánh Dương → Cable → Hòn Thơm → Sunset Town → Cosy",
+  "gates": "[\"纜車可搭(不停駛)\", \"08:00-08:15離DD\", \"T-72確認首班/回程/末班\"]",
+  "transport": "direct car primary；Sun World免費接駁只作回程省錢備案(T-72確認)",
+  "notes": "Mandatory Yes；5卡最高優先；Khem非default",
+  "evidence_as_of": "2026-09-20"
+ },
+ {
+  "slug": "vinwonders",
+  "name": "VinWonders + optional Grand World",
+  "status": "ACTIVE",
+  "route": "Cosy → 區域早餐queue → VinWonders(約10:00入園可接受) → optional Grand World → Cosy",
+  "gates": "[\"園區營業/維修無block\", \"小孩狀態Green才接GW\"]",
+  "transport": "direct Grab/GreenSM/taxi primary",
+  "notes": "Sea Shell first；115cm現場確認",
+  "evidence_as_of": "2026-09-20"
+ },
+ {
+  "slug": "onbird",
+  "name": "OnBird 跳島浮潛",
+  "status": "ACTIVE",
+  "route": "Cosy door-to-door round trip（業者接送，不自拆Grab去港口）",
+  "gates": "[\"業者書面pickup\", \"海況operator go\", \"5歲 transfer/船上照看清楚\", \"10/12-14可改期buffer\"]",
+  "transport": "operator Cosy 71B round trip only",
+  "notes": "2026-10-11 Morning已約定；241.5萬VND，去程訂金120.7已付",
+  "evidence_as_of": "2026-09-20"
+ },
+ {
+  "slug": "starfish",
+  "name": "海星 Rạch Vẹm / Hàm Rồng",
+  "status": "ACTIVE",
+  "route": "Cosy → boarding point → 當日有海星區短船 → 原船回 → 原車回",
+  "gates": "[\"stars/water/road/boat/life-jacket/return/cancel七gate全綠\", \"SUV/MPV round-trip ≤160-180萬優先\"]",
+  "transport": "T-1 round-trip SUV/MPV charter",
+  "notes": "最高execution risk；無海星=0，有海星=3但需往返交通確認",
+  "evidence_as_of": "2026-09-20"
+ },
+ {
+  "slug": "safari",
+  "name": "Safari + one north tail",
+  "status": "ACTIVE",
+  "route": "Cosy → direct car → Safari(3-4h,偏早上) → Gành Dầu daylight 或 Grand World evening 二選一 → Cosy",
+  "gates": "[\"Safari營業無block\", \"tail只選一個\", \"Gành Dầu 17:00前離\"]",
+  "transport": "direct car primary",
+  "notes": "Junior Zoo Keeper=0不問；VIP車淘汰",
+  "evidence_as_of": "2026-09-20"
+ },
+ {
+  "slug": "anthoi",
+  "name": "An Thới Market+Harbour",
+  "status": "OPTIONAL",
+  "route": "Cable回程順手45-60分市場+港口，或flex day競爭候選",
+  "gates": "[\"時間/小孩狀態/Sunset buffer三者皆好\"]",
+  "transport": "optional satellite",
+  "notes": "不再是獨立Card/整天；Hộ Quốc/Hàm Ninh/Khem不自動綁入",
+  "evidence_as_of": "2026-09-20"
+ },
+ {
+  "slug": "khem",
+  "name": "Khem Beach",
+  "status": "RETIRED",
+  "route": "僅live condition特強且不排擠高優先模組時重議",
+  "gates": "[\"13:30-14:00可回mainland\", \"retained driver確認\", \"16:30離Khem\"]",
+  "transport": "—",
+  "notes": "已移出Card/default satellite",
+  "evidence_as_of": "2026-09-20"
+ }
+]
