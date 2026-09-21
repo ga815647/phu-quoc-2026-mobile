@@ -104,6 +104,34 @@ def status_badge(f):
     return "".join(parts)
 
 
+def build_bookings_html(bookings):
+    confirmed = [b for b in (bookings or []) if b.get("status") == "Confirmed"]
+    open_items = [b for b in (bookings or []) if b.get("status") != "Confirmed"]
+
+    def row(b, tone):
+        title = h.escape(str(b.get("title") or b.get("slug") or ""))
+        amount = h.escape(str(b.get("amount") or ""))
+        detail = h.escape(str(b.get("detail") or ""))
+        ev = h.escape(str(b.get("evidence") or ""))
+        ev_as = h.escape(str(b.get("evidence_as_of") or ""))
+        badge = '<span class="badge brand">已確認</span>' if tone == "ok" else '<span class="badge warm">待辦</span>'
+        sub = f"{detail} · {amount}" if detail and amount else (detail or amount)
+        meta = f"證據 {ev} · {ev_as}" if ev or ev_as else ""
+        return (f'<div class="prep"><b>{title}</b><span>{h.escape(sub)}</span>'
+                f'<div class="badges">{badge}'
+                + (f'<span class="food-region">{meta}</span>' if meta else '')
+                + '</div></div>')
+
+    parts = [f'<div class="prep-grid">']
+    parts.append(f'<div class="label">CONFIRMED · {len(confirmed)}</div>')
+    parts.extend(row(b, "ok") for b in confirmed)
+    if open_items:
+        parts.append(f'<div class="label" style="margin-top:6px">OPEN · 待辦追蹤 {len(open_items)}</div>')
+        parts.extend(row(b, "open") for b in open_items)
+    parts.append('</div>')
+    return "\n".join(parts)
+
+
 def build_food_pool(byname):
     out = []
     rank = 0
@@ -218,6 +246,7 @@ def main():
     pool_html, n_food = build_food_pool(byname)
     cards = [c for c in snap["cards"] if c["status"] == "ACTIVE"]
     bookings = snap["bookings"]
+    bookings_html = build_bookings_html(bookings)
     meta = snap.get("meta", {})
 
     page = f"""<!doctype html>
@@ -267,6 +296,8 @@ def main():
 <div class="panel pad"><div class="prep-grid"><div class="prep"><b>🤿 OnBird</b><span>接送時間、當天海況、是否照常出發；現場仍依教練安全評估。</span></div><div class="prep"><b>🚠 Cable</b><span>10 月第一波纜車時段、回程／末班、是否維修、天氣。</span></div><div class="prep"><b>🎢 VinWonders</b><span>園區營業與餐飲時段、票價／直訂價格、兒童設施限制；Grand World 仍是有體力才接。</span></div><div class="prep"><b>⭐ Starfish</b><span>前 48 小時確認路況、海星、水色、船與回程；七項條件全過才去。</span></div><div class="prep"><b>🦒 Safari</b><span>營業時間、直達叫車與北島回程；若去 Gành Dầu，先把回程車談好並在 17:00 前離開。</span></div><div class="prep"><b>🍜 Food</b><span>只查明天可能吃的店：是否營業、想點的東西有沒有、價格；真的要吃時再問 ChatGPT。</span></div></div><div class="callout" style="margin-top:12px"><b>前一天下午 15:00–17:00：</b>只確認明天。若預約、官方營運、回程交通、住宿與孩子限制都沒變，就不要重新研究整趟。</div></div>
 <div class="section-head" style="margin-top:20px"><h2>交通底線</h2><span>簡化成可執行規則</span></div>
 <div class="panel pad"><div class="prep-grid"><div class="prep"><b>市區／主要景點</b><span>Grab／GreenSM／taxi 都可；機場、Ga Ánh Dương、VinWonders、Safari 直接叫車。</span></div><div class="prep"><b>偏遠地點／多停點</b><span>出發前先確認回程；回程沒把握就不去。</span></div><div class="prep"><b>App 叫不到</b><span>5–10 分鐘還沒派車就換另一個 app 或 taxi；巴士還要等 15–20 分鐘以上就改叫車。</span></div><div class="prep"><b>孩子</b><span>約 115 cm，全程後座；長程優先三點式安全帶＋增高墊／兒童座椅。</span></div></div></div>
+<div class="section-head" style="margin-top:20px"><h2>訂單狀態</h2><span>DB bookings 快照 · Open 是追蹤清單</span></div>
+<div class="panel pad">{bookings_html}</div>
 </section>
 <footer class="footer">data-driven build · 來源 Notion ETL {h.escape(str(meta.get("source", "")))} · 卡規則：{h.escape(str(meta.get("cards_rule", "")))}<br>吃過／暫排只存這支手機（localStorage）。</footer>
 </div>
