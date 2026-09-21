@@ -1,0 +1,9 @@
+{
+  "dependencies": {
+    "@neon/functions": "^0.8.0",
+    "pg": "^8.13.1"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.5"
+  }
+}

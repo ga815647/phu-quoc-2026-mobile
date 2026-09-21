@@ -1,7 +1,9 @@
-# SQLite 主庫查詢手冊（Agent 用）
+# 資料查詢手冊（Agent 用，Neon 切換 2026-09-22）
 
-主庫：`data/phuquoc.db`。Notion 已凍結為封存，此庫為唯一真相。
-快照：`data/foods.json / points.json / cards.json / bookings.json / snapshot.json`（GitHub Pages 吃這些）。
+主庫：Neon Postgres（project `phu-quoc-2026`／`holy-fog-65935796`，
+branch `production`／`br-silent-haze-b3xw64tm`，`neondb`）。
+`data/phuquoc.db`（SQLite）為遷移前封存，不再是默認寫入來源。
+Notion 已凍結為封存。快照：`data/foods.json / points.json / cards.json / bookings.json / snapshot.json`（公開投影＋離線備援，GitHub Pages 吃這些）。
 
 ## 4 種問法 → SQL
 

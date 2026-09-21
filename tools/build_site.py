@@ -20,6 +20,35 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 DATA = ROOT / "data"
 
+# Build modes:
+# - default (no flags): legacy static behavior, data.html / card.html from
+#   data/*.json snapshots (kept for rollback comparison only).
+# - candidate (round 3): --api-base <function URL> --out-dir <isolated dir>
+#   builds *-candidate.html pages that prefer the read-only API with
+#   static-JSON fallback. Never touches data.html / card.html.
+# - prod (cutover): --prod builds data.html / card.html in ROOT with the
+#   production Function as API base, formal labels (no candidate naming,
+#   no neon-test marks), and data/ public-projection fallback JSON.
+import sys as _sys
+PROD_API = ("https://br-silent-haze-b3xw64tm-phqreadonly"
+            ".compute.c-4.ap-southeast-1.aws.neon.tech")
+_PROD = "--prod" in _sys.argv[1:]
+_API_BASE = PROD_API if _PROD else ""
+_OUT_DIR = None
+_args = _sys.argv[1:]
+if "--api-base" in _args:
+    _API_BASE = _args[_args.index("--api-base") + 1].rstrip("/")
+if "--out-dir" in _args:
+    _OUT_DIR = Path(_args[_args.index("--out-dir") + 1])
+CANDIDATE = bool(_API_BASE and _OUT_DIR)
+PROD = _PROD
+DYNAMIC = CANDIDATE or PROD
+# Formal main-page banner labels (module level so the page template can use
+# them; candidate keeps test wording, prod uses formal wording).
+L_MAIN_API = ("卡片：即時資料 · 取得時間 " if PROD
+              else "卡片：測試 API 資料 · 取得時間 ")
+L_MAIN_FB = "卡片：備援靜態資料 · 來源 "
+
 # Human-curated pool order: (food-id, match-substring, order-copy, desc-copy, role-badge)
 POOL = [
  ("bun-ken-ut-luom", "Bún Kèn Út Lượm", "Bún kèn",
@@ -104,20 +133,29 @@ def status_badge(f):
     return "".join(parts)
 
 
+def dyn_badge_spans(f):
+    """Dynamic subset of status fields that /api/foods can refresh.
+
+    Returns (region, badge_html, maps_query). Kept as the single place
+    where API-overridable food fields are listed, so SSR fallback and
+    client-side refresh cannot drift apart."""
+    return (f.get("region") or "—", status_badge(f),
+            f.get("maps_query") or f["name"])
+
+
 def build_bookings_html(bookings):
+    # Public contract: title/status/amount only. detail/evidence are never
+    # rendered (the public projection export no longer emits them either).
     confirmed = [b for b in (bookings or []) if b.get("status") == "Confirmed"]
     open_items = [b for b in (bookings or []) if b.get("status") != "Confirmed"]
 
     def row(b, tone):
         title = h.escape(str(b.get("title") or b.get("slug") or ""))
         amount = h.escape(str(b.get("amount") or ""))
-        detail = h.escape(str(b.get("detail") or ""))
-        ev = h.escape(str(b.get("evidence") or ""))
         ev_as = h.escape(str(b.get("evidence_as_of") or ""))
         badge = '<span class="badge brand">已確認</span>' if tone == "ok" else '<span class="badge warm">待辦</span>'
-        sub = f"{detail} · {amount}" if detail and amount else (detail or amount)
-        meta = f"證據 {ev} · {ev_as}" if ev or ev_as else ""
-        return (f'<div class="prep"><b>{title}</b><span>{h.escape(sub)}</span>'
+        meta = f"金額 {amount} · 驗證 {ev_as}" if amount or ev_as else ""
+        return (f'<div class="prep"><b>{title}</b>'
                 f'<div class="badges">{badge}'
                 + (f'<span class="food-region">{meta}</span>' if meta else '')
                 + '</div></div>')
@@ -132,7 +170,7 @@ def build_bookings_html(bookings):
     return "\n".join(parts)
 
 
-def build_food_pool(byname):
+def build_food_pool(byname, candidate=False):
     out = []
     rank = 0
     for fid, sub, order, desc, role, divider in POOL:
@@ -143,16 +181,21 @@ def build_food_pool(byname):
         if f is None:
             name, region = fid, "—"
             badge, mlink = "", ""
+            fname = ""
         else:
             name = f["name"].split("｜")[0]
-            region = f.get("region") or "—"
-            badge = status_badge(f)
-            mlink = gmap(f.get("maps_query") or f["name"])
+            region, badge, mquery = dyn_badge_spans(f)
+            mlink = gmap(mquery)
+            fname = f["name"]
+        # data-food-name is the client-side API mapping key (candidate +
+        # prod dynamic pages); legacy static output omits it.
+        fname_attr = (f' data-food-name="{h.escape(fname)}"' if candidate
+                      else "")
         out.append(
-            f'<article class="food-card" data-food-id="{fid}">'
+            f'<article class="food-card" data-food-id="{fid}"{fname_attr}>'
             f'<div class="food-rank">{rank:02d}</div><div class="food-info">'
             f'<div class="food-name">{h.escape(name)}</div>'
-            f'<div class="food-meta"><span class="food-region">{h.escape(region)}</span>'
+            f'<div class="food-meta"><span class="food-region food-place">{h.escape(region)}</span>'
             f'<span class="role {role}">{ROLE_LABEL[role]}</span>{badge}</div>'
             f'<p class="food-order"><span>點：</span>{h.escape(order)}</p>'
             f'<p class="food-desc">{h.escape(desc)}</p></div>'
@@ -187,7 +230,27 @@ CARD_CSS = """
 """
 
 
-def build_card_page():
+def build_card_page(candidate_api="", prod=False):
+    api_note = ("詳細頁吃同一份 data/cards.json" if not candidate_api
+                else ("API 單卡優先，失敗用備援 JSON（標示來源，不假裝即時）"
+                      if prod else
+                      "候選：API 單卡優先，失敗用備援 JSON（標示來源，不假裝即時）"))
+    back_href = "./data.html#cards"
+    L_D_API = ("即時資料 · 取得時間 " if prod
+               else "測試 API 資料 · 取得時間 ")
+    L_D_FB = "備援靜態資料 · 來源 "
+    notfound_home = back_href
+    if not candidate_api:
+        fetch_js = ("fetch('./data/cards.json').then(r=>r.json()).then(cards=>{"
+                    "const c=cards.find(x=>x.slug===slug&&x.status==='ACTIVE');")
+    else:
+        fetch_js = (
+            "fetch('" + candidate_api + "/api/cards?slug='+encodeURIComponent(slug))"
+            ".then(r=>{if(!r.ok)throw 0;return r.json()})"
+            ".then(w=>{markSrc('api',w.meta&&w.meta.fetched_at);return [w.data]})"
+            ".catch(()=>fetch('./data/cards.json').then(r=>r.json())"
+            ".then(cards=>{markSrc('fallback','備援靜態 JSON');return cards}))"
+            ".then(cards=>{const c=cards.find(x=>x.slug===slug&&x.status==='ACTIVE');")
     return f"""<!doctype html>
 <html lang="zh-Hant">
 <head>
@@ -199,20 +262,21 @@ def build_card_page():
 </head>
 <body>
 <div class="wrap">
-<a class="back-link" href="./data.html#cards">← 回 5 張 Day Cards</a>
+<a class="back-link" href="{back_href}">← 回 5 張 Day Cards</a>
+<div class="src-banner tiny" id="srcBanner" style="display:none"></div>
 <div id="cardMount"><div class="panel pad"><div class="tiny">載入中…</div></div></div>
-<footer class="footer">data-driven build · 詳細頁吃同一份 data/cards.json · 吃過／暫排只存這支手機。</footer>
+<footer class="footer">data-driven build · {api_note} · 吃過／暫排只存這支手機。</footer>
 </div>
 <script>
 (function(){{
 const mount=document.getElementById('cardMount');
 const slug=new URLSearchParams(location.search).get('slug')||'';
+function markSrc(kind,when){{var el=document.getElementById('srcBanner');if(!el)return;el.style.display='';el.textContent=kind==='api'?('{L_D_API}'+when+'（非核實時間）'):('{L_D_FB}'+when+'（非即時，不假裝已更新）')}}
 function esc(s){{return String(s??'').replace(/[&<>"]/g,c=>({{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}}[c]))}}
 function jparse(s,fb){{try{{const v=JSON.parse(s);return v??fb}}catch(e){{return fb}}}}
 function gmap(query,label){{const q=encodeURIComponent((query||label)+' Phú Quốc');return `<a class="place-link" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=${{q}}">${{esc(label)}}</a>`}}
-fetch('./data/cards.json').then(r=>r.json()).then(cards=>{{
-  const c=cards.find(x=>x.slug===slug&&x.status==='ACTIVE');
-  if(!c){{mount.innerHTML='<div class="callout red">找不到這張卡（slug='+esc(slug)+'）。<a href="./data.html#cards">回主頁</a></div>';return}}
+{fetch_js}
+  if(!c){{mount.innerHTML='<div class="callout red">找不到這張卡（slug='+esc(slug)+'）。<a href="{notfound_home}">回主頁</a></div>';return}}
   document.title=c.name+'｜富國島 2026';
   const badges=jparse(c.badges,[]),keyTimes=jparse(c.key_times,[]),
         stops=jparse(c.stops,[]),out=jparse(c.transport_out,[]),
@@ -243,14 +307,122 @@ fetch('./data/cards.json').then(r=>r.json()).then(cards=>{{
 
 def main():
     snap, byname = load()
-    pool_html, n_food = build_food_pool(byname)
+    pool_html, n_food = build_food_pool(byname, candidate=DYNAMIC)
+    food_banner = ('<div class="src-banner tiny" id="foodSrcBanner" style="display:none"></div>'
+                   if DYNAMIC else "")
     cards = [c for c in snap["cards"] if c["status"] == "ACTIVE"]
     bookings = snap["bookings"]
     bookings_html = build_bookings_html(bookings)
     meta = snap.get("meta", {})
+    # Candidate overrides (round 3). Formal defaults unchanged.
+    cards_sub = "點卡進詳細時間表 · 資料來自 SQLite 快照"
+    cards_fetch = "fetch('./data/cards.json').then(r=>r.json()).then(cards=>{"
+    cards_catch = (".catch(()=>{document.getElementById('cardsMount').innerHTML="
+                   "'<div class=\"callout red\">cards.json 載入失敗"
+                   "（file:// 直開會擋 fetch，請用 Pages 或本地 server 看）。</div>'})")
+    detail_href = "./card.html?slug="
+    bookings_note = "DB bookings 快照 · Open 是追蹤清單"
+    bookings_js = ""
+    foods_js = ""
+    L_API = L_FB = L_API_C = L_FB_C = L_API_F = L_FB_F = L_API_B = L_FB_B = ""
+    if DYNAMIC:
+        api = _API_BASE
+        # Formal labels drop candidate/test wording; API/fallback mechanics
+        # are identical.
+        L_API = ("即時資料 · 取得時間 " if PROD
+                 else "測試 API 資料 · 取得時間 ")
+        L_FB = "備援靜態資料 · 來源 "
+        L_API_C = ("卡片：即時資料 · 取得時間 " if PROD
+                   else "卡片：測試 API 資料 · 取得時間 ")
+        L_FB_C = "卡片：備援靜態資料 · 來源 "
+        L_API_F = ("美食狀態：即時資料 · 取得時間 " if PROD
+                   else "美食狀態：測試 API 資料 · 取得時間 ")
+        L_FB_F = "美食狀態：備援靜態資料 · 來源 "
+        L_API_B = L_API
+        L_FB_B = "備援靜態資料 · 來源 "
+        cards_sub = (("點卡進詳細時間表 · 即時資料優先，失敗自動用備援 JSON "
+                      "（備援標示來源與快照日期，不假裝即時）")
+                     if PROD else
+                     ("點卡進詳細時間表 · 候選 API 優先，失敗自動用備援 JSON "
+                      "（備援標示來源與快照日期，不假裝即時）"))
+        cards_fetch = (
+            "fetch('" + api + "/api/cards').then(r=>{if(!r.ok)throw 0;return r.json()})"
+            ".then(w=>{markSrc('api',w.meta&&w.meta.fetched_at);return w.data}).then(cards=>{"
+        )
+        cards_catch = (
+            ".catch(()=>fetch('./data/cards.json').then(r=>r.json())"
+            ".then(cards=>{markSrc('fallback','備援靜態 JSON');"
+            "var mount=document.getElementById('cardsMount');"
+            "var active=cards.filter(c=>c.status==='ACTIVE');"
+            "mount.innerHTML=active.map(renderCard).join('')})"
+            ".catch(()=>{document.getElementById('cardsMount').innerHTML="
+            "'<div class=\"callout red\">API 與備援皆失敗，請檢查連線後重整。</div>'}))")
+        detail_href = ("./card-candidate.html?slug=" if CANDIDATE
+                       else "./card.html?slug=")
+        bookings_note = (("候選 API bookings（公開 6 欄）· 失敗時用備援 JSON · Open 是追蹤清單")
+                         if CANDIDATE else
+                         ("即時訂單（公開 6 欄）· 失敗時用備援快照 · Open 是追蹤清單"))
+        foods_js = (
+            "function escF(s){return String(s??'').replace(/[&<>\"]/g,"
+            "c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[c]))}"
+            "function dynBadge(f){"
+            "var p='';"
+            "if(f.atlas_state==='ACTIVE')p+='<span class=\"role carrier\">ACTIVE</span>';"
+            "else if(f.atlas_state==='VERIFY')p+='<span class=\"role verify\">VERIFY</span>';"
+            "else if(f.atlas_state==='DEACTIVATED')p+='<span class=\"role red\">已下架</span>';"
+            "var ver=f.last_verified||f.evidence_as_of||'';"
+            "if(ver)p+='<span class=\"food-region\">驗證 '+escF(ver)+'</span>';"
+            "return p}"
+            "function markFood(kind,when){"
+            "var el=document.getElementById('foodSrcBanner');if(!el)return;el.style.display='';"
+            "el.textContent=kind==='api'?('" + L_API_F + "'+when+'（非核實時間）')"
+            ":('" + L_FB_F + "'+when+'（非即時）')}"
+            "fetch('" + api + "/api/foods').then(r=>{if(!r.ok)throw 0;return r.json()})"
+            ".then(w=>{var byName={};w.data.forEach(f=>{byName[f.name]=f});"
+            "document.querySelectorAll('[data-food-name]').forEach(card=>{"
+            "var key=card.getAttribute('data-food-name');if(!key||!byName[key])return;"
+            "var f=byName[key];"
+            "var rg=card.querySelector('.food-region.food-place');"
+            "if(rg)rg.textContent=f.region||'—';"
+            "var meta=card.querySelector('.food-meta');"
+            "if(meta){var old=meta.querySelectorAll("
+            "'.role.carrier,.role.verify,.role.red,.food-region:not(.food-place)');"
+            "old.forEach(n=>n.remove());"
+            "var tmp=document.createElement('span');tmp.innerHTML=dynBadge(f);"
+            "while(tmp.firstChild)meta.appendChild(tmp.firstChild)}"
+            "var mq=f.maps_query||f.name;"
+            "var a=card.querySelector('a.map');"
+            "if(a)a.href='https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(mq+' Phú Quốc')});"
+            "markFood('api',w.meta&&w.meta.fetched_at)})"
+            ".catch(()=>{markFood('fallback','備援靜態 JSON')});"
+        )
+        bookings_js = (
+            "function escB(s){return String(s??'').replace(/[&<>\"]/g,"
+            "c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[c]))}"
+            "function renderBookings(list,src,when){"
+            "var cf=list.filter(b=>b.status==='Confirmed'),op=list.filter(b=>b.status!=='Confirmed');"
+            "var h='<div class=\"prep-grid\"><div class=\"label\">CONFIRMED · '+cf.length+'</div>'"
+            "+cf.map(b=>'<div class=\"prep\"><b>'+escB(b.title||b.slug)+'</b><div class=\"badges\">"
+            "<span class=\"badge brand\">已確認</span>"
+            "<span class=\"food-region\">金額 '+escB(b.amount||'')+' · 驗證 '+escB(b.evidence_as_of||'')+'</span>"
+            "</div></div>').join('')"
+            "+(op.length?'<div class=\"label\" style=\"margin-top:6px\">OPEN · 待辦追蹤 '+op.length+'</div>'"
+            "+op.map(b=>'<div class=\"prep\"><b>'+escB(b.title||b.slug)+'</b><div class=\"badges\">"
+            "<span class=\"badge warm\">待辦</span>"
+            "<span class=\"food-region\">金額 '+escB(b.amount||'')+' · 驗證 '+escB(b.evidence_as_of||'')+'</span>"
+            "</div></div>').join(''):'')+'</div>';"
+            "document.getElementById('bookingsPanel').innerHTML=h;"
+            "var el=document.getElementById('bookSrcBanner');if(el){el.style.display='';"
+            "el.textContent=src==='api'?('" + L_API_B + "'+when+'（非核實時間）'):('"
+            + L_FB_B + "'+when+'（非即時）')}}"
+            "fetch('" + api + "/api/bookings').then(r=>{if(!r.ok)throw 0;return r.json()})"
+            ".then(w=>renderBookings(w.data,'api',w.meta&&w.meta.fetched_at))"
+            ".catch(()=>{"
+            "var el=document.getElementById('bookSrcBanner');if(el){el.style.display='';"
+            "el.textContent='備援靜態資料 · 訂單區維持 build 期快照（非即時）'}});"
+        )
 
-    page = f"""<!doctype html>
-<html lang="zh-Hant">
+    page = f"""<!doctype html><html lang="zh-Hant">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -279,13 +451,15 @@ def main():
 <div class="panel pad"><div class="slot-list"><div class="slot"><div class="date"><b>10/11 Sun</b><small>OnBird confirmed</small></div><div class="locked">🤿 OnBird + Dinh Cậu／河口 + DD evening</div></div><div class="slot"><div class="date"><b>10/12 Mon</b><small>flex</small></div><select data-day="10/12"><option value="">尚未鎖定</option><option>Cable + Sunset Town</option><option>VinWonders</option><option>Starfish conditional</option><option>Safari</option><option>Free / Recovery</option></select></div><div class="slot"><div class="date"><b>10/13 Tue</b><small>flex</small></div><select data-day="10/13"><option value="">尚未鎖定</option><option>Cable + Sunset Town</option><option>VinWonders</option><option>Starfish conditional</option><option>Safari</option><option>Free / Recovery</option></select></div><div class="slot"><div class="date"><b>10/14 Wed</b><small>flex</small></div><select data-day="10/14"><option value="">尚未鎖定</option><option>Cable + Sunset Town</option><option>VinWonders</option><option>Starfish conditional</option><option>Safari</option><option>Free / Recovery</option></select></div></div><div class="row-actions"><button class="ghost" id="resetSlots">清除暫排</button></div></div>
 </section>
 <section class="section" id="cards">
-<div class="section-head"><h2>5 張 Day Cards</h2><span>點卡進詳細時間表 · 資料來自 SQLite 快照</span></div>
+<div class="section-head"><h2>5 張 Day Cards</h2><span>{cards_sub}</span></div>
+<div class="src-banner tiny" id="srcBanner" style="display:none"></div>
 <div class="cards" id="cardsMount"></div>
 </section>
 <section class="section" id="food">
 <div class="section-head"><h2>美食 Pool</h2><span>優先順序＋吃過紀錄 · badge 來自 DB 即時狀態</span></div>
-<div class="food-guide"><b>網站不替你判斷「現在該吃誰」</b><p>要吃的時候直接跟 ChatGPT 說：「現在 16:20，我在 Sunset Town，孩子狀態 Green。」我再依時間、位置、營業與你已吃過的項目重排。這裡只保留候選 Pool。</p></div>
+<div class="food-guide"><b>網站不替你判斷「現在該吃誰」</b><p>要吃的時候直接跟 ChatGPT 說：「現在 16:20，我在 Sunset Town，孩子狀態 Green。」我再依時間、位置、營業與你已吃過的項目重排。這裡只保留精選 Pool。</p></div>
 <div class="pool-top"><div class="pool-progress" id="foodProgress">已吃 0 / {n_food}</div><button class="ghost" id="resetFood">重設吃過</button></div>
+{food_banner}
 <div class="food-pool">
 {pool_html}
 </div>
@@ -296,13 +470,25 @@ def main():
 <div class="panel pad"><div class="prep-grid"><div class="prep"><b>🤿 OnBird</b><span>接送時間、當天海況、是否照常出發；現場仍依教練安全評估。</span></div><div class="prep"><b>🚠 Cable</b><span>10 月第一波纜車時段、回程／末班、是否維修、天氣。</span></div><div class="prep"><b>🎢 VinWonders</b><span>園區營業與餐飲時段、票價／直訂價格、兒童設施限制；Grand World 仍是有體力才接。</span></div><div class="prep"><b>⭐ Starfish</b><span>前 48 小時確認路況、海星、水色、船與回程；七項條件全過才去。</span></div><div class="prep"><b>🦒 Safari</b><span>營業時間、直達叫車與北島回程；若去 Gành Dầu，先把回程車談好並在 17:00 前離開。</span></div><div class="prep"><b>🍜 Food</b><span>只查明天可能吃的店：是否營業、想點的東西有沒有、價格；真的要吃時再問 ChatGPT。</span></div></div><div class="callout" style="margin-top:12px"><b>前一天下午 15:00–17:00：</b>只確認明天。若預約、官方營運、回程交通、住宿與孩子限制都沒變，就不要重新研究整趟。</div></div>
 <div class="section-head" style="margin-top:20px"><h2>交通底線</h2><span>簡化成可執行規則</span></div>
 <div class="panel pad"><div class="prep-grid"><div class="prep"><b>市區／主要景點</b><span>Grab／GreenSM／taxi 都可；機場、Ga Ánh Dương、VinWonders、Safari 直接叫車。</span></div><div class="prep"><b>偏遠地點／多停點</b><span>出發前先確認回程；回程沒把握就不去。</span></div><div class="prep"><b>App 叫不到</b><span>5–10 分鐘還沒派車就換另一個 app 或 taxi；巴士還要等 15–20 分鐘以上就改叫車。</span></div><div class="prep"><b>孩子</b><span>約 115 cm，全程後座；長程優先三點式安全帶＋增高墊／兒童座椅。</span></div></div></div>
-<div class="section-head" style="margin-top:20px"><h2>訂單狀態</h2><span>DB bookings 快照 · Open 是追蹤清單</span></div>
-<div class="panel pad">{bookings_html}</div>
+<div class="section-head" style="margin-top:20px"><h2>訂單狀態</h2><span>{bookings_note}</span></div>
+<div class="panel pad" id="bookingsPanel">{bookings_html}</div>
+<div class="src-banner tiny" id="bookSrcBanner" style="display:none"></div>
 </section>
 <footer class="footer">data-driven build · 來源 Notion ETL {h.escape(str(meta.get("source", "")))} · 卡規則：{h.escape(str(meta.get("cards_rule", "")))}<br>吃過／暫排只存這支手機（localStorage）。</footer>
 </div>
 <script>
 (function(){{
+const API_BASE="PLACEHOLDER_API_BASE";
+function markSrc(kind,when){{var el=document.getElementById('srcBanner');if(!el)return;el.style.display='';el.textContent=(kind==='api'?'{L_MAIN_API}':'{L_MAIN_FB}')+when+'（非核實時間）'}}
+function jparse(s,fb){{try{{const v=JSON.parse(s);return v??fb}}catch(e){{return fb}}}}
+function renderCard(c){{
+  const badges=jparse(c.badges,[]),keyTimes=jparse(c.key_times,[]);
+  return `<a class="link-card" href="{detail_href}${{c.slug}}"><div class="trip-title"><div><h3>${{c.name}}</h3>`
+    +`<div class="trip-summary">${{c.summary||c.notes||''}} · 驗證 ${{c.evidence_as_of||''}}</div>`
+    +`<div class="badges">${{badges.map(b=>`<span class="badge ${{b.tone||''}}">${{b.text}}</span>`).join('')}}</div>`
+    +`<div class="key-times">${{keyTimes.map(t=>`<span class="key-time">${{t}}</span>`).join('')}}</div>`
+    +`</div><div class="arrow">›</div></div></a>`;
+}}
 const sticky=document.querySelector('.sticky');
 const navButtons=[...document.querySelectorAll('[data-jump]')];
 const navIds=navButtons.map(btn=>btn.dataset.jump);
@@ -312,27 +498,39 @@ navButtons.forEach(btn=>btn.addEventListener('click',()=>{{const el=document.get
 let navTick=false;window.addEventListener('scroll',()=>{{if(navTick)return;navTick=true;requestAnimationFrame(()=>{{syncNav();navTick=false}})}},{{passive:true}});window.addEventListener('resize',syncNav);syncNav();
 const slotKey='phq-v2-slots';let saved={{}};try{{saved=JSON.parse(localStorage.getItem(slotKey)||'{{}}')}}catch(e){{}}document.querySelectorAll('select[data-day]').forEach(sel=>{{if(saved[sel.dataset.day])sel.value=saved[sel.dataset.day];sel.addEventListener('change',()=>{{saved[sel.dataset.day]=sel.value;localStorage.setItem(slotKey,JSON.stringify(saved))}})}});document.getElementById('resetSlots').addEventListener('click',()=>{{if(!window.confirm('清除所有暫排行程？'))return;saved={{}};localStorage.removeItem(slotKey);document.querySelectorAll('select[data-day]').forEach(s=>s.value='')}});
 const foodKey='phq-v2-food-eaten';let eaten={{}};try{{eaten=JSON.parse(localStorage.getItem(foodKey)||'{{}}')}}catch(e){{}}const foodCards=[...document.querySelectorAll('[data-food-id]')],foodProgress=document.getElementById('foodProgress');function renderFood(){{let count=0;foodCards.forEach(card=>{{const id=card.dataset.foodId,isEaten=!!eaten[id];if(isEaten)count++;card.classList.toggle('eaten',isEaten);const btn=card.querySelector('.eaten-btn');if(btn){{btn.setAttribute('aria-pressed',String(isEaten));btn.textContent=isEaten?'✓ 吃過':'○ 未吃'}}}});if(foodProgress)foodProgress.textContent=`已吃 ${{count}} / ${{foodCards.length}}`}}foodCards.forEach(card=>{{const btn=card.querySelector('.eaten-btn');if(!btn)return;btn.addEventListener('click',()=>{{const id=card.dataset.foodId;eaten[id]=!eaten[id];if(!eaten[id])delete eaten[id];localStorage.setItem(foodKey,JSON.stringify(eaten));renderFood()}})}});document.getElementById('resetFood').addEventListener('click',()=>{{if(!window.confirm('清除所有「吃過」紀錄？'))return;eaten={{}};localStorage.removeItem(foodKey);renderFood()}});renderFood();
-fetch('./data/cards.json').then(r=>r.json()).then(cards=>{{
+{cards_fetch}
   const mount=document.getElementById('cardsMount');
   const active=cards.filter(c=>c.status==='ACTIVE');
-  mount.innerHTML=active.map(c=>{{
-    function jparse(s,fb){{try{{const v=JSON.parse(s);return v??fb}}catch(e){{return fb}}}}
-    const badges=jparse(c.badges,[]),keyTimes=jparse(c.key_times,[]);
-    return `<a class="link-card" href="./card.html?slug=${{c.slug}}"><div class="trip-title"><div><h3>${{c.name}}</h3>`
-      +`<div class="trip-summary">${{c.summary||c.notes||''}} · 驗證 ${{c.evidence_as_of||''}}</div>`
-      +`<div class="badges">${{badges.map(b=>`<span class="badge ${{b.tone||''}}">${{b.text}}</span>`).join('')}}</div>`
-      +`<div class="key-times">${{keyTimes.map(t=>`<span class="key-time">${{t}}</span>`).join('')}}</div>`
-      +`</div><div class="arrow">›</div></div></a>`;
-  }}).join('');
-}}).catch(()=>{{document.getElementById('cardsMount').innerHTML='<div class="callout red">cards.json 載入失敗（file:// 直開會擋 fetch，請用 Pages 或本地 server 看）。</div>'}});
+  mount.innerHTML=active.map(renderCard).join('');
+}})
+{cards_catch}
+{foods_js}
+{bookings_js}
 }})();
 </script>
 </body>
 </html>"""
-    (ROOT / "data.html").write_text(page)
-    (ROOT / "card.html").write_text(build_card_page())
-    print("wrote data.html", len(page), "bytes;", n_food, "food cards;",
-          len(cards), "active cards rendered client-side")
+    if CANDIDATE:
+        out = _OUT_DIR
+        (out / "data").mkdir(parents=True, exist_ok=True)
+        (out / "data-candidate.html").write_text(
+            page.replace("PLACEHOLDER_API_BASE", _API_BASE))
+        (out / "card-candidate.html").write_text(
+            build_card_page(candidate_api=_API_BASE))
+        print("wrote candidate:", out / "data-candidate.html",
+              "+", out / "card-candidate.html")
+    elif PROD:
+        (ROOT / "data.html").write_text(
+            page.replace("PLACEHOLDER_API_BASE", _API_BASE))
+        (ROOT / "card.html").write_text(
+            build_card_page(candidate_api=_API_BASE, prod=True))
+        print("wrote PROD data.html", len(page), "bytes;", n_food,
+              "food cards;", len(cards), "active cards client-side")
+    else:
+        (ROOT / "data.html").write_text(page)
+        (ROOT / "card.html").write_text(build_card_page())
+        print("wrote data.html", len(page), "bytes;", n_food, "food cards;",
+              len(cards), "active cards rendered client-side")
 
 
 if __name__ == "__main__":

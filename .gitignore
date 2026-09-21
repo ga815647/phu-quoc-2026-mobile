@@ -1,0 +1,16 @@
+# Build + runtime artifacts (never commit)
+node_modules/
+*.db-shm
+*.db-wal
+__pycache__/
+*.pyc
+
+# Local SQLite backups (repo parent, not app/)
+/../phuquoc-backup-*.db
+/../phuquoc-preprod-*.db
+
+# Env / secrets
+.env
+.env.*
+*.pem
+*.key
