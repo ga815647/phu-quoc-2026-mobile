@@ -100,6 +100,158 @@ def dyn_badge_spans(f):
             f.get("maps_query") or f["name"])
 
 
+def classify_transport_row(t):
+    """Classify one transport_options row: main / backup / history.
+
+    New Neon vocab: status 已確認 + priority 主線 -> main;
+    status 臨時備援 / priority 備援 -> backup;
+    status 歷史方案 / priority 非目前行程 -> history.
+    Legacy snapshot vocab: priority 首選 -> main; 備援 -> backup;
+    anything else (可行 etc.) -> history, so old multi-station
+    alternates never render as main lines.
+    """
+    status = str((t or {}).get("status") or "")
+    priority = str((t or {}).get("priority") or "")
+    if status == "歷史方案" or priority == "非目前行程":
+        return "history"
+    if status == "臨時備援" or priority == "備援":
+        return "backup"
+    if status == "已確認" and priority == "主線":
+        return "main"
+    if priority == "首選":
+        return "main"
+    if status == "已鎖定":
+        return "main"
+    if priority == "可行":
+        return "history"
+    return "history"
+
+
+def split_plan_segments(plan):
+    """Split a ｜-joined plan string into display segments.
+
+    Drops the leading direction token (去程/回程), keeps the rest
+    (轉乘站標題/前段/主車/轉乘/票種) as separate lines.
+    """
+    parts = [p.strip() for p in str(plan or "").split("｜")]
+    parts = [p for p in parts if p]
+    if parts and parts[0] in ("去程", "回程"):
+        parts = parts[1:]
+    return parts
+
+
+def group_transport_rows(rows):
+    """Group rows by direction x category. History is kept but never rendered."""
+    grouped = {("去程", "main"): [], ("去程", "backup"): [],
+               ("回程", "main"): [], ("回程", "backup"): []}
+    for t in rows or []:
+        direction = str((t or {}).get("direction") or "")
+        if direction not in ("去程", "回程"):
+            continue
+        cat = classify_transport_row(t)
+        if cat == "history":
+            continue
+        grouped[(direction, cat)].append(t)
+    return grouped
+
+
+def render_transport_main(t):
+    segs = split_plan_segments(t.get("plan") or t.get("slug") or "")
+    direction = h.escape(str(t.get("direction") or ""))
+    status = h.escape(str(t.get("status") or ""))
+    ev = h.escape(str(t.get("evidence_as_of") or ""))
+    note = h.escape(str(t.get("note") or ""))
+    title = segs[0] if segs else ""
+    rest = segs[1:] if len(segs) > 1 else []
+    lines = "".join(f'<div class="t-seg">{h.escape(s)}</div>' for s in rest)
+    return (
+        f'<div class="t-main"><div class="label">{direction} · 主線</div>'
+        f'<div class="t-main-title">{h.escape(title)}</div>{lines}'
+        + (f'<div class="t-note">{note}</div>' if note else '')
+        + f'<div class="badges"><span class="badge brand">{status}</span>'
+        + (f'<span class="food-region">核實 {ev}</span>' if ev else '')
+        + '</div></div>')
+
+
+def render_transport_backup(t):
+    segs = split_plan_segments(t.get("plan") or t.get("slug") or "")
+    direction = h.escape(str(t.get("direction") or ""))
+    status = h.escape(str(t.get("status") or ""))
+    title = segs[0] if segs else ""
+    rest = segs[1:] if len(segs) > 1 else []
+    lines = "".join(f'<div class="t-seg">{h.escape(s)}</div>' for s in rest)
+    ev = h.escape(str(t.get("evidence_as_of") or ""))
+    note = h.escape(str(t.get("note") or ""))
+    return (
+        f'<div class="t-backup-row"><b>{h.escape(title)}</b>{lines}'
+        + (f'<div class="t-note">{note}</div>' if note else '')
+        + f'<div class="badges"><span class="badge warm">{status}</span>'
+        + (f'<span class="food-region">{direction}備援 · 核實 {ev}</span>' if ev else '')
+        + '</div></div>')
+
+
+def build_transport_html(rows):
+    """Static fallback: main cards first, backups in one collapsed details."""
+    grouped = group_transport_rows(rows)
+    mains = grouped[("去程", "main")] + grouped[("回程", "main")]
+    backups = grouped[("去程", "backup")] + grouped[("回程", "backup")]
+    if not mains and not backups:
+        return '<div class="empty">目前沒有交通備案資料。</div>'
+    parts = ['<div class="journey-grid t-main-grid">']
+    parts.extend(render_transport_main(t) for t in mains)
+    parts.append('</div>')
+    if backups:
+        parts.append(
+            '<details class="t-backup"><summary>備援班次（異常才看）</summary>'
+            + "".join(render_transport_backup(t) for t in backups)
+            + '</details>')
+    return "\n".join(parts)
+
+
+def build_transport_js(api):
+    """Live /api/transport renderer: same grouping client-side (ASCII-safe)."""
+    return (
+        "function escT(s){return String(s??'').replace(/[&<>\\\"]/g,"
+        "c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\\\"':'&quot;'}[c]))}"
+        "function clsT(t){var st=t.status||'',pr=t.priority||'';"
+        "if(st==='\\u6b77\\u53f2\\u65b9\\u6848'||pr==='\\u975e\\u76ee\\u524d\\u884c\\u7a0b')return 'history';"
+        "if(st==='\\u81e8\\u6642\\u5099\\u63f4'||pr==='\\u5099\\u63f4')return 'backup';"
+        "if(st==='\\u5df2\\u78ba\\u8a8d'&&pr==='\\u4e3b\\u7dda')return 'main';"
+        "if(pr==='\\u9996\\u9078')return 'main';"
+        "if(st==='\\u5df2\\u9396\\u5b9a')return 'main';"
+        "if(pr==='\\u53ef\\u884c')return 'history';"
+        "return 'history'}"
+        "function segT(plan){var parts=String(plan||'').split('\\uff5c').map(function(s){return s.trim()}).filter(Boolean);"
+        "if(parts[0]==='\\u53bb\\u7a0b'||parts[0]==='\\u56de\\u7a0b')parts=parts.slice(1);return parts}"
+        "function mainT(t){var segs=segT(t.plan||t.slug||'');"
+        "var lines=segs.slice(1).map(function(s){return '<div class=\"t-seg\">'+escT(s)+'</div>'}).join('');"
+        "return '<div class=\"t-main\"><div class=\"label\">'+escT(t.direction||'')+' \\u00b7 \\u4e3b\\u7dda</div>'"
+        "+'<div class=\"t-main-title\">'+escT(segs[0]||'')+'</div>'+lines"
+        "+(t.note?'<div class=\"t-note\">'+escT(t.note)+'</div>':'')"
+        "+'<div class=\"badges\"><span class=\"badge brand\">'+escT(t.status||'')+'</span>'"
+        "+(t.evidence_as_of?'<span class=\"food-region\">\\u6838\\u5be6 '+escT(t.evidence_as_of)+'</span>':'')"
+        "+'</div></div>'}"
+        "function bakT(t){var segs=segT(t.plan||t.slug||'');"
+        "var lines=segs.slice(1).map(function(s){return '<div class=\"t-seg\">'+escT(s)+'</div>'}).join('');"
+        "return '<div class=\"t-backup-row\"><b>'+escT(segs[0]||'')+'</b>'+lines"
+        "+(t.note?'<div class=\"t-note\">'+escT(t.note)+'</div>':'')"
+        "+'<div class=\"badges\"><span class=\"badge warm\">'+escT(t.status||'')+'</span>'"
+        "+(t.evidence_as_of?'<span class=\"food-region\">'+escT(t.direction||'')+'\\u5099\\u63f4 \\u00b7 \\u6838\\u5be6 '+escT(t.evidence_as_of)+'</span>':'')"
+        "+'</div></div>'}"
+        "fetchJson('" + api + "/api/transport').then(w=>{"
+        "var el=document.getElementById('transportPanel');if(!el)return;"
+        "var mains=[],backs=[];w.data.forEach(function(t){"
+        "if(t.direction!=='\\u53bb\\u7a0b'&&t.direction!=='\\u56de\\u7a0b')return;"
+        "var c=clsT(t);if(c==='main')mains.push(t);else if(c==='backup')backs.push(t)});"
+        "mains.sort(function(a,b){return (a.direction==='\\u53bb\\u7a0b'?0:1)-(b.direction==='\\u53bb\\u7a0b'?0:1)});"
+        "var htm='<div class=\"journey-grid t-main-grid\">'+mains.map(mainT).join('')+'</div>';"
+        "if(backs.length)htm+='<details class=\"t-backup\"><summary>\\u5099\\u63f4\\u73ed\\u6b21\\uff08\\u7570\\u5e38\\u624d\\u770b\\uff09</summary>'+backs.map(bakT).join('')+'</details>';"
+        "if(!mains.length&&!backs.length)htm='<div class=\"empty\">\\u76ee\\u524d\\u6c92\\u6709\\u4ea4\\u901a\\u5099\\u6848\\u8cc7\\u6599\\u3002</div>';"
+        "el.innerHTML=htm;setSrc('transportPanel','api',w.meta&&w.meta.fetched_at,'\\u4ea4\\u901a\\u5099\\u6848')})"
+        ".catch(()=>{setSrc('transportPanel','fallback',null,'\\u4ea4\\u901a\\u5099\\u6848')});"
+    )
+
+
 def src_block(zone_id, zone_label, day):
     """Small <details class=src-info> + hidden one-line fallback notice.
 
@@ -457,25 +609,11 @@ def main():
             "var tb=document.getElementById('todayBookings');if(tb)tb.textContent='預訂摘要：更新暫不可用，以下方旅程區為準。';"
             "setSrc('bookingsPanel','fallback',null,'預訂');});"
         )
-        transport_js = (
-            "fetchJson('" + api + "/api/transport').then(w=>{"
-            "var el=document.getElementById('transportPanel');if(!el)return;"
-            "var h='<div class=\"journey-grid\">'+w.data.map(t=>'<div class=\"prep\"><b>'+escB(t.plan||t.slug)+'</b><div class=\"badges\"><span class=\"badge\">'+escB(t.status||'')+'</span><span class=\"food-region\">'+escB(t.priority||'')+' · 核實 '+escB(t.evidence_as_of||'')+'</span></div></div>').join('')+'</div>';"
-            "el.innerHTML=h;setSrc('transportPanel','api',w.meta&&w.meta.fetched_at,'交通備案')})"
-            ".catch(()=>{setSrc('transportPanel','fallback',null,'交通備案')});"
-        )
+        transport_js = build_transport_js(api)
 
-    # Transport fallback (static snapshot) for no-JS / fallback path
-    transport_fallback = ""
-    if transport:
-        rows = []
-        for t in transport[:7]:
-            rows.append(
-                f'<div class="prep"><b>{h.escape(str(t.get("plan") or t.get("slug") or ""))}</b>'
-                f'<span>{h.escape(str(t.get("status") or ""))} · {h.escape(str(t.get("priority") or ""))} · 核實 {h.escape(str(t.get("evidence_as_of") or ""))}</span></div>')
-        transport_fallback = '<div class="journey-grid">' + "\n".join(rows) + '</div>'
-    else:
-        transport_fallback = '<div class="empty">目前沒有交通備案資料。</div>'
+    # Transport fallback (static snapshot) for no-JS / fallback path:
+    # same grouping as live (main cards + collapsed backups, history hidden).
+    transport_fallback = build_transport_html(transport)
 
     page = f"""<!doctype html><html lang="zh-Hant">
 <head>
