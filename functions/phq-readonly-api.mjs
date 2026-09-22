@@ -66,6 +66,8 @@ const QUERIES = {
     ORDER BY kind, title`,
   transport: `SELECT slug,direction,plan,station,status,priority,note,evidence_as_of
     FROM transport_options ORDER BY slug`,
+  pool: `SELECT pool_key,notion_id,pool_rank,pool_role,order_copy,desc_copy,divider
+    FROM food_pool ORDER BY pool_rank`,
 };
 
 const SLUG_RE = /^[a-z0-9-]{1,40}$/;
@@ -76,6 +78,7 @@ const ROUTES = {
   '/api/points': 'points',
   '/api/bookings': 'bookings',
   '/api/transport': 'transport',
+  '/api/pool': 'pool',
 };
 
 function json(body, status, extra) {

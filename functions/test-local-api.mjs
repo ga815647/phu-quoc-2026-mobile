@@ -30,6 +30,7 @@ for (const [path, n] of [
   ['/api/points', 48],
   ['/api/bookings', 8],
   ['/api/transport', 7],
+  ['/api/pool', 18],
 ]) {
   test(`${path} count=${n}`, async () => {
     const r = await get(path);
@@ -83,6 +84,19 @@ test('foods order: NULLS FIRST parity spot check', async () => {
   const b = await (await get('/api/foods')).json();
   const names = b.data.map((f) => f.name);
   assert.ok(names.length === 69);
+});
+
+test('pool endpoint: 18 rows, public 7 cols by pool_key (NULL notion_id included)', async () => {
+  const b = await (await get('/api/pool')).json();
+  assert.equal(b.data.length, 18);
+  for (const row of b.data) {
+    assert.deepEqual(Object.keys(row).sort(),
+      ['desc_copy', 'divider', 'notion_id', 'order_copy', 'pool_key', 'pool_rank', 'pool_role']);
+  }
+  const ranks = b.data.map((r) => r.pool_rank);
+  assert.deepEqual(ranks, [...ranks].sort((a, c) => a - c));
+  const vw = b.data.find((r) => r.pool_key === 'vinwonders-inside');
+  assert.ok(vw && vw.notion_id === null && vw.order_copy);
 });
 
 test('foods carry pool curation via stable-id join (004)', async () => {

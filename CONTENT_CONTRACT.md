@@ -1,9 +1,9 @@
-# 內容維護契約（Chat 資料操作契約 v2）
+# 內容維護契約（Chat 資料操作契約 v3，部署後版本）
 
 > 操作契約，不是新的協作模式或 project instructions。
 > 不修改 `AGENTS.md`、`chatgpt-instructions.md`、部署或權限規則。
 > v1 的「UPDATE 後無條件 INSERT 稽核」範例已作廢，改用 §4 `content_update()`。
-> 正式可用狀態見 §7「授權 ≠ 部署」；測試分支驗證通過不等於正式可用。
+> 本文件以正式庫部署後事實為準（004 已套用，見 §7）；測試分支驗證不算正式可用。
 
 SSOT：Neon Postgres `holy-fog-65935796` / `production (br-silent-haze-b3xw64tm)` / `neondb`。
 SQLite `data/phuquoc.db` 為遷移封存，Notion 為歷史封存，不作為現況依據。
@@ -16,40 +16,46 @@ SQLite `data/phuquoc.db` 為遷移封存，Notion 為歷史封存，不作為現
 
 所有更新必須帶穩定 ID；店名僅作顯示與輔助搜尋。
 
-## 2. Chat 可維護欄位（白名單）
+## 2. Chat 可維護欄位（白名單，與 `content_update()` 函式內名單一致）
 
-型別均為 TEXT，除註明外；`version: INTEGER` 用於樂觀併發。
+型別均為 TEXT，除註明外。`version: INTEGER` 是**讀取＋併發參數**
+（先 SELECT 取回、原值帶入 `p_base_version`），**不是可寫內容欄位**；
+函式拒絕任何對 `version` 及 ID 欄的寫入。
 
-**food_places**：`region, housing, cluster, time_slots(JSON array TEXT), hours_text,
+**food_places**（ID `notion_id`）：`region, housing, cluster, time_slots(JSON array TEXT), hours_text,
 maps_query, price_text, cuisine(JSON array TEXT), grade(S/A/B/C/D/NULL),
 op_status, op_conf, atlas_state(ACTIVE/VERIFY/DEACTIVATED), data_conf,
 research_date, last_verified, evidence, neg_warn, summary, kid_plan,
-dish_ids(JSON array TEXT), evidence_as_of, version`
+dish_ids(JSON array TEXT), evidence_as_of`
 
-**dishes**：`type, flavor_note, price_hint, time_slots, order_note, evidence_as_of, version`
+**dishes**（ID `notion_id`）：`type, flavor_note, price_hint, time_slots, order_note, evidence_as_of`
 
-**dish_carriers**：`role(PRIMARY/BACKUP), status, scope, food_verdict, food_conf,
+**dish_carriers**（ID `notion_id`）：`role(PRIMARY/BACKUP), status, scope, food_verdict, food_conf,
 avail_verdict, risk_exec, txn_risk, rationale, decision_set, evidence_as_of,
-accepted_at, version`（`dish_id/place_id` 關聯變更需附決策集，不單改一名）
+accepted_at`（`dish_id/place_id` 關聯變更需附決策集，不單改一名）
 
-**points**：`area, interest, mandatory, trip_priority, condition_gate,
-convenience, returnability, play_mode, kid_note, status(ACTIVE/OPTIONAL/RETIRED),
-durable_note, evidence_as_of, version`（`condition_note` 不公開，寫入仍需保留語義）
+**points**（ID `slug`）：`area, interest, mandatory, trip_priority, condition_gate,
+convenience, returnability, play_mode, condition_note, kid_note, status(ACTIVE/OPTIONAL/RETIRED),
+durable_note, evidence_as_of`（`condition_note` 不公開，寫入仍需保留語義）
 
-**cards**（五卡 `onbird/vinwonders/cable/starfish/safari`；`anthoi=OPTIONAL`，
+**cards**（ID `slug`；五卡 `onbird/vinwonders/cable/starfish/safari`；`anthoi=OPTIONAL`，
 `khem=RETIRED` 不渲染為卡）：`route, gates(JSON array TEXT), transport,
 notes, summary, key_times(JSON array TEXT), badges(JSON array),
 stops(JSON array), transport_out(JSON array), transport_back(JSON array),
 kid_note, dining(JSON array), cut_order(JSON array), callout(JSON/null),
-evidence_as_of, version`
+evidence_as_of`
 
-**bookings**（`Confirmed=已確認`，`Open=追蹤清單非已訂妥`）：`kind, title,
-amount(保留原始幣別字串，不做跨幣別加總), status, evidence_as_of, version`
+**bookings**（ID `slug`；`Confirmed=已確認`，`Open=追蹤清單非已訂妥`）：`kind, title,
+amount(保留原始幣別字串，不做跨幣別加總), status, evidence_as_of`
 （`detail/evidence` 可能含訂單碼／聯絡方式，**不得**寫入公開投影，
 公開讀取僅 `slug,kind,title,amount,status,evidence_as_of`）
 
-**transport_options**：`direction, plan, station, status, priority, note,
-evidence_as_of, version`
+**transport_options**（ID `slug`）：`direction, plan, station, status, priority, note,
+evidence_as_of`
+
+**food_pool**（ID `pool_key`；精選池單一來源）：`pool_rank(INTEGER),
+pool_role(carrier/conditional/fallback/market/verify), order_copy, desc_copy, divider`。
+關聯欄 `notion_id` 不可改（改關聯＝重建池成員，需內容決策＋明確 INSERT，不走本函式）。
 
 **evidence_log**（旅途中唯一建議的追加路徑）：只 `INSERT (ref_type, ref_id, note)`，
 不改主表。`ref_type ∈ {food,point,card,booking}`。
@@ -92,25 +98,25 @@ evidence_as_of, version`
 8. 管制是**程序性**的（函式內原子保證），不是 DB 權限隔離；
    MCP 以具寫入能力身分執行，`instruction 禁止 ≠ GRANT/REVOKE`。
 
-可執行範例（測試分支實測通過，見 §7）：
+可執行範例（先讀版本再寫；**範例數字只是示意，不可照抄固定版本**）：
 
 ```sql
--- 讀取（含版本）
-SELECT notion_id, desc_copy, version FROM food_pool WHERE pool_key='ganh-dau-market';
--- 成功：回傳新版本（此例 2），恰好一筆＋一稽核
+-- 1. 讀取（含目前版本；回傳的 version 原值帶入下一步）
+SELECT desc_copy, version FROM food_pool WHERE pool_key='ganh-dau-market';
+-- 2. 成功：回傳新版本（= 舊版+1），恰好一筆＋一稽核
 SELECT content_update('food_pool','ganh-dau-market','desc_copy','新文案',
-  1, NULL, 'chat-mcp', '現場核實後更新推薦') AS new_version;
--- 讀回＋稽核（old_value 必須是 DB 真實前值）
+  <上一步查到的version>, NULL, 'chat-mcp', '現場核實後更新推薦') AS new_version;
+-- 3. 讀回＋稽核（old_value 必須是 DB 真實前值；查詢同時限定表＋ID）
 SELECT desc_copy, version FROM food_pool WHERE pool_key='ganh-dau-market';
 SELECT target_table,target_id,field_name,old_value,new_value,
   base_version,resulting_version,actor,source,changed_at
-  FROM content_revisions WHERE target_id='ganh-dau-market' ORDER BY id;
--- 過期版本：報錯 version conflict，不改資料、不寫稽核；必須重讀＋詢問，不重試覆寫
-SELECT content_update('food_pool','ganh-dau-market','desc_copy','舊值重送',
-  1, NULL, 'chat-mcp', 'stale-retry');
--- 還原（用目前版本 2，把值寫回舊文案 → 產生版本 3 新紀錄）
+  FROM content_revisions
+  WHERE target_table='food_pool' AND target_id='ganh-dau-market' ORDER BY id;
+-- 4. 過期版本：用舊 base 重送會報 version conflict，不改資料、不寫稽核；
+--    必須重讀＋詢問，不重試覆寫
+-- 5. 還原（用目前版本，把值寫回舊文案 → 產生新版本新紀錄，不刪歷史）
 SELECT content_update('food_pool','ganh-dau-market','desc_copy','<舊文案>',
-  2, NULL, 'chat-mcp', '還原');
+  <目前版本>, NULL, 'chat-mcp', '還原');
 ```
 
 非法輸入一律報錯且零副作用（實測）：不存在 ID、非白名單表
@@ -143,7 +149,7 @@ VALUES ('food','<notion_id>','2026-10-12 現場觀察：...（僅當日觀察，
 | 五卡時間線／交通／餐飲／取捨／成行條件 | `cards.*`／`slug` | `/api/cards[?slug=]` | 行程卡片＋`card.html?slug=` | `data/cards.json` | ● |
 | 卡片摘要／badge／核實日期 | `cards.summary,evidence_as_of` 等 | 同上 | 同上 | 同上 | ● |
 | 美食地區／狀態／驗證／地圖 | `food_places.region,atlas_state,last_verified,maps_query...`／`notion_id` | `/api/foods` | 美食卡 badge＋篩選屬性 | `snapshot.foods` | ●（回填鍵＝`notion_id`，改名不斷鏈；`name` 僅遺產 fallback） |
-| 精選池排序／角色／點餐／推薦文案 | `food_pool.pool_rank,pool_role,order_copy,desc_copy,divider`／`pool_key`（關聯 `notion_id`） | `/api/foods`（JOIN） | 美食池渲染＋即時改文＋按 rank 重排 | `snapshot.pool`＋`data/pool.json` | ●（單一來源；69 家不自動進池；`notion_id` NULL 者純靜態） |
+| 精選池排序／角色／點餐／推薦文案 | `food_pool.pool_rank,pool_role,order_copy,desc_copy,divider`／`pool_key`（關聯 `notion_id`，NULL 者純靜態） | `/api/pool`（18 列全含，池鍵識別）＋ `/api/foods`（JOIN 狀態回填） | 美食池渲染＋即時改文＋按 rank 重排 | `snapshot.pool`＋`data/pool.json` | ●（單一來源；69 家不自動進池；`/api/pool` 需 Function 重部署，本輪測試分支已驗，正式待部署） |
 | 預訂（已確認／待辦） | `bookings.kind,title,amount,status,evidence_as_of`／`slug` | `/api/bookings` | 旅程訂單區＋**今天預訂即時行** | `data/bookings.json` | ●（`detail/evidence` 可維護、永不公開） |
 | 交通備案 | `transport_options.*`／`slug` | `/api/transport` | 旅程交通區 | `snapshot.transport` | ● |
 | 暫排（10/12–14） | 無專用結構（見 §8） | — | 行程暫排下拉（本機） | — | △本機（`phq-v3-slots`） |
@@ -160,41 +166,53 @@ VALUES ('food','<notion_id>','2026-10-12 現場觀察：...（僅當日觀察，
   失敗／超時／無效 JSON／缺欄位降級備援並明示）。
 - **備援發布鏈**：`export_json.py（預設 neon）→ data/*.json（含 pool）→
   commit/push → Pages`。MCP 改 DB **不會**自動觸發；備援缺 `pool` 時
-  池區顯示空狀態，不編造。
+  池區顯示空狀態，不編造。本輪已從正式庫全量重匯（`refreshed_from_neon:
+  2026-09-22`；各筆核實日期原樣保留，匯出日期另記，不冒充核實）。
+  內容表零漂移（foods/cards/bookings/points/transport/carriers 與舊快照一致），
+  僅修正池 `wow-que-toi.order_copy` 測試標記殘留＋新增 refreshed 註記。
+  一般內容更新走 API 即時鏈，**不需重部署 Function**；只有 Function 程式
+  變更才需重部署（esbuild bundle，经測試分支驗證）。
 - 卡片／池靜態 HTML 是 build 期快照；API 成功時以即時覆蓋並重排，
   失敗時保留快照＋備援標示。
 
-## 7. 權限現狀與驗證（不要假裝有做到）
+## 7. 權限現狀與驗證（部署後事實）
 
-已查證（2026-09-22，正式庫唯讀查詢＋行為測試）：
-- `content_revisions` 正式庫**不存在**；7 主表皆無 `version`；
-  `food_pool` 不存在（以上皆為本輪 004 待部署項目）。
-- `phq_web_ro` 是**欄級 SELECT**（`role_column_grants` 71 欄，
+部署狀態（2026-09-22，正式庫已套用 004 並經使用者核准）：
+- `content_revisions`、`food_pool`（18 列）存在；7 主表 `version` 存在。
+- `content_update(text×4,integer,text×3)` 存在，owner `neondb_owner`，
+  `SECURITY INVOKER`（無 DEFINER）。測試分支 12 項正負案例全過；
+  正式庫 smoke（讀寫還原一輪）通過，稽核留存為部署證據。
+- 函式存在性判斷不用 `FOUND`，改用 `RETURNING version, 1`＋`IS NULL`
+  （在各執行路徑下語義明確，不依賴特定旗標行為）。
+- **授權狀態**：本次 migration 已獲核准並完成；使用者已授權契約範圍
+  （§2 白名單）內的日常內容維護。Chat 寫入前仍須先讀本契約確認
+  正式支援確實存在（測試分支驗證不算）。
+
+已查證（正式庫唯讀查詢＋行為測試）：
+- `phq_web_ro` 是**欄級 SELECT**（`role_column_grants` 71 欄＋池 7 欄，
   `role_table_grants` 0 列）：`bookings` 6 欄（無 `detail/evidence`）、
   `cards` 18 欄、`food_places` 27 欄（無 `kid_plan/migration/updated_at`）、
-  `points` 12 欄、`transport` 8 欄。舊「information_schema 查無表級 GRANT，
-  推斷 Function DSN 是 owner」結論**作廢**——欄級授權本來就查不到表級，
-  證據不足，不得據此換 DSN／重設密碼／補整表 SELECT。
-- Function 行為與上述授權一致：`/api/foods` 欄集合＝授權集合
-  （無 `version/kid_plan`）；`POST → 405`；未知路徑與
-  `/api/content_revisions → 404`；錯誤固定字串不洩 SQL／DSN。
-  這是**行為一致性證據**，不是身分證明：`current_user/session_user`
-  屬服務端環境，未經授權不得輸出 secret，也未新增診斷端點，
-  故身分僅標「與 `phq_web_ro` 一致」，不宣稱已確認。
-- 測試分支 `content_update()` 全電池通過：成功恰好一筆＋真實前值、
-  過期版本／不存在 ID／非法表欄／非法 JSON／非整數 rank 零副作用、
-  還原新紀錄、`bookings` 跨表可用（見 §4）。
-  實作注意：此 MCP 路徑下動態 `EXECUTE...INTO` 後 `FOUND` 恆假，
-  函式改用 `RETURNING version, 1`＋`IS NULL` 判斷（標準語義同樣正確）。
-- **授權 ≠ 部署**：「使用者已授權內容維護」是流程授權；
-  正式庫缺表／缺欄、Function 未重部署前，功能即「尚待部署」。
-  Chat 寫入前必須先讀本契約確認正式支援確實存在（測試分支驗證不算）。
+  `points` 12 欄、`transport` 8 欄、`food_pool` 7 欄
+  （`pool_key,notion_id,pool_rank,pool_role,order_copy,desc_copy,divider`；
+  無 `version`）。舊 owner-DSN 推論**作廢**，不得據此換 DSN／重設密碼／
+  補整表 SELECT。
+- Function 行為與上述授權一致：`/api/foods` 欄集合＝授權集合；
+  `POST → 405`；未知路徑與 `/api/content_revisions → 404`；
+  錯誤固定字串不洩 SQL／DSN。這是**行為一致性證據**，不是身分證明：
+  `current_user/session_user` 屬服務端環境，未經授權不得輸出 secret，
+  也未新增診斷端點，故身分僅標「與 `phq_web_ro` 一致」，不宣稱已確認。
+- `content_update` 的 EXECUTE 現狀：新建函式預設 PUBLIC 可執行，
+  故 `phq_web_ro` 目前也可 EXECUTE；但函式為 INVOKER，內部 UPDATE
+  以**呼叫者權限**執行——`phq_web_ro` 無任何 UPDATE 授權，呼叫只會
+  權限不足失敗，**不構成公開寫入漏洞**，也不代表已達成執行權限隔離。
+  收斂方案（005，測試分支驗證中；正式套用待確認，見下）。
 
-現行規則仍禁止：`chatgpt-instructions.md` 的旅途中主表凍結
+現行業務限制仍保留：`chatgpt-instructions.md` 的旅途中主表凍結
 （只追加 `evidence_log`）、私人欄位不公開、批量覆寫／硬刪除／改動已確認
 安排先請使用者確認——新規與舊規則衝突處以**較嚴**者為準，不自行放寬。
 
-需要另行授權：任何 production 寫入（含 004 上正式庫＋Function 重部署）、
+尚需另行核准（不在日常內容維護授權內）：新增登入、權限擴張
+（含函式 EXECUTE 收斂外的授權變更）、其他 migration／破壞性操作、
 跨裝置同步（需登入；匿名公開寫入、硬編碼密鑰、藏網址代替授權一律不可）、
 自動匯出＋部署的新 secret／外部權限。
 Neon MCP 連線為流程限制，非真正的 DB 權限隔離；
