@@ -112,7 +112,7 @@ def src_block(zone_id, zone_label, day):
         f'<div class="src-fallback" id="{zone_id}Fallback" hidden>'
         f'更新暫不可用，顯示備援資料{fb_day}</div>'
         f'\n<details class="src-info" id="{zone_id}Src"><summary>資料資訊</summary>'
-        f'<div>{h.escape(zone_label)} · 載入中…</div></details>'
+        f'<div>{h.escape(zone_label)} · 取得時間 載入中（失敗時顯示備援資料{fb_day}）</div></details>'
     )
 
 
@@ -253,7 +253,7 @@ def build_card_page(candidate_api="", prod=False, snapshot_src=""):
 <a class="back-link" id="backLink" href="./#itinerary">← 回行程</a>
 <div class="src-fallback" id="srcFallback" hidden>更新暫不可用，顯示備援資料{fb_day}</div>
 <div id="cardMount"><div class="panel pad"><div class="tiny">載入中…</div></div></div>
-<details class="src-info" id="srcInfo" style="margin-top:12px"><summary>資料資訊</summary><div id="srcDetail">卡片資料 · 載入中…</div></details>
+<details class="src-info" id="srcInfo" style="margin-top:12px"><summary>資料資訊</summary><div id="srcDetail">卡片資料 · 取得時間 載入中</div></details>
 <footer class="footer">吃過／暫排只存這支手機。核實日期見卡片標示。</footer>
 </div>
 <script>
