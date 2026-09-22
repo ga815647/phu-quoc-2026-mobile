@@ -73,8 +73,13 @@ def main():
     cards = fetch("SELECT slug,name,status,route,gates,transport,notes,summary,key_times,badges,stops,transport_out,transport_back,kid_note,dining,cut_order,callout,evidence_as_of FROM cards")
     bookings = fetch("SELECT slug,kind,title,detail,amount,status,evidence,evidence_as_of FROM bookings")
     transport = fetch("SELECT slug,direction,plan,station,status,priority,note,evidence_as_of FROM transport_options")
+    try:
+        pool = fetch("SELECT pool_key,notion_id,pool_rank,pool_role,order_copy,desc_copy,divider FROM food_pool ORDER BY pool_rank")
+    except Exception:
+        pool = []
+        print("note: food_pool absent (pre-004 DB); snapshot pool empty, site shows empty-state")
     snap = {"foods": foods, "carriers": carriers, "points": points, "cards": cards,
-            "bookings": bookings, "transport": transport,
+            "bookings": bookings, "transport": transport, "pool": pool,
             "meta": {"cards_rule": "5-card: onbird/vinwonders/cable/starfish/safari; anthoi=OPTIONAL satellite; khem=RETIRED",
                      "source": "Notion ETL 2026-09-20"}}
     snap["meta"]["db_source"] = SOURCE
@@ -89,7 +94,7 @@ def main():
         snap["meta"]["projection"] = "internal-full"
     os.makedirs(OUT, exist_ok=True)
     for name, data in [("foods", foods), ("points", points), ("cards", cards),
-                        ("bookings", bookings), ("snapshot", snap)]:
+                        ("bookings", bookings), ("pool", pool), ("snapshot", snap)]:
         p = os.path.join(OUT, f"{name}.json")
         with open(p, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=1)

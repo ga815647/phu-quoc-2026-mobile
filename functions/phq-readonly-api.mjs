@@ -51,12 +51,14 @@ const QUERIES = {
   card_one: `SELECT slug,name,status,route,gates,transport,notes,summary,key_times,
     badges,stops,transport_out,transport_back,kid_note,dining,cut_order,callout,
     evidence_as_of FROM cards WHERE slug=$1`,
-  foods: `SELECT notion_id,name,region,housing,cluster,time_slots,hours_text,
-    maps_query,price_text,cuisine,worth,convenience,local_idx,pq_feature,kid_fit,
-    grade,op_status,op_conf,atlas_state,data_conf,research_date,last_verified,
-    evidence,neg_warn,summary,dish_ids,evidence_as_of FROM food_places
-    ORDER BY CASE atlas_state WHEN 'ACTIVE' THEN 0 WHEN 'VERIFY' THEN 1 ELSE 2 END,
-    grade NULLS FIRST, name`,
+  foods: `SELECT f.notion_id,f.name,f.region,f.housing,f.cluster,f.time_slots,f.hours_text,
+    f.maps_query,f.price_text,f.cuisine,f.worth,f.convenience,f.local_idx,f.pq_feature,f.kid_fit,
+    f.grade,f.op_status,f.op_conf,f.atlas_state,f.data_conf,f.research_date,f.last_verified,
+    f.evidence,f.neg_warn,f.summary,f.dish_ids,f.evidence_as_of,
+    p.pool_key,p.pool_rank,p.pool_role,p.order_copy,p.desc_copy,p.divider FROM food_places f
+    LEFT JOIN food_pool p ON p.notion_id = f.notion_id
+    ORDER BY CASE f.atlas_state WHEN 'ACTIVE' THEN 0 WHEN 'VERIFY' THEN 1 ELSE 2 END,
+    f.grade NULLS FIRST, f.name`,
   points: `SELECT slug,name,area,interest,mandatory,trip_priority,condition_gate,
     returnability,play_mode,durable_note,status,evidence_as_of FROM points
     ORDER BY slug`,

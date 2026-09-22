@@ -3039,6 +3039,171 @@
   "cards_rule": "5-card: onbird/vinwonders/cable/starfish/safari; anthoi=OPTIONAL satellite; khem=RETIRED",
   "source": "Notion ETL 2026-09-20",
   "db_source": "neon",
-  "projection": "public-v1"
- }
+  "projection": "public-v1",
+  "pool_source": "Neon food_pool 2026-09-22 (004)"
+ },
+ "pool": [
+  {
+   "pool_key": "bun-ken-ut-luom",
+   "notion_id": "3c839f3f-a67c-81fe-b212-e428ab484fe8",
+   "pool_rank": 1,
+   "pool_role": "carrier",
+   "order_copy": "Bún kèn",
+   "desc_copy": "富國島地方味優先完成；椰奶魚風味米線。Út Lượm 沒吃到再看 bún kèn 87 backup。",
+   "divider": "主池｜這趟優先完成"
+  },
+  {
+   "pool_key": "banh-mi-anh-thu",
+   "notion_id": "3ce39f3f-a67c-81fb-b323-f1e9fb315a83",
+   "pool_rank": 2,
+   "pool_role": "carrier",
+   "order_copy": "Bánh mì",
+   "desc_copy": "高優先、低摩擦；很適合塞進行程空檔或晚一點快速吃。",
+   "divider": null
+  },
+  {
+   "pool_key": "banh-canh-phung",
+   "notion_id": "3c839f3f-a67c-8102-8c02-fff2b82e0462",
+   "pool_rank": 3,
+   "pool_role": "carrier",
+   "order_copy": "Bánh canh cá",
+   "desc_copy": "魚湯粗粉類；早段機會比較珍貴，時間對就值得先完成。",
+   "divider": null
+  },
+  {
+   "pool_key": "bun-mam-dung-ha",
+   "notion_id": "3c839f3f-a67c-81a9-8811-f9648d6c005c",
+   "pool_rank": 4,
+   "pool_role": "conditional",
+   "order_copy": "Bún mắm",
+   "desc_copy": "偏南部、發酵魚醬風味；想吃重一點的在地味時優先，營業窗再現場確認。",
+   "divider": null
+  },
+  {
+   "pool_key": "nhum-8k",
+   "notion_id": "3ce39f3f-a67c-81cd-af26-cbd4749bcf5d",
+   "pool_rank": 5,
+   "pool_role": "conditional",
+   "order_copy": "Nhum nướng mỡ hành",
+   "desc_copy": "烤海膽＋蔥油；只在尚未完成 Nhum 時追，先確認有貨、做法與當日價。",
+   "divider": null
+  },
+  {
+   "pool_key": "banh-kheo-co-dung",
+   "notion_id": "3c839f3f-a67c-819c-950a-e2629534cec7",
+   "pool_rank": 6,
+   "pool_role": "fallback",
+   "order_copy": "Bánh khéo 綜合幾種口味",
+   "desc_copy": "小顆、多口味，適合分食；不用硬塞在「下午茶」時段。",
+   "divider": null
+  },
+  {
+   "pool_key": "duong-dong-market",
+   "notion_id": "3c839f3f-a67c-8142-a701-ef2552cbe841",
+   "pool_rank": 7,
+   "pool_role": "market",
+   "order_copy": "Bánh tét mật cật → kẹo chỉ / bánh bò thốt nốt → dừa sáp dầm thốt nốt；水果看 bòn bon / 榴槤",
+   "desc_copy": "熟食與小吃優先，不追固定攤；看到現做、熱賣的再買。",
+   "divider": null
+  },
+  {
+   "pool_key": "nha-xua-68",
+   "notion_id": "3cc39f3f-a67c-81f7-b554-f062aa79b55d",
+   "pool_rank": 8,
+   "pool_role": "fallback",
+   "order_copy": "沒有鎖定單一必點；看當日家常菜＋白飯",
+   "desc_copy": "孩子累、想舒服坐下、正餐時間亂掉時很好用。",
+   "divider": null
+  },
+  {
+   "pool_key": "com-tam-nhi",
+   "notion_id": "3c839f3f-a67c-8117-badf-cfaac7584afc",
+   "pool_rank": 9,
+   "pool_role": "fallback",
+   "order_copy": "Cơm tấm",
+   "desc_copy": "想快速坐下吃一份飯時用；是實用 fallback，不是必追名店。",
+   "divider": null
+  },
+  {
+   "pool_key": "bup-seafood",
+   "notion_id": "3cd39f3f-a67c-814f-b700-f0c5d339537d",
+   "pool_rank": 10,
+   "pool_role": "conditional",
+   "order_copy": "Nhum nướng mỡ hành（只有前面還沒吃到 Nhum）",
+   "desc_copy": "Cable 回島後才有意義；stock / preparation / price gate 都過才用。",
+   "divider": "區域備案｜人在那裡才看"
+  },
+  {
+   "pool_key": "vinwonders-inside",
+   "notion_id": null,
+   "pool_rank": 11,
+   "pool_role": "fallback",
+   "order_copy": "園內就近、孩子能吃的熱食",
+   "desc_copy": "沒有鎖定必吃店；正常或孩子累時，園內解決比為吃飯硬接 Grand World 更合理。",
+   "divider": null
+  },
+  {
+   "pool_key": "wow-que-toi",
+   "notion_id": "3c839f3f-a67c-81b4-ad7e-e4fc9cf00bef",
+   "pool_rank": 12,
+   "pool_role": "fallback",
+   "order_copy": "WOW",
+   "desc_copy": "南島低摩擦 fallback，不升 Dish Carrier。",
+   "divider": null
+  },
+  {
+   "pool_key": "quoc-thien",
+   "notion_id": "3d139f3f-a67c-81a8-a914-c8d697fbbe85",
+   "pool_rank": 13,
+   "pool_role": "verify",
+   "order_copy": "熟食海鮮；先問秤重單價＋加工費",
+   "desc_copy": "Safari → Gành Dầu daylight tail 的目前第一現場備案；不是 protocol-certified winner。",
+   "divider": null
+  },
+  {
+   "pool_key": "phuc-ngan",
+   "notion_id": "3d139f3f-a67c-810c-8fd1-dfdb91857682",
+   "pool_rank": 14,
+   "pool_role": "verify",
+   "order_copy": "熟海鮮；若有熟 Nhum / còi biên mai 可優先問",
+   "desc_copy": "Gành Dầu 第二備案；目前證據不足以升 Carrier。",
+   "divider": null
+  },
+  {
+   "pool_key": "bep-nha-grandworld",
+   "notion_id": "3d139f3f-a67c-815f-9387-c05d91356008",
+   "pool_rank": 15,
+   "pool_role": "verify",
+   "order_copy": "目前沒有足夠證據指定必點；當越式正餐 fallback",
+   "desc_copy": "人在 Grand World 才用；不因為它存在就把 Grand World 接進行程。",
+   "divider": null
+  },
+  {
+   "pool_key": "com-nha-grandworld",
+   "notion_id": "3d139f3f-a67c-8100-9e93-f61f460791e9",
+   "pool_rank": 16,
+   "pool_role": "verify",
+   "order_copy": "家常飯菜；目前沒有 protocol-valid 必點",
+   "desc_copy": "family-style 第二備案；review-integrity 仍有疑慮。",
+   "divider": null
+  },
+  {
+   "pool_key": "an-thoi-market",
+   "notion_id": "3c839f3f-a67c-813b-b2a8-fef95d30e500",
+   "pool_rank": 17,
+   "pool_role": "market",
+   "order_copy": "當下現做熟食／小吃，水果其次",
+   "desc_copy": "不是為市場硬排時間；剛好在 An Thới 才逛。",
+   "divider": null
+  },
+  {
+   "pool_key": "ganh-dau-market",
+   "notion_id": "3c839f3f-a67c-8136-b9da-e6d87c8da6a5",
+   "pool_rank": 18,
+   "pool_role": "market",
+   "order_copy": "現做、熱賣的熟食",
+   "desc_copy": "只在 Safari daylight tail 已經到 Gành Dầu 時順手看。",
+   "divider": null
+  }
+ ]
 }

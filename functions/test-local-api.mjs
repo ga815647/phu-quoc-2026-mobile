@@ -84,3 +84,18 @@ test('foods order: NULLS FIRST parity spot check', async () => {
   const names = b.data.map((f) => f.name);
   assert.ok(names.length === 69);
 });
+
+test('foods carry pool curation via stable-id join (004)', async () => {
+  const b = await (await get('/api/foods')).json();
+  const pooled = b.data.filter((f) => f.pool_key);
+  assert.equal(pooled.length, 18);
+  for (const f of pooled) {
+    assert.ok(Number.isInteger(f.pool_rank));
+    assert.ok(['carrier', 'conditional', 'fallback', 'market', 'verify'].includes(f.pool_role));
+    assert.equal(typeof f.order_copy, 'string');
+    assert.equal(typeof f.desc_copy, 'string');
+    assert.ok(f.notion_id);
+  }
+  const first = b.data.find((f) => f.pool_key === 'bun-ken-ut-luom');
+  assert.ok(first && first.notion_id);
+});

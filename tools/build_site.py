@@ -22,7 +22,10 @@ Design contract (2026-09-22 upgrade):
 - localStorage v3 with safe migration from v2 (no silent overwrite, no direct
   clear of old keys, no Neon overwrite — device-only, no anon public write)
 - 5 cards; anthoi=optional satellite; khem=retired (not rendered as card)
-- food pool order + copy stays human-curated here; DB supplies status/grade/maps/verified
+- food pool order + copy lives in Neon food_pool (004, seeded from the old
+  curated POOL); snapshot + /api/foods carry it by stable notion_id.
+  Build only renders; never hardcodes copy here. Name changes can't break
+  the link (notion_id first, name only as legacy fallback).
 """
 import json
 import html as h
@@ -49,46 +52,6 @@ L_MAIN_API = ("卡片：即時資料 · 取得時間 " if PROD
               else "卡片：測試 API 資料 · 取得時間 ")
 L_MAIN_FB = "卡片：備援靜態資料 · 來源 "
 
-# Human-curated pool order: (food-id, match-substring, order-copy, desc-copy, role-badge)
-POOL = [
- ("bun-ken-ut-luom", "Bún Kèn Út Lượm", "Bún kèn",
-  "富國島地方味優先完成；椰奶魚風味米線。Út Lượm 沒吃到再看 bún kèn 87 backup。", "carrier", "主池｜這趟優先完成"),
- ("banh-mi-anh-thu", "Bánh mì Anh Thư", "Bánh mì",
-  "高優先、低摩擦；很適合塞進行程空檔或晚一點快速吃。", "carrier", None),
- ("banh-canh-phung", "Bánh Canh Phụng", "Bánh canh cá",
-  "魚湯粗粉類；早段機會比較珍貴，時間對就值得先完成。", "carrier", None),
- ("bun-mam-dung-ha", "Bún Mắm Dung Hà", "Bún mắm",
-  "偏南部、發酵魚醬風味；想吃重一點的在地味時優先，營業窗再現場確認。", "conditional", None),
- ("nhum-8k", "Nhum nướng 8K", "Nhum nướng mỡ hành",
-  "烤海膽＋蔥油；只在尚未完成 Nhum 時追，先確認有貨、做法與當日價。", "conditional", None),
- ("banh-kheo-co-dung", "bánh Khéo cô Dung", "Bánh khéo 綜合幾種口味",
-  "小顆、多口味，適合分食；不用硬塞在「下午茶」時段。", "fallback", None),
- ("duong-dong-market", "Chợ Dương Đông", "Bánh tét mật cật → kẹo chỉ / bánh bò thốt nốt → dừa sáp dầm thốt nốt；水果看 bòn bon / 榴槤",
-  "熟食與小吃優先，不追固定攤；看到現做、熱賣的再買。", "market", None),
- ("nha-xua-68", "Nhà Xưa 68", "沒有鎖定單一必點；看當日家常菜＋白飯",
-  "孩子累、想舒服坐下、正餐時間亂掉時很好用。", "fallback", None),
- ("com-tam-nhi", "Cơm tấm Nhị", "Cơm tấm",
-  "想快速坐下吃一份飯時用；是實用 fallback，不是必追名店。", "fallback", None),
- ("bup-seafood", "BUP Seafood", "Nhum nướng mỡ hành（只有前面還沒吃到 Nhum）",
-  "Cable 回島後才有意義；stock / preparation / price gate 都過才用。", "conditional", "區域備案｜人在那裡才看"),
- ("vinwonders-inside", None, "園內就近、孩子能吃的熱食",
-  "沒有鎖定必吃店；正常或孩子累時，園內解決比為吃飯硬接 Grand World 更合理。", "fallback", None),
- ("wow-que-toi", "WOW QUÊ TÔI", "沒有鎖定必點；選當下現做熱食正餐",
-  "南島低摩擦 fallback，不升 Dish Carrier。", "fallback", None),
- ("quoc-thien", "Quoc Thien", "熟食海鮮；先問秤重單價＋加工費",
-  "Safari → Gành Dầu daylight tail 的目前第一現場備案；不是 protocol-certified winner。", "verify", None),
- ("phuc-ngan", "Phúc Ngân", "熟海鮮；若有熟 Nhum / còi biên mai 可優先問",
-  "Gành Dầu 第二備案；目前證據不足以升 Carrier。", "verify", None),
- ("bep-nha-grandworld", "Bếp Nhà Restaurant", "目前沒有足夠證據指定必點；當越式正餐 fallback",
-  "人在 Grand World 才用；不因為它存在就把 Grand World 接進行程。", "verify", None),
- ("com-nha-grandworld", "Cơm Nhà Phú Quốc", "家常飯菜；目前沒有 protocol-valid 必點",
-  "family-style 第二備案；review-integrity 仍有疑慮。", "verify", None),
- ("an-thoi-market", "Chợ An Thới", "當下現做熟食／小吃，水果其次",
-  "不是為市場硬排時間；剛好在 An Thới 才逛。", "market", None),
- ("ganh-dau-market", "Chợ Gành Dầu", "現做、熱賣的熟食",
-  "只在 Safari daylight tail 已經到 Gành Dầu 時順手看。", "market", None),
-]
-
 # Natural Chinese UI labels; full semantics stay in details + data attributes.
 ROLE_LABEL = {"carrier": "優先推薦", "conditional": "條件適合",
               "fallback": "現場備案", "market": "市集小吃", "verify": "待再確認"}
@@ -97,18 +60,13 @@ ROLE_LABEL = {"carrier": "優先推薦", "conditional": "條件適合",
 def load():
     snap = json.loads((DATA / "snapshot.json").read_text(encoding="utf-8"))
     byname = {}
+    bynotion = {}
     for f in snap["foods"]:
         byname.setdefault(f["name"], f)
-    return snap, byname
-
-
-def find(byname, sub):
-    if sub is None:
-        return None
-    for name, f in byname.items():
-        if sub.lower() in name.lower():
-            return f
-    return None
+        nid = f.get("notion_id")
+        if nid:
+            bynotion.setdefault(nid, f)
+    return snap, byname, bynotion
 
 
 def gmap(query, label="地圖"):
@@ -167,16 +125,32 @@ def build_bookings_html(bookings):
     return "\n".join(parts)
 
 
-def build_food_pool(byname, candidate=False):
+def build_food_pool(pool, bynotion, byname, candidate=False):
+    """Render the curated pool from snapshot (DB food_pool is the source).
+
+    Stable link: notion_id first; name only as legacy fallback for rows whose
+    notion_id is NULL (static-only entries). Never auto-expand to all 69;
+    an empty pool renders an honest empty-state, never fabricated cards.
+    data-food-id keeps the pool_key so device-local eaten state survives.
+    """
     out = []
-    rank = 0
-    for fid, sub, order, desc, role, divider in POOL:
+    rows = sorted(pool or [], key=lambda r: (r.get("pool_rank") if isinstance(r.get("pool_rank"), int) else 9999))
+    if not rows:
+        return ('<div class="empty">精選池目前沒有項目（空狀態，非故障）。'
+                '池成員由內容維護決策，不會自動把全部店家放進來。</div>', 0)
+    for row in rows:
+        key = row.get("pool_key") or ""
+        nid = row.get("notion_id")
+        role = row.get("pool_role") or "fallback"
+        order = row.get("order_copy") or ""
+        desc = row.get("desc_copy") or ""
+        divider = row.get("divider")
+        rank = row.get("pool_rank")
         if divider:
             out.append(f'<div class="pool-divider">{h.escape(divider)}</div>')
-        rank += 1
-        f = find(byname, sub)
+        f = bynotion.get(nid) if nid else None
         if f is None:
-            name, region = fid, "—"
+            name, region = key, "—"
             badge, mlink = "", ""
             fname = ""
             tslots, atlas = "", ""
@@ -189,20 +163,23 @@ def build_food_pool(byname, candidate=False):
             atlas = f.get("atlas_state") or ""
         fname_attr = (f' data-food-name="{h.escape(fname)}"' if candidate or True
                       else "")
+        nid_attr = (f' data-notion-id="{h.escape(nid)}"' if nid else "")
         out.append(
-            f'<article class="food-card" data-food-id="{fid}"{fname_attr}'
+            f'<article class="food-card" data-food-id="{h.escape(key)}"{nid_attr}{fname_attr}'
             f' data-region="{h.escape(region)}" data-atlas-state="{h.escape(atlas)}"'
-            f' data-time-slots="{h.escape(str(tslots))}">'
+            f' data-time-slots="{h.escape(str(tslots))}"'
+            f' data-pool-rank="{h.escape(str(rank if rank is not None else ""))}"'
+            f' data-divider="{h.escape(divider or "")}">'
             f'<div class="food-rank">{rank:02d}</div><div class="food-info">'
             f'<div class="food-name">{h.escape(name)}</div>'
             f'<div class="food-meta"><span class="food-region food-place">{h.escape(region)}</span>'
-            f'<span class="role {role}">{ROLE_LABEL[role]}</span>{badge}</div>'
+            f'<span class="role {h.escape(role)}">{ROLE_LABEL.get(role, role)}</span>{badge}</div>'
             f'<p class="food-order"><span>點：</span>{h.escape(order)}</p>'
             f'<p class="food-desc">{h.escape(desc)}</p></div>'
             f'<div class="food-actions">{mlink}'
             f'<button class="eaten-btn" type="button" aria-pressed="false">○ 未吃</button>'
             f"</div></article>")
-    return "\n".join(out), rank
+    return "\n".join(out), len(rows)
 
 
 CSS = open(ROOT / "tools" / "site.css", encoding="utf-8").read() if (ROOT / "tools" / "site.css").exists() else ""
@@ -332,8 +309,9 @@ def build_itinerary_days_html():
 
 
 def main():
-    snap, byname = load()
-    pool_html, n_food = build_food_pool(byname, candidate=True)
+    snap, byname, bynotion = load()
+    pool = snap.get("pool", [])
+    pool_html, n_food = build_food_pool(pool, bynotion, byname, candidate=True)
     food_banner = ('<div class="src-banner tiny" id="foodSrcBanner" style="display:none"></div>'
                    if DYNAMIC else "")
     cards = [c for c in snap["cards"] if c["status"] == "ACTIVE"]
@@ -391,6 +369,7 @@ def main():
         foods_js = (
             "function escF(s){return String(s??'').replace(/[&<>\\\"]/g,"
             "c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\\\"':'&quot;'}[c]))}"
+            "var ROLE_TXT={carrier:'優先推薦',conditional:'條件適合',fallback:'現場備案',market:'市集小吃',verify:'待再確認'};"
             "function dynBadge(f){"
             "var p='';"
             "if(f.atlas_state==='ACTIVE')p+='<span class=\"role carrier\" data-atlas=\"ACTIVE\">已確認</span>';"
@@ -404,10 +383,19 @@ def main():
             "var el=document.getElementById('foodSrcBanner');if(!el)return;el.style.display='';el.className='src-banner tiny'+(kind==='api'?' live':'');"
             "el.textContent=kind==='api'?('" + L_API_F + "'+when+'（取得時間，非核實時間）')"
             ":('" + L_FB_F + "'+when+'（備援快照，非即時）')}"
-            "fetchJson('" + api + "/api/foods').then(w=>{var byName={};w.data.forEach(f=>{byName[f.name]=f});"
-            "document.querySelectorAll('[data-food-name]').forEach(card=>{"
-            "var key=card.getAttribute('data-food-name');if(!key||!byName[key])return;"
-            "var f=byName[key];"
+            "function resortPool(){"
+            "var pool=document.getElementById('foodPool');if(!pool)return;"
+            "var cards=[...pool.querySelectorAll('.food-card')];"
+            "pool.querySelectorAll('.pool-divider').forEach(d=>d.remove());"
+            "cards.sort((a,b)=>{var ra=parseInt(a.getAttribute('data-pool-rank')||'9999',10),rb=parseInt(b.getAttribute('data-pool-rank')||'9999',10);return ra-rb});"
+            "var lastDiv='\\u0000';"
+            "cards.forEach(c=>{var dv=c.getAttribute('data-divider')||'';if(dv!==lastDiv){if(dv){var d=document.createElement('div');d.className='pool-divider';d.textContent=dv;pool.appendChild(d)}lastDiv=dv}pool.appendChild(c)})}"
+            "fetchJson('" + api + "/api/foods').then(w=>{var byNid={},byName={};w.data.forEach(f=>{if(f.notion_id)byNid[f.notion_id]=f;byName[f.name]=f});"
+            "document.querySelectorAll('[data-food-id]').forEach(card=>{"
+            "var nid=card.getAttribute('data-notion-id');"
+            "var f=(nid&&byNid[nid])||byName[card.getAttribute('data-food-name')]||null;"
+            "if(!f)return;"
+            "if(!nid&&f.notion_id)card.setAttribute('data-notion-id',f.notion_id);"
             "card.setAttribute('data-region',f.region||'—');"
             "card.setAttribute('data-atlas-state',f.atlas_state||'');"
             "card.setAttribute('data-time-slots',f.time_slots||'');"
@@ -415,13 +403,21 @@ def main():
             "if(rg)rg.textContent=f.region||'—';"
             "var meta=card.querySelector('.food-meta');"
             "if(meta){var old=meta.querySelectorAll("
-            "'.role.carrier,.role.verify,.role.red,.food-region:not(.food-place),.tiny[data-atlas-raw]');"
+            "'.role.carrier,.role.verify,.role.red,.role.conditional,.role.fallback,.role.market,.food-region:not(.food-place),.tiny[data-atlas-raw]');"
             "old.forEach(n=>n.remove());"
-            "var tmp=document.createElement('span');tmp.innerHTML=dynBadge(f);"
+            "var tmp=document.createElement('span');"
+            "var roleCls=f.pool_role||'fallback';"
+            "tmp.innerHTML='<span class=\"role '+roleCls+'\">'+escF(ROLE_TXT[roleCls]||roleCls)+'</span>'+dynBadge(f);"
             "while(tmp.firstChild)meta.appendChild(tmp.firstChild)}"
+            "if(f.pool_rank!=null)card.setAttribute('data-pool-rank',f.pool_rank);"
+            "if(f.divider!==undefined&&f.divider!==null)card.setAttribute('data-divider',f.divider||'');"
+            "var ord=card.querySelector('.food-order'),des=card.querySelector('.food-desc');"
+            "if(ord&&f.order_copy!=null)ord.innerHTML='<span>點：</span>'+escF(f.order_copy);"
+            "if(des&&f.desc_copy!=null)des.textContent=f.desc_copy;"
             "var mq=f.maps_query||f.name;"
             "var a=card.querySelector('a.map');"
             "if(a)a.href='https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(mq+' Phú Quốc')});"
+            "resortPool();"
             "markFood('api',w.meta&&w.meta.fetched_at);applyFoodFilters();})"
             ".catch(()=>{markFood('fallback','備援靜態 JSON · 快照 " + snapshot_src.replace("'", "") + "');applyFoodFilters();});"
         )
@@ -441,11 +437,15 @@ def main():
             "<span class=\"food-region\">金額 '+escB(b.amount||'')+' · 核實 '+escB(b.evidence_as_of||'')+'</span>"
             "</div></div>').join(''):'')+'</div><div class=\"tiny\" style=\"margin-top:8px\">金額保留原始幣別，不同幣別不直接加總。訂單細節（訂單碼／聯絡方式）不在公開站顯示。</div>';"
             "document.getElementById('bookingsPanel').innerHTML=h;"
+            "var tb=document.getElementById('todayBookings');"
+            "if(tb){var names=cf.map(b=>b.title||b.slug).slice(0,3).join('、');"
+            "tb.textContent='預訂即時：已確認 '+cf.length+(names?('（'+names+(cf.length>3?'等':'')+'）'):'')+' · 待辦追蹤 '+op.length+'（取得時間 '+when+'，非核實時間）'}"
             "var el=document.getElementById('bookSrcBanner');if(el){el.style.display='';el.className='src-banner tiny'+(src==='api'?' live':'');"
             "el.textContent=src==='api'?('" + L_API_B + "'+when+'（取得時間，非核實時間）'):('"
             + L_FB_B + "'+when+'（備援快照，非即時）')}}"
             "fetchJson('" + api + "/api/bookings').then(w=>renderBookings(w.data,'api',w.meta&&w.meta.fetched_at))"
             ".catch(()=>{"
+            "var tb=document.getElementById('todayBookings');if(tb)tb.textContent='預訂摘要：備援快照（非即時），以旅程區訂單快照為準；預訂變更後以即時 API 為準。';"
             "var el=document.getElementById('bookSrcBanner');if(el){el.style.display='';"
             "el.textContent='備援靜態資料 · 訂單區維持 build 期快照（備援快照，非即時）'}});"
         )
@@ -492,7 +492,7 @@ def main():
 <div class="wrap">
 <section class="section" id="today" aria-label="今天">
 <div class="section-head"><h2>今天</h2><span>旅途中先看這裡 · 越南時區判定</span></div>
-<div class="panel pad"><div class="label">今日狀態 · 越南時區 Asia/Ho_Chi_Minh</div><div class="today-big" id="todayTitle">讀取中…</div><div class="tiny" id="todayDesc">正在依越南日期判斷旅程階段，不會編造未安排的行程，也不會依時間自動宣稱已完成。</div><div class="tiny" id="todayNext" style="margin-top:8px"></div><div class="row-actions"><button class="ghost" data-goto="itinerary" type="button">看行程日期</button></div></div>
+<div class="panel pad"><div class="label">今日狀態 · 越南時區 Asia/Ho_Chi_Minh</div><div class="today-big" id="todayTitle">讀取中…</div><div class="tiny" id="todayDesc">正在依越南日期判斷旅程階段，不會編造未安排的行程，也不會依時間自動宣稱已完成。</div><div class="tiny" id="todayNext" style="margin-top:8px"></div><div class="tiny" id="todayBookings" style="margin-top:8px">預訂摘要載入中…（即時 API 優先，失敗顯示備援快照）</div><div class="row-actions"><button class="ghost" data-goto="itinerary" type="button">看行程日期</button></div></div>
 <div class="panel pad" style="margin-top:10px"><div class="label">重要提醒（出發前重查）</div><div class="tiny">超過 30 天或缺少核實日期的資料，出發前請重查。核實日期見各卡片／店家標示；上方橫條為資料取得時間，兩者不同。纜車首末班、OnBird 接送與海況、Starfish 七項條件＋48 小時現況，回程交通與孩子限制（約 115 公分，全程後座）請於前一天 15:00–17:00 只確認隔天。</div></div>
 </section>
 <section class="section" id="itinerary" aria-label="行程">
@@ -550,7 +550,7 @@ function renderCard(c){{
 }}
 // Vietnam timezone trip phase (never fabricate, never auto-complete)
 function vietnamDate(){{try{{var p=new Intl.DateTimeFormat('en-CA',{{timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit'}}).format(new Date());return p}}catch(e){{var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}}}}
-function renderToday(){{var vd=vietnamDate();var line=document.getElementById('vietnamDateLine');if(line)line.textContent='越南時間 '+vd+'（Asia/Ho_Chi_Minh）';var ph=document.getElementById('tripPhase'),ti=document.getElementById('todayTitle'),de=document.getElementById('todayDesc'),nx=document.getElementById('todayNext');if(!ph||!ti)return;var sSaved={{}};try{{sSaved=JSON.parse(localStorage.getItem('phq-v3-slots')||localStorage.getItem('phq-v2-slots')||'{{}}')}}catch(e){{}}function slot(d){{return sSaved[d]||''}}if(vd<'2026-10-10'){{ph.textContent='出發前';ti.textContent='旅程摘要 · 10/11 已確認，其餘保持彈性';if(de)de.textContent='已確認：OnBird 10/11 上午、Cosy 5 晚、來回航班。待辦：旅行保險、島上交通未鎖。出發前只查必要項目，不重新研究整趟。';if(nx)nx.textContent='未安排的日子不會顯示假安排；暫排可到行程區設定（只存本機）。'}}else if(vd<='2026-10-15'){{ph.textContent='旅途中 · '+vd;var map={{'2026-10-10':['抵達安頓','抵達 Cosy 安頓，不排大行程'], '2026-10-11':['OnBird 已確認','業者接送往返，回來先休息；體力好才接市區晚間'], '2026-10-12':['彈性日','前晚鎖定；可從五卡選一或休息'], '2026-10-13':['彈性日','前晚鎖定；避免連排高強度'], '2026-10-14':['彈性日','Starfish 需條件全通過才成立'], '2026-10-15':['返程','退房＋前往機場 VJ844']}};var cur=map[vd]||['旅途中','依行程區日期切換查看'];ti.textContent='今日（'+vd+'）：'+cur[0];var extra='';if(vd>='2026-10-12'&&vd<='2026-10-14'){{var mm={{'2026-10-12':'10/12','2026-10-13':'10/13','2026-10-14':'10/14'}}[vd];var sv=slot(mm);extra=sv?(' · 暫排：'+sv+'（本機暫排，非已預訂）'):(' · 暫排：尚未鎖定（未安排，不編造）')}}if(de)de.textContent=cur[1]+extra+'。重要時間與地圖請進對應行程卡詳情。不會依時間自動宣稱已完成。';if(nx)nx.textContent='下一個重點：'+(vd==='2026-10-11'?'OnBird 後先休息':(vd<'2026-10-11'?'10/11 OnBird 已確認':(vd==='2026-10-15'?'返程航班':'明日前晚 15:00–17:00 再鎖定')));}}else{{ph.textContent='旅行後';ti.textContent='旅程已結束（'+vd+'）';if(de)de.textContent='此站保留為紀錄與備援快照。私人筆記不在公開站顯示。';if(nx)nx.textContent='';}}}}
+function renderToday(){{var vd=vietnamDate();var line=document.getElementById('vietnamDateLine');if(line)line.textContent='越南時間 '+vd+'（Asia/Ho_Chi_Minh）';var ph=document.getElementById('tripPhase'),ti=document.getElementById('todayTitle'),de=document.getElementById('todayDesc'),nx=document.getElementById('todayNext');if(!ph||!ti)return;var sSaved={{}};try{{sSaved=JSON.parse(localStorage.getItem('phq-v3-slots')||localStorage.getItem('phq-v2-slots')||'{{}}')}}catch(e){{}}function slot(d){{return sSaved[d]||''}}if(vd<'2026-10-10'){{ph.textContent='出發前';ti.textContent='旅程摘要 · 10/11 已確認，其餘保持彈性';if(de)de.textContent='已確認（備援快照）：OnBird 10/11 上午、Cosy 5 晚、來回航班。即時狀態見上方預訂行；待辦：旅行保險、島上交通未鎖。出發前只查必要項目，不重新研究整趟。';if(nx)nx.textContent='未安排的日子不會顯示假安排；暫排可到行程區設定（只存本機）。'}}else if(vd<='2026-10-15'){{ph.textContent='旅途中 · '+vd;var map={{'2026-10-10':['抵達安頓','抵達 Cosy 安頓，不排大行程'], '2026-10-11':['OnBird 已確認','業者接送往返，回來先休息；體力好才接市區晚間'], '2026-10-12':['彈性日','前晚鎖定；可從五卡選一或休息'], '2026-10-13':['彈性日','前晚鎖定；避免連排高強度'], '2026-10-14':['彈性日','Starfish 需條件全通過才成立'], '2026-10-15':['返程','退房＋前往機場 VJ844']}};var cur=map[vd]||['旅途中','依行程區日期切換查看'];ti.textContent='今日（'+vd+'）：'+cur[0];var extra='';if(vd>='2026-10-12'&&vd<='2026-10-14'){{var mm={{'2026-10-12':'10/12','2026-10-13':'10/13','2026-10-14':'10/14'}}[vd];var sv=slot(mm);extra=sv?(' · 暫排：'+sv+'（本機暫排，非已預訂）'):(' · 暫排：尚未鎖定（未安排，不編造）')}}if(de)de.textContent=cur[1]+extra+'。重要時間與地圖請進對應行程卡詳情。不會依時間自動宣稱已完成。';if(nx)nx.textContent='下一個重點：'+(vd==='2026-10-11'?'OnBird 後先休息':(vd<'2026-10-11'?'10/11 OnBird 已確認':(vd==='2026-10-15'?'返程航班':'明日前晚 15:00–17:00 再鎖定')));}}else{{ph.textContent='旅行後';ti.textContent='旅程已結束（'+vd+'）';if(de)de.textContent='此站保留為紀錄與備援快照。私人筆記不在公開站顯示。';if(nx)nx.textContent='';}}}}
 // nav (no hash)
 const sticky=document.querySelector('.sticky');
 const navButtons=[...document.querySelectorAll('[data-jump]')];
