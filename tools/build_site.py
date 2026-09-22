@@ -111,8 +111,9 @@ def src_block(zone_id, zone_label, day):
     return (
         f'<div class="src-fallback" id="{zone_id}Fallback" hidden>'
         f'更新暫不可用，顯示備援資料{fb_day}</div>'
+        f'\n<div class="tiny" id="{zone_id}SrcLine">{h.escape(zone_label)} · 取得時間 載入中</div>'
         f'\n<details class="src-info" id="{zone_id}Src"><summary>資料資訊</summary>'
-        f'<div>{h.escape(zone_label)} · 取得時間 載入中（失敗時顯示備援資料{fb_day}）</div></details>'
+        f'<div>失敗時顯示備援資料{fb_day}</div></details>'
     )
 
 
@@ -540,7 +541,7 @@ def main():
 const API_BASE="PLACEHOLDER_API_BASE";
 const SNAPSHOT_SRC={json.dumps(snapshot_src, ensure_ascii=False)};
 const SNAPSHOT_DAY=(function(){{var m=String(SNAPSHOT_SRC||'').match(/\\d{{4}}-\\d{{2}}-\\d{{2}}/);return m?m[0]:''}})();
-function setSrc(zoneId,kind,when,label){{var fb=document.getElementById(zoneId+'Fallback');var dt=document.querySelector('#'+zoneId+'Src div');if(kind!=='api'){{if(fb){{var day=SNAPSHOT_DAY?(' · 快照 '+SNAPSHOT_DAY):'';fb.textContent='更新暫不可用，顯示備援資料'+day;fb.hidden=false}}}}else{{if(fb)fb.hidden=true}}if(dt)dt.textContent=(label||'資料')+' · '+(kind==='api'?('取得時間 '+(when||'')):('備援資料'+(SNAPSHOT_DAY?(' · 快照 '+SNAPSHOT_DAY):'')))}}
+function setSrc(zoneId,kind,when,label){{var fb=document.getElementById(zoneId+'Fallback');var dt=document.getElementById(zoneId+'SrcLine');if(kind!=='api'){{if(fb){{var day=SNAPSHOT_DAY?(' · 快照 '+SNAPSHOT_DAY):'';fb.textContent='更新暫不可用，顯示備援資料'+day;fb.hidden=false}}}}else{{if(fb)fb.hidden=true}}if(dt)dt.textContent=(label||'資料')+' · '+(kind==='api'?('取得時間 '+(when||'')):('備援資料'+(SNAPSHOT_DAY?(' · 快照 '+SNAPSHOT_DAY):'')))}}
 function jparse(s,fb){{try{{const v=JSON.parse(s);return v??fb}}catch(e){{return fb}}}}
 function fetchJson(url,ms){{ms=ms||8000;var c=new AbortController();var t=setTimeout(()=>c.abort(),ms);return fetch(url,{{signal:c.signal,cache:'no-store'}}).then(r=>{{clearTimeout(t);if(!r.ok)throw 0;return r.text().then(tx=>{{try{{var j=JSON.parse(tx);if(!j||j.data===undefined)throw 0;return j}}catch(e){{throw 0}}}})}}).catch(e=>{{clearTimeout(t);throw 0}})}}
 function escH(s){{return String(s??'').replace(/[&<>"]/g,c=>({{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}}[c]))}}
