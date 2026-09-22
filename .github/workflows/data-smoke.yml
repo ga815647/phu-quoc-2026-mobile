@@ -221,9 +221,10 @@ jobs:
             const [sw,cw]=overflow.split('/').map(Number);
             if(sw>cw+1) throw new Error('horizontal overflow '+overflow);
 
-            // source banners distinguish fetched vs verified vs snapshot
+            // source lines distinguish fetched vs verified vs snapshot (visible one-liners, not closed details)
             const banners=await page.locator('body').innerText();
-            if(!banners.includes('取得時間')||!banners.includes('核實')) throw new Error('source-date distinction missing');
+            if(!banners.includes('取得時間')) throw new Error('source-date distinction missing (no 取得時間 line)');
+            if(!banners.includes('核實')&&!banners.includes('驗證')) throw new Error('source-date distinction missing (no 核實/驗證)');
             if(banners.includes('現在營業')&&!banners.includes('營業中')) throw new Error('possible fake open-now claim');
 
             // card detail pages (runs last: navigation leaves main page)
