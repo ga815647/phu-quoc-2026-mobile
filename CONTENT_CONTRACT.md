@@ -55,7 +55,9 @@ evidence_as_of`
 
 **food_pool**（ID `pool_key`；精選池單一來源）：`pool_rank(INTEGER),
 pool_role(carrier/conditional/fallback/market/verify), order_copy, desc_copy, divider`。
-關聯欄 `notion_id` 不可改（改關聯＝重建池成員，需內容決策＋明確 INSERT，不走本函式）。
+ 關聯欄 `notion_id` 不可改（改關聯＝重建池成員，需內容決策＋明確 INSERT，不走本函式）。
+ `notion_id` 允許 NULL（目前僅 `vinwonders-inside` 純靜態條目）；
+ NULL 列只吃 `/api/pool` 的池文案，不參與 foods JOIN。
 
 **evidence_log**（旅途中唯一建議的追加路徑）：只 `INSERT (ref_type, ref_id, note)`，
 不改主表。`ref_type ∈ {food,point,card,booking}`。
@@ -149,7 +151,7 @@ VALUES ('food','<notion_id>','2026-10-12 現場觀察：...（僅當日觀察，
 | 五卡時間線／交通／餐飲／取捨／成行條件 | `cards.*`／`slug` | `/api/cards[?slug=]` | 行程卡片＋`card.html?slug=` | `data/cards.json` | ● |
 | 卡片摘要／badge／核實日期 | `cards.summary,evidence_as_of` 等 | 同上 | 同上 | 同上 | ● |
 | 美食地區／狀態／驗證／地圖 | `food_places.region,atlas_state,last_verified,maps_query...`／`notion_id` | `/api/foods` | 美食卡 badge＋篩選屬性 | `snapshot.foods` | ●（回填鍵＝`notion_id`，改名不斷鏈；`name` 僅遺產 fallback） |
-| 精選池排序／角色／點餐／推薦文案 | `food_pool.pool_rank,pool_role,order_copy,desc_copy,divider`／`pool_key`（關聯 `notion_id`，NULL 者純靜態） | `/api/pool`（18 列全含，池鍵識別）＋ `/api/foods`（JOIN 狀態回填） | 美食池渲染＋即時改文＋按 rank 重排 | `snapshot.pool`＋`data/pool.json` | ●（單一來源；69 家不自動進池；`/api/pool` 需 Function 重部署，本輪測試分支已驗，正式待部署） |
+| 精選池排序／角色／點餐／推薦文案 | `food_pool.pool_rank,pool_role,order_copy,desc_copy,divider`／`pool_key`（`notion_id` NULL 者只吃池文案，不 JOIN 店家） | `/api/pool`（18 列全含，池鍵識別）＋ `/api/foods`（JOIN 狀態回填） | 美食池渲染＋即時改文＋按 rank 重排 | `snapshot.pool`＋`data/pool.json` | ●（單一來源；69 家不自動進池；`/api/pool` 本輪測試 Function 已驗 18/18，正式 Function 待重部署） |
 | 預訂（已確認／待辦） | `bookings.kind,title,amount,status,evidence_as_of`／`slug` | `/api/bookings` | 旅程訂單區＋**今天預訂即時行** | `data/bookings.json` | ●（`detail/evidence` 可維護、永不公開） |
 | 交通備案 | `transport_options.*`／`slug` | `/api/transport` | 旅程交通區 | `snapshot.transport` | ● |
 | 暫排（10/12–14） | 無專用結構（見 §8） | — | 行程暫排下拉（本機） | — | △本機（`phq-v3-slots`） |
@@ -169,9 +171,11 @@ VALUES ('food','<notion_id>','2026-10-12 現場觀察：...（僅當日觀察，
   池區顯示空狀態，不編造。本輪已從正式庫全量重匯（`refreshed_from_neon:
   2026-09-22`；各筆核實日期原樣保留，匯出日期另記，不冒充核實）。
   內容表零漂移（foods/cards/bookings/points/transport/carriers 與舊快照一致），
-  僅修正池 `wow-que-toi.order_copy` 測試標記殘留＋新增 refreshed 註記。
-  一般內容更新走 API 即時鏈，**不需重部署 Function**；只有 Function 程式
-  變更才需重部署（esbuild bundle，经測試分支驗證）。
+   僅修正池 `wow-que-toi.order_copy` 測試標記殘留＋新增 refreshed 註記。
+   一般內容更新走 API 即時鏈，**不需重部署 Function**；只有 Function 程式
+   變更才需重部署（esbuild bundle 經測試分支驗證；部署走 multipart 直傳，
+   不經 MCP base64 參數——大 bundle（~25KB zip）直傳參數會被工具側驗證擋下，
+   本輪已用 `/tmp/opencode/deploy_phq*.js` 腳本恢復）。
 - 卡片／池靜態 HTML 是 build 期快照；API 成功時以即時覆蓋並重排，
   失敗時保留快照＋備援標示。
 
@@ -182,8 +186,9 @@ VALUES ('food','<notion_id>','2026-10-12 現場觀察：...（僅當日觀察，
 - `content_update(text×4,integer,text×3)` 存在，owner `neondb_owner`，
   `SECURITY INVOKER`（無 DEFINER）。測試分支 12 項正負案例全過；
   正式庫 smoke（讀寫還原一輪）通過，稽核留存為部署證據。
-- 函式存在性判斷不用 `FOUND`，改用 `RETURNING version, 1`＋`IS NULL`
-  （在各執行路徑下語義明確，不依賴特定旗標行為）。
+- 函式存在性判斷用 `RETURNING version, 1`＋結果 `IS NULL`
+  （PL/pgSQL 的 `EXECUTE ... INTO` 不更新 `FOUND` 是語言行為，
+  與執行通道無關；此寫法在各路徑下語義明確）。
 - **授權狀態**：本次 migration 已獲核准並完成；使用者已授權契約範圍
   （§2 白名單）內的日常內容維護。Chat 寫入前仍須先讀本契約確認
   正式支援確實存在（測試分支驗證不算）。
@@ -201,11 +206,16 @@ VALUES ('food','<notion_id>','2026-10-12 現場觀察：...（僅當日觀察，
   錯誤固定字串不洩 SQL／DSN。這是**行為一致性證據**，不是身分證明：
   `current_user/session_user` 屬服務端環境，未經授權不得輸出 secret，
   也未新增診斷端點，故身分僅標「與 `phq_web_ro` 一致」，不宣稱已確認。
-- `content_update` 的 EXECUTE 現狀：新建函式預設 PUBLIC 可執行，
-  故 `phq_web_ro` 目前也可 EXECUTE；但函式為 INVOKER，內部 UPDATE
-  以**呼叫者權限**執行——`phq_web_ro` 無任何 UPDATE 授權，呼叫只會
-  權限不足失敗，**不構成公開寫入漏洞**，也不代表已達成執行權限隔離。
-  收斂方案（005，測試分支驗證中；正式套用待確認，見下）。
+- `content_update` 的 EXECUTE 現狀（正式庫已查證）：
+  ACL 為 NULL（預設 PUBLIC 可執行），故 `phq_web_ro` 目前也可 EXECUTE；
+  但函式為 INVOKER 且 `phq_web_ro` 自身無任何 UPDATE 授權，
+  呼叫只會權限不足失敗，**不構成公開寫入漏洞**，也不代表已達成執行權限隔離。
+  注意角色方向：`neondb_owner` 是 `phq_web_ro` 的成員
+  （owner 可 SET ROLE 成 ro，不是 ro 繼承 owner 寫權；ro 的有效權限未擴大）。
+  收斂方案 005（`REVOKE ... FROM PUBLIC`，只收函式執行權，不動表授權，
+  不做全域 REVOKE）：測試分支已驗（PUBLIC／ro 關閉、owner 可用）。
+  正式套用前需確認 Chat connector 實際身分（`SELECT current_user`），
+  身分不明不套用；正式 ACL 變更另行確認。
 
 現行業務限制仍保留：`chatgpt-instructions.md` 的旅途中主表凍結
 （只追加 `evidence_log`）、私人欄位不公開、批量覆寫／硬刪除／改動已確認

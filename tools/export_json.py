@@ -81,7 +81,10 @@ def main():
     snap = {"foods": foods, "carriers": carriers, "points": points, "cards": cards,
             "bookings": bookings, "transport": transport, "pool": pool,
             "meta": {"cards_rule": "5-card: onbird/vinwonders/cable/starfish/safari; anthoi=OPTIONAL satellite; khem=RETIRED",
-                     "source": "Notion ETL 2026-09-20"}}
+                     "source": "Notion ETL 2026-09-20",
+                     "pool_source": "Neon food_pool (004)" if pool else "empty (pre-004 DB)"}}
+    from datetime import date
+    snap["meta"]["refreshed_from_neon"] = date.today().isoformat() if SOURCE == "neon" else snap["meta"].get("refreshed_from_neon", "")
     snap["meta"]["db_source"] = SOURCE
     if not INTERNAL:
         # Default public projection: same column contract as the read-only API.

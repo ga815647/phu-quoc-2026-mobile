@@ -407,8 +407,8 @@ def main():
             "if(des&&p.desc_copy!=null)des.textContent=p.desc_copy;});"
             "resortPool();"
             "markFood('api',w.meta&&w.meta.fetched_at);applyFoodFilters();"
-            "return fetchJson('" + api + "/api/foods')})"
-            ".then(w=>{if(!w)return;var byNid={},byName={};w.data.forEach(f=>{if(f.notion_id)byNid[f.notion_id]=f;byName[f.name]=f});"
+            "}).catch(()=>{markFood('fallback','備援靜態 JSON · 快照 " + snapshot_src.replace("'", "") + " · 池文案暫用快照');applyFoodFilters();});"
+            "fetchJson('" + api + "/api/foods').then(w=>{var byNid={},byName={};w.data.forEach(f=>{if(f.notion_id)byNid[f.notion_id]=f;byName[f.name]=f});"
             "document.querySelectorAll('[data-food-id]').forEach(card=>{"
             "var nid=card.getAttribute('data-notion-id');"
             "var f=(nid&&byNid[nid])||byName[card.getAttribute('data-food-name')]||null;"
@@ -428,7 +428,7 @@ def main():
             "var a=card.querySelector('a.map');"
             "if(a)a.href='https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(mq+' Phú Quốc')});"
             "applyFoodFilters();})"
-            ".catch(()=>{markFood('fallback','備援靜態 JSON · 快照 " + snapshot_src.replace("'", "") + "');applyFoodFilters();});"
+            ".catch(()=>{markFood('fallback','備援靜態 JSON · 快照 " + snapshot_src.replace("'", "") + " · 店家狀態暫用快照');applyFoodFilters();});"
         )
         bookings_js = (
             "function escB(s){return String(s??'').replace(/[&<>\\\"]/g,"

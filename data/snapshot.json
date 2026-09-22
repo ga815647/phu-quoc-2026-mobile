@@ -3035,14 +3035,6 @@
    "evidence_as_of": "2026-08-25"
   }
  ],
- "meta": {
-  "cards_rule": "5-card: onbird/vinwonders/cable/starfish/safari; anthoi=OPTIONAL satellite; khem=RETIRED",
-  "source": "Notion ETL 2026-09-20",
-  "db_source": "neon",
-  "projection": "public-v1",
-  "pool_source": "Neon food_pool 2026-09-22 (004)",
-  "refreshed_from_neon": "2026-09-22"
- },
  "pool": [
   {
    "pool_key": "bun-ken-ut-luom",
@@ -3206,5 +3198,13 @@
    "desc_copy": "只在 Safari daylight tail 已經到 Gành Dầu 時順手看。",
    "divider": null
   }
- ]
+ ],
+ "meta": {
+  "cards_rule": "5-card: onbird/vinwonders/cable/starfish/safari; anthoi=OPTIONAL satellite; khem=RETIRED",
+  "source": "Notion ETL 2026-09-20",
+  "pool_source": "Neon food_pool (004)",
+  "refreshed_from_neon": "2026-09-22",
+  "db_source": "neon",
+  "projection": "public-v1"
+ }
 }
