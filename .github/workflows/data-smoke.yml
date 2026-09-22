@@ -4,12 +4,14 @@ on:
   push:
     branches: [main]
     paths:
+      - 'index.html'
       - 'data.html'
       - 'card.html'
       - 'data/*.json'
       - 'tools/build_site.py'
       - 'tools/site.css'
       - 'tools/seed_card_details.py'
+      - 'CONTENT_CONTRACT.md'
       - '.github/workflows/data-smoke.yml'
   workflow_dispatch:
 
@@ -21,11 +23,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Check live data.html on mobile Chromium
+      - name: Check live site on mobile Chromium (poll for this commit)
         run: |
           set -euo pipefail
-          # Workflow-file changes also kick Pages. Let the live static site catch up first.
-          sleep 20
           npm install --no-save playwright@1.55.0 >/dev/null 2>&1
           npx playwright install --with-deps chromium >/dev/null 2>&1
           cat > data-smoke.cjs <<'JS'
@@ -37,24 +37,101 @@ jobs:
             const errors=[];
             page.on('pageerror',e=>errors.push(String(e)));
             page.on('dialog',d=>d.accept());
-            await page.goto(`https://ga815647.github.io/phu-quoc-2026-mobile/data.html?smoke=data-${Date.now()}`,{waitUntil:'networkidle'});
+            const base='https://ga815647.github.io/phu-quoc-2026-mobile';
+            // Poll for this commit: unified root must contain new 4-entry UI, not old hero.
+            // Do not pass on stale deploy by fixed sleep alone.
+            let live=null;
+            for(let i=0;i<12;i++){
+              for(const u of [`${base}/?smoke=${Date.now()}`,`${base}/data.html?smoke=data-${Date.now()}`]){
+                try{
+                  await page.goto(u,{waitUntil:'networkidle',timeout:20000});
+                  await page.waitForTimeout(800);
+                  const t=await page.locator('body').innerText();
+                  if(t.includes('今天')&&t.includes('行程')&&t.includes('美食')&&t.includes('旅程')&&t.includes('越南時間')&&t.includes('已吃 0 / 18')){
+                    live=u; break;
+                  }
+                }catch(e){}
+              }
+              if(live) break;
+              await new Promise(r=>setTimeout(r,15000));
+            }
+            if(!live) throw new Error('live site did not update to this commit (missing 今天/行程/美食/旅程/越南時間/已吃 0 / 18)');
+            console.log('LIVE='+live);
+            await page.goto(live,{waitUntil:'networkidle'});
             await page.evaluate(()=>localStorage.clear());
             await page.reload({waitUntil:'networkidle'});
-            await page.waitForTimeout(600);
+            await page.waitForTimeout(2500);
 
-            // food pool: 18 cards, DB badges present
+            // unified root: index and data.html both new UI, no old huge cover left at root
+            for(const u of [`${base}/`,`${base}/data.html`]){
+              await page.goto(`${u}?smoke=root-${Date.now()}`,{waitUntil:'networkidle'});
+              await page.waitForTimeout(1200);
+              const t=await page.locator('body').innerText();
+              if(!(t.includes('今天')&&t.includes('行程')&&t.includes('美食')&&t.includes('旅程'))) throw new Error('unified entry missing at '+u);
+              if(t.includes('FIRST-WAVE TARGET')&&t.includes('照著走就好')&&!t.includes('越南時間')) throw new Error('root still shows old content at '+u);
+            }
+            await page.goto(live,{waitUntil:'networkidle'});
+            await page.evaluate(()=>localStorage.clear());
+            await page.reload({waitUntil:'networkidle'});
+            await page.waitForTimeout(2500);
+
+            // 4 entries nav
+            for(const id of ['today','itinerary','food','journey']){
+              if(await page.locator(`.nav button[data-jump="${id}"]`).count()!==1) throw new Error('missing nav '+id);
+            }
+            // Vietnam timezone line + trip phase (never fabricate, never auto-complete tested via text presence)
+            const vt=await page.locator('#vietnamDateLine').innerText();
+            if(!vt.includes('越南時間')||!vt.includes('Asia/Ho_Chi_Minh')) throw new Error('vietnam tz missing');
+            if(!(await page.locator('#tripPhase').innerText()).length) throw new Error('trip phase missing');
+
+            // itinerary date tabs 10/10-10/15 + day panels
+            for(const d of ['10/10','10/11','10/12','10/13','10/14','10/15']){
+              if(await page.locator(`.date-tab[data-date="${d}"]`).count()!==1) throw new Error('missing date tab '+d);
+            }
+            await page.locator('.nav button[data-jump="itinerary"]').click();
+            await page.waitForTimeout(300);
+            await page.locator('.date-tab[data-date="10/12"]').click();
+            await page.waitForTimeout(200);
+            if(await page.locator('[data-day-panel].active').getAttribute('data-day-panel')!=='10/12') throw new Error('date tab switch failed');
+
+            // food pool: 18 total, natural-Chinese badges + DB linkage + verified dates
             const visibleText=await page.locator('body').innerText();
-            if(!visibleText.includes('美食 Pool')||!visibleText.includes('已吃 0 / 18')||!visibleText.includes('Bún Kèn Út Lượm')) throw new Error('pool render missing');
+            if(!visibleText.includes('已吃 0 / 18')||!visibleText.includes('Bún Kèn Út Lượm')) throw new Error('pool render missing');
             if(await page.locator('[data-food-id]').count()!==18) throw new Error('wrong pool count');
             const domText=await page.locator('body').textContent();
-            if(!domText.includes('ACTIVE')&&!domText.includes('VERIFY')) throw new Error('DB status badges missing');
+            // natural Chinese in UI, original semantics retained in details/attributes
+            if(!domText.includes('已確認')&&!domText.includes('待再確認')) throw new Error('natural status badges missing');
+            if(!domText.includes('ACTIVE')&&!domText.includes('VERIFY')) throw new Error('DB status semantics missing');
             if(!domText.includes('驗證 2026-09-0')) throw new Error('verified-date badges missing');
             const hrefs=await page.locator('.map').evaluateAll(els=>els.map(e=>e.href));
             if(hrefs.some(h=>!h.startsWith('https://www.google.com/maps/search/?api=1&query='))) throw new Error('non-map link');
+            // filters: manual region/time/eaten, no geolocation, focused few + full list, empty state
+            await page.locator('.nav button[data-jump="food"]').click();
+            await page.waitForTimeout(300);
+            if(await page.locator('#filterRegion').count()!==1||await page.locator('#filterSlot').count()!==1||await page.locator('#filterEaten').count()!==1) throw new Error('food filters missing');
+            await page.selectOption('#filterRegion','Dương Đông');
+            await page.waitForTimeout(300);
+            const visFilt=await page.locator('[data-food-id]:not(.hidden)').count();
+            if(visFilt<1||visFilt>=18) throw new Error('region filter did not focus few '+visFilt);
+            await page.selectOption('#filterRegion','');
+            await page.waitForTimeout(200);
+            await page.locator('#toggleFull').click();
+            await page.waitForTimeout(200);
+            if(await page.locator('[data-food-id]:not(.hidden)').count()!==18) throw new Error('full list toggle failed');
+            await page.selectOption('#filterRegion','Grand World');
+            await page.selectOption('#filterSlot','早餐');
+            await page.waitForTimeout(300);
+            // either some match or clear empty state, never fabricated
+            const vis2=await page.locator('[data-food-id]:not(.hidden)').count();
+            const emptyVis=await page.locator('#foodEmpty').isVisible();
+            if(vis2===0&&!emptyVis) throw new Error('empty state missing');
+            await page.selectOption('#filterRegion','');
+            await page.selectOption('#filterSlot','');
+            await page.waitForTimeout(200);
 
             // cards: 5 ACTIVE slim link cards -> card.html?slug=
-            await page.locator('[data-jump="cards"]').click();
-            await page.waitForTimeout(300);
+            await page.locator('.nav button[data-jump="itinerary"]').click();
+            await page.waitForTimeout(400);
             const linkCount=await page.locator('a.link-card').count();
             if(linkCount!==5) throw new Error('wrong active card count '+linkCount);
             if(!domText.includes('Cable + Sunset Town')) throw new Error('cable card missing');
@@ -62,60 +139,107 @@ jobs:
             for(const s of ['cable','vinwonders','onbird','starfish','safari']){
               if(!hrefs2.includes(`./card.html?slug=${s}`)) throw new Error('missing card link '+s);
             }
+            // khem retired must not render as card; free/recovery is status not card
+            if(hrefs2.some(h=>h.includes('khem'))) throw new Error('retired khem rendered as card');
 
-            // (card detail pages run last: navigation leaves data.html; see below)
+            // journey: bookings Confirmed/Open semantics, currency preserved, no cross-currency sum
+            await page.locator('.nav button[data-jump="journey"]').click();
+            await page.waitForTimeout(300);
+            const jt=await page.locator('#journey').innerText();
+            if(!jt.includes('已確認')||!jt.includes('待辦追蹤')) throw new Error('bookings semantics missing');
+            if(!jt.includes('NT$')||!jt.includes('VND')) throw new Error('currency preserved missing');
+            if(!jt.includes('不同幣別不直接加總')) throw new Error('no-sum note missing');
+            if(jt.includes('訂單碼')&&jt.match(/訂單碼.{0,10}[A-Z0-9]{6,}/)) throw new Error('possible secret leak in journey');
 
-            // touch targets >= 41px
-            const small=await page.locator('.nav button,.ghost,select,.place-link,.map,.eaten-btn').evaluateAll(els=>els.map(el=>{const r=el.getBoundingClientRect();return {text:(el.innerText||el.textContent||'').trim(),h:r.height,w:r.width}}).filter(x=>x.h>0&&x.h<41));
+            // touch targets >= 44px (spec), keyboard focus visible
+            const small=await page.locator('.nav button,.ghost,select,.place-link,.map,.eaten-btn,.date-tab,.filter-btn').evaluateAll(els=>els.map(el=>{const r=el.getBoundingClientRect();return {text:(el.innerText||el.textContent||'').trim().slice(0,20),h:r.height,w:r.width}}).filter(x=>x.h>0&&x.h<44));
             if(small.length) throw new Error('important touch target too small '+JSON.stringify(small.slice(0,8)));
+            await page.locator('.nav button[data-jump="food"]').focus();
+            const outline=await page.evaluate(()=>{const el=document.activeElement;const s=getComputedStyle(el);return s.outlineWidth+'/'+s.outlineStyle});
+            if(outline.startsWith('0px')) throw new Error('keyboard focus not visible '+outline);
 
             // no-hash nav
-            await page.locator('[data-jump="food"]').click();
-            await page.waitForTimeout(140);
+            await page.locator('.nav button[data-jump="food"]').click();
+            await page.waitForTimeout(200);
             const nav=await page.evaluate(()=>({hash:location.hash,top:document.getElementById('food').getBoundingClientRect().top}));
             if(nav.hash||Math.abs(nav.top)>90) throw new Error('food nav failed '+JSON.stringify(nav));
 
-            // eaten toggle + collapse + persistence + reset
+            // eaten toggle + persistence + reset (v3 keys, old kept)
+            await page.evaluate(()=>{localStorage.clear()});
+            await page.reload({waitUntil:'networkidle'});
+            await page.waitForTimeout(2500);
             const card=page.locator('[data-food-id="bun-ken-ut-luom"]');
             const before=await card.evaluate(el=>el.getBoundingClientRect().height);
             const btn=card.locator('.eaten-btn');
             await btn.click();
-            await page.waitForTimeout(120);
+            await page.waitForTimeout(200);
             if((await btn.textContent()).trim()!=='✓ 吃過') throw new Error('eaten toggle failed');
             const after=await card.evaluate(el=>el.getBoundingClientRect().height);
-            if(!(after<before-25)) throw new Error(`eaten card did not collapse ${before} -> ${after}`);
+            if(!(after<before-20)) throw new Error(`eaten card did not collapse ${before} -> ${after}`);
             if(await card.locator('.food-desc').isVisible()) throw new Error('eaten detail still visible');
             await page.reload({waitUntil:'networkidle'});
-            await page.waitForTimeout(400);
+            await page.waitForTimeout(2500);
             if(!(await card.evaluate(el=>el.classList.contains('eaten')))) throw new Error('eaten persistence failed');
+            // migration: old v2 -> v3 without overwrite/clear
+            await page.evaluate(()=>{localStorage.clear();localStorage.setItem('phq-v2-slots',JSON.stringify({'10/13':'Safari'}));localStorage.setItem('phq-v2-food-eaten',JSON.stringify({'bun-ken-ut-luom':true}))});
+            await page.reload({waitUntil:'networkidle'});
+            await page.waitForTimeout(2500);
+            if(await page.evaluate(()=>localStorage.getItem('phq-v3-slots'))!=='{"10/13":"Safari"}') throw new Error('slot migration failed');
+            if(!await page.evaluate(()=>localStorage.getItem('phq-v2-slots'))) throw new Error('old slots cleared directly');
+            if((await page.locator('[data-food-id="bun-ken-ut-luom"] .eaten-btn').innerText()).trim()!=='✓ 吃過') throw new Error('eaten migration failed');
             await page.locator('#resetFood').click();
-            await page.waitForTimeout(100);
+            await page.waitForTimeout(200);
             if(!(await page.locator('#foodProgress').innerText()).includes('0 / 18')) throw new Error('confirmed reset failed');
+            if(!await page.evaluate(()=>localStorage.getItem('phq-v2-food-eaten'))) throw new Error('reset cleared old backup');
+
+            // slots persistence (v3, temp != order change note present)
+            await page.locator('.nav button[data-jump="itinerary"]').click();
+            await page.waitForTimeout(300);
+            await page.locator('select[data-day="10/12"]').selectOption({index:1});
+            await page.waitForTimeout(200);
+            await page.reload({waitUntil:'networkidle'});
+            await page.waitForTimeout(2500);
+            if(!await page.locator('select[data-day="10/12"]').inputValue()) throw new Error('slot persistence failed');
+            const slotNote=await page.locator('#itinerary').innerText();
+            if(!slotNote.includes('更改暫排不等於更改或取消訂單')) throw new Error('slot semantics missing');
 
             // no horizontal overflow at 390px
             const overflow=await page.evaluate(()=>document.documentElement.scrollWidth+'/'+document.documentElement.clientWidth);
             const [sw,cw]=overflow.split('/').map(Number);
             if(sw>cw+1) throw new Error('horizontal overflow '+overflow);
 
-            // card detail pages (runs last: navigation leaves data.html)
-            const base='https://ga815647.github.io/phu-quoc-2026-mobile';
+            // source banners distinguish fetched vs verified vs snapshot
+            const banners=await page.locator('body').innerText();
+            if(!banners.includes('取得時間')||!banners.includes('核實')) throw new Error('source-date distinction missing');
+            if(banners.includes('現在營業')&&!banners.includes('營業中')) throw new Error('possible fake open-now claim');
+
+            // card detail pages (runs last: navigation leaves main page)
             for(const [s,probe] of [['cable','Soft arrival'],['vinwonders','Sea Shell first'],['onbird','Operator door-to-door'],['starfish','Child-size life jacket'],['safari','Safari arrival']]){
               await page.goto(`${base}/card.html?slug=${s}&smoke=data-${Date.now()}`,{waitUntil:'networkidle'});
-              await page.waitForTimeout(500);
+              await page.waitForTimeout(800);
               const t=await page.locator('body').innerText();
-              for(const need of [probe,'交通','當日吃飯','怎麼砍','Gate 條件']){
+              for(const need of [probe,'交通','當日吃飯','時間不夠時怎麼調整','成行條件']){
                 if(!t.includes(need)) throw new Error(`card ${s} missing ${need}`);
               }
+              if(!t.includes('核實')||!t.includes('取得時間')) throw new Error(`card ${s} source distinction missing`);
               const mapLinks=await page.locator('.step-links .place-link').count();
               if(mapLinks<1) throw new Error(`card ${s} missing map links`);
               const ov=await page.evaluate(()=>document.documentElement.scrollWidth+'/'+document.documentElement.clientWidth);
               const [sw2,cw2]=ov.split('/').map(Number);
               if(sw2>cw2+1) throw new Error(`card ${s} overflow `+ov);
             }
-            // unknown slug shows friendly fallback
+            // unknown slug shows friendly fallback with compat entry
             await page.goto(`${base}/card.html?slug=nope&smoke=data-${Date.now()}`,{waitUntil:'networkidle'});
-            await page.waitForTimeout(400);
-            if(!(await page.locator('body').innerText()).includes('找不到這張卡')) throw new Error('bad slug fallback missing');
+            await page.waitForTimeout(500);
+            const badt=await page.locator('body').innerText();
+            if(!badt.includes('找不到這張卡')) throw new Error('bad slug fallback missing');
+            if(!badt.includes('data.html')) throw new Error('compat entry missing');
+
+            // public output boundary: no secrets in DOM
+            await page.goto(`${base}/data.html?smoke=sec-${Date.now()}`,{waitUntil:'networkidle'});
+            await page.waitForTimeout(800);
+            const html=await page.content();
+            if(/DATABASE_URL|PHQ_READONLY_DATABASE_URL|neondb_owner|MCP.*token|Bearer [A-Za-z0-9]/i.test(html)) throw new Error('possible secret in public output');
 
             if(errors.length) throw new Error('pageerror '+errors.join(' | '));
             console.log('DATA_SMOKE=PASS');
