@@ -151,7 +151,7 @@ VALUES ('food','<notion_id>','2026-10-12 現場觀察：...（僅當日觀察，
 | 五卡時間線／交通／餐飲／取捨／成行條件 | `cards.*`／`slug` | `/api/cards[?slug=]` | 行程卡片＋`card.html?slug=` | `data/cards.json` | ● |
 | 卡片摘要／badge／核實日期 | `cards.summary,evidence_as_of` 等 | 同上 | 同上 | 同上 | ● |
 | 美食地區／狀態／驗證／地圖 | `food_places.region,atlas_state,last_verified,maps_query...`／`notion_id` | `/api/foods` | 美食卡 badge＋篩選屬性 | `snapshot.foods` | ●（回填鍵＝`notion_id`，改名不斷鏈；`name` 僅遺產 fallback） |
-| 精選池排序／角色／點餐／推薦文案 | `food_pool.pool_rank,pool_role,order_copy,desc_copy,divider`／`pool_key`（`notion_id` NULL 者只吃池文案，不 JOIN 店家） | `/api/pool`（18 列全含，池鍵識別）＋ `/api/foods`（JOIN 狀態回填） | 美食池渲染＋即時改文＋按 rank 重排 | `snapshot.pool`＋`data/pool.json` | ●（單一來源；69 家不自動進池；`/api/pool` 本輪測試 Function 已驗 18/18，正式 Function 待重部署） |
+| 精選池排序／角色／點餐／推薦文案 | `food_pool.pool_rank,pool_role,order_copy,desc_copy,divider`／`pool_key`（`notion_id` NULL 者只吃池文案，不 JOIN 店家） | `/api/pool`（18 列全含，池鍵識別）＋ `/api/foods`（JOIN 狀態回填） | 美食池渲染＋即時改文＋按 rank 重排 | `snapshot.pool`＋`data/pool.json` | ●（單一來源；69 家不自動進池；`/api/pool` 正式 Function deployment 5 已上線 18/18） |
 | 預訂（已確認／待辦） | `bookings.kind,title,amount,status,evidence_as_of`／`slug` | `/api/bookings` | 旅程訂單區＋**今天預訂即時行** | `data/bookings.json` | ●（`detail/evidence` 可維護、永不公開） |
 | 交通備案 | `transport_options.*`／`slug` | `/api/transport` | 旅程交通區 | `snapshot.transport` | ● |
 | 暫排（10/12–14） | 無專用結構（見 §8） | — | 行程暫排下拉（本機） | — | △本機（`phq-v3-slots`） |
@@ -206,16 +206,19 @@ VALUES ('food','<notion_id>','2026-10-12 現場觀察：...（僅當日觀察，
   錯誤固定字串不洩 SQL／DSN。這是**行為一致性證據**，不是身分證明：
   `current_user/session_user` 屬服務端環境，未經授權不得輸出 secret，
   也未新增診斷端點，故身分僅標「與 `phq_web_ro` 一致」，不宣稱已確認。
-- `content_update` 的 EXECUTE 現狀（正式庫已查證）：
-  ACL 為 NULL（預設 PUBLIC 可執行），故 `phq_web_ro` 目前也可 EXECUTE；
-  但函式為 INVOKER 且 `phq_web_ro` 自身無任何 UPDATE 授權，
-  呼叫只會權限不足失敗，**不構成公開寫入漏洞**，也不代表已達成執行權限隔離。
+- `content_update` 的 EXECUTE 現狀（正式庫已查證，005 已套用）：
+  ACL 為 `{neondb_owner=X/neondb_owner}`（PUBLIC 執行權已收回）：
+  PUBLIC／`phq_web_ro` 皆無 EXECUTE，`neondb_owner` 可用。
+  函式為 INVOKER；即使收斂前 `phq_web_ro` 可 EXECUTE，其自身亦無任何
+  UPDATE 授權，呼叫只會權限不足失敗——收斂是執行權限隔離，不是否定過去的風險判斷。
   注意角色方向：`neondb_owner` 是 `phq_web_ro` 的成員
   （owner 可 SET ROLE 成 ro，不是 ro 繼承 owner 寫權；ro 的有效權限未擴大）。
-  收斂方案 005（`REVOKE ... FROM PUBLIC`，只收函式執行權，不動表授權，
-  不做全域 REVOKE）：測試分支已驗（PUBLIC／ro 關閉、owner 可用）。
-  正式套用前需確認 Chat connector 實際身分（`SELECT current_user`），
-  身分不明不套用；正式 ACL 變更另行確認。
+  005（`REVOKE ... FROM PUBLIC`，只收函式執行權，不動表授權，
+  不做全域 REVOKE，不新增 GRANT）：測試分支、正式父系臨時分支、
+  正式 production 皆已驗（PUBLIC／ro 關閉、owner 可用、寫入還原稽核正常）。
+  Chat connector 實際身分經 ChatGPT 自查（`effective_role/login_role`
+  皆 `neondb_owner`）＋ OpenCode 側 `current_user/session_user` 雙重確認，
+  故不需新增 GRANT 即可維持合法內容維護。
 
 現行業務限制仍保留：`chatgpt-instructions.md` 的旅途中主表凍結
 （只追加 `evidence_log`）、私人欄位不公開、批量覆寫／硬刪除／改動已確認
