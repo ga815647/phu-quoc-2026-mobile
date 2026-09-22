@@ -42,8 +42,9 @@
 <div class="wrap">
 <a class="back-link" id="backLink" href="./#itinerary">← 回行程</a>
 <div class="src-fallback" id="srcFallback" hidden>更新暫不可用，顯示備援資料 · 快照 2026-09-20</div>
+<div class="tiny" id="srcLine">卡片資料 · 取得時間 載入中</div>
 <div id="cardMount"><div class="panel pad"><div class="tiny">載入中…</div></div></div>
-<details class="src-info" id="srcInfo" style="margin-top:12px"><summary>資料資訊</summary><div id="srcDetail">卡片資料 · 取得時間 載入中</div></details>
+<details class="src-info" id="srcInfo" style="margin-top:12px"><summary>資料資訊</summary><div id="srcDetail">失敗時顯示備援資料 · 快照 2026-09-20</div></details>
 <footer class="footer">吃過／暫排只存這支手機。核實日期見卡片標示。</footer>
 </div>
 <script>
@@ -51,7 +52,7 @@
 const mount=document.getElementById('cardMount');
 const slug=new URLSearchParams(location.search).get('slug')||'';
 (function(){var b=document.getElementById('backLink');if(!b)return;try{var ref=document.referrer||'';if(ref.indexOf('data.html')>=0){b.setAttribute('href','./data.html#itinerary')}}catch(e){}})();
-function setDsrc(kind,when){var fb=document.getElementById('srcFallback');var dt=document.getElementById('srcDetail');if(kind!=='api'){if(fb)fb.hidden=false}if(dt)dt.textContent=(kind==='api'?('卡片資料 · 取得時間 '+when):('備援資料 · 快照 '+when))}
+function setDsrc(kind,when){var fb=document.getElementById('srcFallback');var ln=document.getElementById('srcLine');var dt=document.getElementById('srcDetail');if(kind!=='api'){if(fb)fb.hidden=false}if(ln)ln.textContent=(kind==='api'?('卡片資料 · 取得時間 '+when):('備援資料 · 快照 '+when));if(dt&&kind!=='api')dt.textContent='失敗時顯示備援資料 · 快照 '+when}
 function esc(s){return String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
 function jparse(s,fb){try{const v=JSON.parse(s);return v??fb}catch(e){return fb}}
 function fetchWithTimeout(url,ms){ms=ms||8000;var c=new AbortController();var t=setTimeout(()=>c.abort(),ms);return fetch(url,{signal:c.signal}).then(r=>{clearTimeout(t);if(!r.ok)throw 0;return r.json().then(j=>{if(!j||j.data===undefined)throw 0;return j})}).catch(e=>{clearTimeout(t);throw 0})}
