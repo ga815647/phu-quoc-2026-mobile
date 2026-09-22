@@ -376,7 +376,7 @@ def main():
             "else if(f.atlas_state==='DEACTIVATED')p+='<span class=\"role red\" data-atlas=\"DEACTIVATED\">已下架</span>';"
             "p+='<span class=\"tiny\" data-atlas-raw=\"'+escF(f.atlas_state||'')+'\" style=\"display:none\">'+escF(f.atlas_state||'')+' ACTIVE VERIFY</span>';"
             "var ver=f.last_verified||f.evidence_as_of||'';"
-            "if(ver)p+='<span class=\"food-region\">核實 '+escF(ver)+'</span>';"
+            "if(ver)p+='<span class=\"food-region\">驗證 '+escF(ver)+'</span>';"
             "return p}"
             "function resortPool(){"
             "var pool=document.getElementById('foodPool');if(!pool)return;"
