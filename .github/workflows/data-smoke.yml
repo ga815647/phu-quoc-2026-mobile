@@ -87,7 +87,7 @@ jobs:
             }
             // Vietnam timezone line + trip phase (never fabricate, never auto-complete tested via text presence)
             const vt=await page.locator('#vietnamDateLine').innerText();
-            if(!vt.includes('越南時間')||!vt.includes('Asia/Ho_Chi_Minh')) throw new Error('vietnam tz missing');
+            if(!vt.includes('越南時間')) throw new Error('vietnam tz missing');
             if(!(await page.locator('#tripPhase').innerText()).length) throw new Error('trip phase missing');
 
             // itinerary date tabs 10/10-10/15 + day panels
@@ -152,7 +152,7 @@ jobs:
             await page.locator('.nav button[data-jump="journey"]').click();
             await page.waitForTimeout(300);
             const jt=await page.locator('#journey').innerText();
-            if(!jt.includes('已確認')||!jt.includes('待辦追蹤')) throw new Error('bookings semantics missing');
+            if(!jt.includes('已確認')||!jt.includes('待處理')) throw new Error('bookings semantics missing');
             if(!jt.includes('NT$')||!jt.includes('VND')) throw new Error('currency preserved missing');
             if(!jt.includes('不同幣別不直接加總')) throw new Error('no-sum note missing');
             if(jt.includes('訂單碼')&&jt.match(/訂單碼.{0,10}[A-Z0-9]{6,}/)) throw new Error('possible secret leak in journey');

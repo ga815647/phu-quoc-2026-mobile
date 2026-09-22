@@ -48,12 +48,12 @@ def run():
                       banner_text(pg, "bookSrcBanner"),
                       banner_text(pg, "foodSrcBanner"))
         cards = pg.locator("#cardsMount .link-card").count()
-        check("1-all-api-success", "測試 API 資料" in sb and cards == 5
-              and "測試 API 資料" in bb and "測試 API 資料" in fb,
+        check("1-all-api-success", "取得時間" in sb and cards == 5
+              and "取得時間" in bb and "取得時間" in fb,
               f"cards={cards} src={sb[:14]} book={bb[:14]} food={fb[:14]}")
         # bookings content
         panel = pg.locator("#bookingsPanel").inner_text()
-        check("8-bookings", "CONFIRMED" in panel and "OPEN" in panel,
+        check("8-bookings", "已確認" in panel and "待處理" in panel,
               f"panel_len={len(panel)}")
         pg.screenshot(path=f"{SHOTS}/1-all-success.png")
         pg.close()
@@ -75,14 +75,14 @@ def run():
                            banner_text(pg, "foodSrcBanner"))
             cards = pg.locator("#cardsMount .link-card").count()
             if zone == "book":
-                ok = ("備援靜態資料" in bb and "測試 API 資料" in sb
-                      and "測試 API 資料" in fbb and cards == 5)
+                ok = ("更新暫不可用" in bb and "取得時間" in sb
+                      and "取得時間" in fbb and cards == 5)
             elif zone == "cards":
-                ok = ("備援靜態資料" in sb and cards == 5
-                      and "測試 API 資料" in bb and "測試 API 資料" in fbb)
+                ok = ("更新暫不可用" in sb and cards == 5
+                      and "取得時間" in bb and "取得時間" in fbb)
             else:
-                ok = ("備援靜態資料" in fbb and "測試 API 資料" in sb
-                      and "測試 API 資料" in bb and cards == 5)
+                ok = ("更新暫不可用" in fbb and "取得時間" in sb
+                      and "取得時間" in bb and cards == 5)
             check(name, ok, f"cards={cards} src={sb[:10]} book={bb[:10]} food={fbb[:10]}")
             pg.screenshot(path=f"{SHOTS}/{name}.png")
             pg.close()
@@ -97,9 +97,9 @@ def run():
                        banner_text(pg, "foodSrcBanner"))
         cards = pg.locator("#cardsMount .link-card").count()
         panel = pg.locator("#bookingsPanel").inner_text()
-        check("5-full-fallback", "備援靜態資料" in sb and cards == 5
-              and "備援靜態資料" in bb and "CONFIRMED" in panel
-              and "備援靜態資料" in fbb,
+        check("5-full-fallback", "更新暫不可用" in sb and cards == 5
+              and "更新暫不可用" in bb and "已確認" in panel
+              and "更新暫不可用" in fbb,
               f"cards={cards} src={sb[:10]} book={bb[:10]} food={fbb[:10]}")
         pg.screenshot(path=f"{SHOTS}/5-full-fallback.png")
         pg.close()
@@ -123,7 +123,7 @@ def run():
         card = pg.locator('[data-food-id="bun-ken-ut-luom"]')
         region = card.locator(".food-region").first.inner_text()
         badges = card.locator(".food-meta").inner_text()
-        check("6-foods-refresh", "FIXTURE-REGION" in region and "VERIFY" in badges,
+        check("6-foods-refresh", "FIXTURE-REGION" in region and "待再確認" in badges,
               f"region={region} badges={badges[:40]}")
         pg.screenshot(path=f"{SHOTS}/6-foods-refresh.png")
         pg.close()
@@ -142,7 +142,7 @@ def run():
             detail.append(f"{s}={'ok' if hit else 'BAD'}")
         pg.goto(CARD + "cable", wait_until="networkidle")
         pg.wait_for_timeout(1500)
-        back = pg.locator('a[href="./data-candidate.html#cards"]')
+        back = pg.locator('#backLink')
         ok_all = ok_all and back.count() >= 1
         check("7-cards-detail-back", ok_all, " ".join(detail)
               + f" backlinks={back.count()}")

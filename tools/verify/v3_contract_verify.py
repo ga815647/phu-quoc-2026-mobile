@@ -95,13 +95,19 @@ def main():
         check("html-4-nav", all(f'data-jump="{i}"' in html for i in ["today", "itinerary", "food", "journey"]), "4 entries")
         check("html-date-tabs", all(d in html for d in ["10/10", "10/11", "10/12", "10/13", "10/14", "10/15"]), "dates")
         check("html-filters", all(i in html for i in ["filterRegion", "filterSlot", "filterEaten", "toggleFull"]), "filters")
-        check("html-no-fake-open", ("冒稱仍在營業" in html) and ("不冒稱" in html or "不會冒稱" in html or "也不會" in html), "explicit no-fake-open statement")
+        check("html-no-philosophy", not any(s in html for s in [
+            "不會編造", "不假裝即時", "只清新版", "尚未鎖定（未安排）",
+            "待辦追蹤 OPEN", "Gate 全綠", "evidence_log",
+            "精簡卡片", "公開 6 欄", "localStorage v3",
+        ]), "philosophy/eng copy removed")
+        check("html-fallback-recognizable", "更新暫不可用" in html and "資料資訊" in html, "fallback recognizable")
         check("html-natural-labels", "優先推薦" in html and "待再確認" in html, "natural Chinese")
+        check("html-booking-semantics", "已確認" in html and "待處理" in html, "Confirmed/Open natural labels")
         check("html-audit-semantics", "更改暫排不等於更改或取消訂單" in html and "不同幣別不直接加總" in html, "semantics")
         check("html-no-secrets", not re.search(r"DATABASE_URL|PHQ_READONLY_DATABASE_URL|neondb_owner|Bearer [A-Za-z0-9]", html, re.I), "no secrets")
         check("html-v3-keys", "phq-v3-slots" in html and "phq-v3-food-eaten" in html, "v3 LS")
         check("html-timeout", "AbortController" in html and "no-store" in html, "timeout+revalidate")
-        check("html-distinguish-dates", "核實" in html and "取得時間" in html and "備援快照" in html, "3 dates")
+        check("html-distinguish-dates", "核實" in html and "取得時間" in html and "備援資料" in html, "verified vs fetched vs fallback")
         # card links (client-rendered): JS template + cards.json 5 ACTIVE
         check("html-5-card-links", ("card.html?slug=" in html) and ("cards.json" in html or "/api/cards" in html), "client-render 5 links")
         check("html-no-khem-card", "slug=khem" not in html and "card.html?slug=khem" not in html, "no khem")

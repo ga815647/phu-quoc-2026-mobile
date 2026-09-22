@@ -40,14 +40,6 @@
   "evidence_as_of": "2026-09-20"
  },
  {
-  "slug": "insurance",
-  "kind": "insurance",
-  "title": "旅行保險",
-  "amount": "未鎖",
-  "status": "Open",
-  "evidence_as_of": "2026-09-20"
- },
- {
   "slug": "sim-viettel-6d2gb",
   "kind": "connectivity",
   "title": "Mysimcard Viettel 6天 每天2GB 實體SIM x1",
@@ -62,5 +54,13 @@
   "amount": "NT$1,970 2人來回",
   "status": "Confirmed",
   "evidence_as_of": "2026-09-20"
+ },
+ {
+  "slug": "insurance",
+  "kind": "insurance",
+  "title": "富邦產險旅行保險｜2026-10-10 生效",
+  "amount": "NT$2,688（2人總保費）",
+  "status": "Confirmed",
+  "evidence_as_of": "2026-09-22"
  }
 ]
