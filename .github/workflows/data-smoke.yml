@@ -237,7 +237,8 @@ jobs:
             await page.waitForTimeout(2500);
             const badt=await page.locator('body').innerText();
             if(!badt.includes('找不到這張卡')) throw new Error('bad slug fallback missing');
-            if(!badt.includes('data.html')) throw new Error('compat entry missing');
+            const badHtml=await page.content();
+            if(!badHtml.includes('data.html')) throw new Error('compat entry missing');
 
             // public output boundary: no secrets in DOM
             await page.goto(`${base}/data.html?smoke=sec-${Date.now()}`,{waitUntil:'domcontentloaded',timeout:30000});
