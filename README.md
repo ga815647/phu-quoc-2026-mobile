@@ -12,11 +12,13 @@ Deployment:
 Historical manifests such as `MIGRATION_MANIFEST.json` and `SITE_SYNC_MANIFEST.json` preserve the evidence and state of their dated migration/staging runs. Their pre-cutover status fields are historical evidence and must not be treated as current canonical website truth.
 
 Data backend (cutover 2026-09-22):
-- SSOT: Neon Postgres `phu-quoc-2026` / production branch / `neondb`.
+- Website SSOT: Neon Postgres `phu-quoc-2026` / production branch / `neondb`.
 - Read-only API: Neon Function `phqreadonly`
   (`https://br-silent-haze-b3xw64tm-phqreadonly.compute.c-4.ap-southeast-1.aws.neon.tech/`),
   restricted role `phq_web_ro`, public-column contract only.
 - `data/*.json` are the public-projection offline fallback, regenerated from Neon.
 - SQLite `data/phuquoc.db` is the migration-frozen archive.
+
+Content split (2026-09-23): the website serves trip execution; private preparation (payment tracking, budgets, packing and retained comparisons) stays in private Notion, with no automatic two-way sync or private links/data in this public repo. Existing Notion research and Food Atlas remain historical reference. See `CONTENT_CONTRACT.md` §8 for maintenance boundaries.
 
 `v2.html` remains a separate UI/content candidate until it is explicitly accepted for promotion to the canonical GitHub Pages experience.
