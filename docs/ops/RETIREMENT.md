@@ -12,7 +12,7 @@
 | CI（data-smoke 等） | push 路徑觸發＋手動，無排程 | 保留，不新增 secret／排程 |
 | `v2.html` | 未接受候選（2026-09-20 起未動） | 保留原處，不推廣、不刪除 |
 | `MIGRATION_MANIFEST.json`／`SITE_SYNC_MANIFEST.json`／`PARITY_CHECK.md` | 帶日期證據 | 保留為歷史證據，不作現況依據 |
-| 裝置 localStorage（`phq-v3-*`＋`phq-v2-*`備份） | 裝置端，伺服器拿不到 | 一次性匯出：使用者在舊裝置開啟正式站→行程暫排與吃過紀錄可見即已保留；換裝置需手動重設。**不宣稱已搬遷**；使用者確認不需要保留可記為明確放棄（目前未放棄） |
+| 裝置 localStorage（`phq-v3-*`＋`phq-v2-*`備份） | 裝置端，伺服器拿不到 | **不宣稱已搬遷**；使用者已明確放棄保留（2026-09-26），換裝置手動重設。 |
 | SQLite `data/phuquoc.db` | 遷移凍結封存 | 保留；備份另見下 |
 | 測試分支 `verify-migrate-20260921` | 驗證用，有既有漂移（`ganh-dau-market.desc_copy='T18'`） | 保留作隔離驗證環境，不合併回正式 |
 
