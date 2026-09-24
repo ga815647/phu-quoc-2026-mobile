@@ -6,9 +6,9 @@
 - `v2.html` is an unaccepted candidate. `index.html` + `data.html` + `card.html` are generated pages. Never hand-edit them — edit `tools/build_site.py` + `tools/site.css`.
 
 ## Source of truth (Neon cutover 2026-09-22)
-- Website SSOT = Neon Postgres, project `phu-quoc-2026` (`holy-fog-65935796`,
+- Travel data SSOT = Neon Postgres, project `phu-quoc-2026` (`holy-fog-65935796`,
   `aws-ap-southeast-1`, PG 18), branch `production` (`br-silent-haze-b3xw64tm`),
-  database `neondb`. `data/phuquoc.db` (SQLite) is the migration-frozen
+  database `neondb`. The website is one execution interface reading from it, not the maintenance center. `data/phuquoc.db` (SQLite) is the migration-frozen
   archive (`phuquoc-preprod-20260921.db` backup at repo parent); explicit
   opt-in only via `PHUQUOC_DB_SOURCE=sqlite`, never the default path.
 - Website data flow: Pages → Neon Function `phqreadonly` (read-only,

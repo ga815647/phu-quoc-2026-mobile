@@ -7,7 +7,7 @@
 - Chat：即時查詢、臨時比較與試算留在對話。明確要求保存才寫入對應位置；同一欄位只維護一處，不自動雙向同步，不將私人頁連結放進公開網站或 repo。
 
 ## 怎麼讀
-- 大量讀取一律分頁：`ORDER BY 穩定鍵 LIMIT n OFFSET m`（或 keyset），回報 next cursor／has_more；不整表塞給模型。food_places 共 69 筆。
+- 大量讀取一律分頁：`ORDER BY 穩定鍵 LIMIT n OFFSET m`（或 keyset），回報 next cursor／has_more；不整表塞給模型。單表筆數以 `COUNT(*)` 現查為準，不背固定數字。
 - 長項目先讀摘要欄，再用 `SUBSTRING(欄,起點,長度)` 分段取長欄；不以截斷冒充完整。
 - 追溯：`food_pool.pool_key → notion_id → food_places`；例外 `vinwonders-inside` 無 notion_id、只吃池文案。Neon 查核時間與 Notion 摘要更新時間分開。
 

@@ -5,7 +5,8 @@
 > v1 的「UPDATE 後無條件 INSERT 稽核」範例已作廢，改用 §4 `content_update()`。
 > 本文件以正式庫部署後事實為準（004 已套用，見 §7）；測試分支驗證不算正式可用。
 
-網站資料 SSOT：Neon Postgres `holy-fog-65935796` / `production (br-silent-haze-b3xw64tm)` / `neondb`。
+旅遊資料 SSOT：Neon Postgres `holy-fog-65935796` / `production (br-silent-haze-b3xw64tm)` / `neondb`。
+網站是讀取它的執行介面之一，不是維護中心。
 SQLite `data/phuquoc.db` 與既有 Notion 店家庫／Trip SSOT／研究／交接頁為歷史參考，不覆蓋正式網站資料。2026-09-23 使用者核准私人準備另由 Notion 維護（§8）；不改本契約的 Neon 寫入白名單、權限或公開投影。
 
 ## 1. 穩定 ID（不用模糊店名作主要關聯）
@@ -219,14 +220,19 @@ VALUES ('food','<notion_id>','2026-10-12 現場觀察：...（僅當日觀察，
   Chat connector 實際身分經 ChatGPT 自查（`effective_role/login_role`
   皆 `neondb_owner`）＋ OpenCode 側 `current_user/session_user` 雙重確認，
   故不需新增 GRANT 即可維持合法內容維護。
-  2026-09-24 OpenCode 側重查：`current_user/session_user` 仍為
-  `neondb_owner`；`routine_privileges` 顯示 `content_update` 僅
-  `neondb_owner` 有 EXECUTE；`phq_web_ro` 欄級 SELECT 78 欄、整表授權 0、
-  `content_revisions` 無授權。Chat 端身分重確認待 Chat 自查（§4 讀前確認流程不變）。
+  2026-09-24 OpenCode 側重查（角色名僅作當時記錄，能力以有效權限實測為準）：
+  當時 `current_user/session_user` 為 owner 身分；`routine_privileges` 顯示
+  `content_update` 僅具寫入能力身分有 EXECUTE；唯讀角色為欄級 SELECT、
+  整表授權 0、`content_revisions` 無授權。Chat 端身分重確認待 Chat 自查
+  （§4 讀前確認流程不變：先唯讀確認目標與有效權限，再決定寫入可用性）。
+  勘誤（2026-09-25）：前輪「舊 `connectors.md` 不存在」記載錯誤。
+  歷史連線檔位於本機 `~/.config/opencode/connectors.md`（2026-09-22 版，
+  內有 Chat 測試分支寫入探測記載與測試角色 DSN 外洩提示），僅作歷史證據，
+  不作現況能力依據；現況能力一律以本契約 §7 實測為準。
 
-  讀取完整性（2026-09-24 實測，不新增端點／結構）：
-- 分頁：`food_places` 69 筆以 `ORDER BY notion_id LIMIT/OFFSET`
-  得 20/20/20/9，全覆蓋、無重複；keyset（`notion_id > 上頁末鍵`）同樣 69 筆。
+  讀取完整性（2026-09-24 實測，不新增端點／結構；筆數為當時現況，日常以 COUNT(*) 為準）：
+- 分頁：`food_places` 當時筆數以 `ORDER BY notion_id LIMIT/OFFSET`
+  全覆蓋、無重複；keyset（`notion_id > 上頁末鍵`）同樣全覆蓋。
   Chat 讀取大量資料一律帶 `ORDER BY＋LIMIT/OFFSET`（或 keyset）＋回傳
   `next cursor／has_more` 語義，不得整表一次塞給模型。
 - 長項目：先讀摘要欄（`summary/notes/evidence_as_of/version`），再以
@@ -258,12 +264,14 @@ Chat 寫入 Neon 後，網站重整經 Function／備援讀到（備援需再匯
 
 ## 8. 個人紀錄現狀（先釐清，不假裝已完成）
 
-> 2026-09-24 查證補充：私人準備頁「富國島 2026｜出發準備（私人）」存在且可讀
-> （待辦／付款期限、私人費用小計 NT$15,911、越盾現金底線 450 萬 VND、
-> 行李勾選、研究連結；整理日期 2026-09-23，最後編輯 2026-09-23）。
-> 舊 `connectors.md` 在 repo 與 Notion 搜尋皆無，應視為不存在，不作能力依據。
+> 2026-09-24 查證補充（2026-09-25 修訂：移除私人數值）：
+> 私人準備頁「富國島 2026｜出發準備（私人）」存在且可讀，含待辦／付款期限、
+> 私人費用小計、越盾現金試算、行李勾選、研究連結四類結構；有整理日期與
+> 最後編輯時間戳，具體數值僅留私人頁，不在此列。
+> 歷史連線檔位於本機 `~/.config/opencode/connectors.md`（2026-09-22 版），
+> 僅作歷史證據，不作現況能力依據（前次「不存在」記載錯誤，見 §7 補正）。
 > 無背景排程（CI 皆為 push 路徑觸發或手動）。日常 Notion／Neon 更新不依賴
-> 網站匯出與發布（§6 生效鏈路已分開）。新版日常更新不應依賴網站匯出與發布；
+> 網站匯出與發布（§6 生效鏈路已分開）。
 > 舊站退役前舊投影維護需求見 `docs/ops/RETIREMENT.md`。
 
 以下表格描述 **Neon／網站能力**，不是 Notion 的能力限制。私人準備頁不需新增網站 DB 結構。

@@ -1,47 +1,52 @@
-# ChatGPT 端最短實測（待 ChatGPT 驗證，2026-09-24）
+# ChatGPT 端最短實測（待 ChatGPT 驗證，2026-09-25 修訂版）
 
-> 開發端無法代跑 ChatGPT 實測。以下 prompt 一次貼給 ChatGPT（含 Project instructions
-> 候選全文，見本輪交付 H 節），逐項核對預期結果。
+> 開發端無法代跑 ChatGPT 實測。以下 prompt 貼給 ChatGPT（含已貼入的 Project instructions），逐項核對。
+> 結果分三態：**通過**（能力可用且行為正確）／**安全停止**（能力不足但如實停止，亦為正確行為）／**未測試**（環境缺失，另約時間）。
+> 角色名稱（如 neondb_owner）只是來源聲明，不是能力證明；**一律以有效權限實測為準**
+> （SELECT 成功／INSERT 拒絕或成功／函式 EXECUTE 成功或報權限不足）。
 
 ## 前置
 
-1. 使用者將 H 節 instructions 全文手動貼入 ChatGPT Project settings（本地更新不代表已安裝）。
-2. 確認 Chat 可用能力：Notion connector（讀寫私人頁）、Neon connector（讀寫身分自查）。
+1. 使用者已將 instructions 全文貼入 Project settings。
+2. 確認 Chat 可用：GitHub connector 或 repo 讀取（規則入口）、Notion connector、Neon connector。
 
-## Prompt（一次性）
+## Prompt（一次性，隔離優先）
 
 ```text
-你是富國島旅行助手（instructions 已貼入 Project settings）。請依序執行並回報：
+你是富國島旅行助手（instructions 已貼入）。請依序執行並以「做了什麼／證據／未做什麼／下一步」總結：
 
-1. 找到 Notion 入口「富國島 2026｜出發準備（私人）」：只讀取第 1 節標題結構，
-   不修改、不輸出私人金額。回報：找到了／找不到／同名歧義。
-2. 在 Neon 正式庫（holy-fog-65935796／production／neondb）搜尋：
-   food_places 中 region 含 'Gành Dầu' 且 atlas_state='VERIFY' 的項目，
-   回報筆數＋各筆 notion_id＋name（分頁讀取，不要整表）。
-3. 讀指定項目詳情：food_pool pool_key='quoc-thien' 的 desc_copy、pool_role、
-   version，以及它 JOIN 到的 food_places 名稱與 last_verified。
-4. 先以唯讀確認你目前 connector 身分（effective_role／login_role）與
-   content_update EXECUTE 權；若不是具寫入能力身分，第 5 步停止並如實回報。
-5. 執行一項已授權、可核對的內容更新：food_pool(pool_key='ganh-dau-market')
-   的 desc_copy，先讀版本，改為「<原值>（2026-09-24 Chat 驗收讀回測試）」，
-   寫後讀回並核對 content_revisions 的 old_value＝原值；隨後用目前版本
-   還原為原值，再讀回確認。回報兩次讀回值與版本號。
-6. 最後用「做了什麼／證據／未做什麼／下一步」格式總結。
+1. GitHub 規則入口：讀取 https://raw.githubusercontent.com/ga815647/phu-quoc-2026-mobile/main/CONTENT_CONTRACT.md
+   回報可讀／不可讀；current instructions 字數是否 ≤2000。
+2. Notion 入口：搜尋「富國島 2026｜出發準備（私人）」，只讀結構（節標題、待辦數），
+   不修改、不輸出私人金額。回報：找到／找不到／同名歧義／無寫入權。
+3. Neon 搜尋：正式庫 food_places 中 region 含 'Gành Dầu' 且 atlas_state='VERIFY' 者，
+   分頁讀取，回報筆數＋各筆穩定 ID；再讀其中一筆詳情（摘要欄＋版本）。
+4. 有效權限自查（不猜角色名）：以唯讀語句確認你能讀正式庫；再確認 content_update
+   是否可 EXECUTE（可用測試分支語句探測，禁止在正式庫做測試寫入）。
+   若無寫入有效權限，第 5 步停止並標「安全停止」。
+5. 授權更新讀回（隔離優先；正式寫入需先取得使用者授權，見下）：
+   a. 優先：在測試分支或以使用者真正需要的更新執行；
+   b. 若無測試分支權限且使用者已授權正式驗收寫入：選影響最小的池文案欄，
+      先讀版本→更新→讀回→核對稽核 old_value→立即還原→再讀回。
+      全程只改一個欄位；衝突重讀詢問，不覆寫。
+6. Notion 授權更新讀回（若第 2 步有寫入權且使用者授權）：在私人頁做一處最小更新
+   （如勾選一項待辦或補一筆摘要＋穩定 ID），讀回確認既有勾選與備註保留。
+   無寫入權則標「安全停止」，不繞限制。
 ```
 
 ## 預期結果
 
-| # | 預期 |
-|---|---|
-| 1 | 找到 1 頁（無歧義）；結構含待確認／付款期限、私人費用、行李、研究連結；未輸出私人金額 |
-| 2 | 命中筆數由 Chat 回報（驗收端核對其 SQL 有分頁、非整表）；每筆有穩定 notion_id |
-| 3 | `quoc-thien` desc_copy 以 DB 讀值為準；JOIN 到 Gành Dầu 店家＋last_verified；version 為整數 |
-| 4 | 身分自查如實回報；非寫入身分則第 5 步停止（此即正確行為） |
-| 5 | 更新讀回值含測試後綴、版本＋1；稽核 old_value＝原值；還原後值與原值一致、版本再＋1；任何衝突走重讀詢問 |
-| 6 | 回報格式四段齊全；跨系統階段分清資料／顯示／備援 |
+| # | 通過 | 安全停止 | 未測試 |
+|---|---|---|---|
+| 1 | 契約可讀；字數 ≤2000 | — | 無 GitHub 讀取 |
+| 2 | 找到 1 頁；結構回報無金額 | 無寫入權（讀 OK，第 6 步停止） | 找不到／歧義（轉使用者） |
+| 3 | 分頁筆數＋穩定 ID＋版本 | — | connector 不可用 |
+| 4 | 讀寫有效權限如實回報 | 無寫入權（第 5 步停止） | — |
+| 5 | 讀回值＋版本＋稽核一致；已還原 | 無權或無授權即停 | 授權未定（另約） |
+| 6 | 更新讀回＋既有保留 | 無寫入權即停 | 授權未定（另約） |
 
-## 注意
+## 正式驗收寫入的影響說明（需使用者先授權）
 
-- 第 5 步會在正式庫留下兩筆稽核（更新＋還原，值最終一致），屬可接受驗證痕跡。
-- 若 Chat 身分已非 owner：第 5 步標「能力不足停止」即為通過，不繞限制。
-- 驗收通過才進入舊站退役評估（見 `RETIREMENT.md`）。
+- 第 5b 步會在正式庫留下兩筆稽核（更新＋還原，值最終一致），屬可接受驗證痕跡，但仍需使用者明確授權才可執行；未授權一律用隔離方式或標未測試。
+- 第 6 步改動私人頁，必須使用者明確授權具體項目；未授權不动。
+- 開發端 2026-09-25 實測發現：OpenCode 對私人頁寫入 404（讀正常），日常 Notion 維護請由 Chat 或使用者執行。
