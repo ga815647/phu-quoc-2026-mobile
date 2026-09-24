@@ -132,6 +132,38 @@ INSERT INTO evidence_log (ref_type, ref_id, note)
 VALUES ('food','<notion_id>','2026-10-12 現場觀察：...（僅當日觀察，非永久結論）');
 ```
 
+## 4-bis. 新候選新增流程（`food_places` INSERT；重用既有結構，不新建服務）
+
+> `evidence_log` 契約僅限當日觀察，**不得**以插入觀察代替新餐廳／研究資料的
+> 完整維護。新候選走本節 INSERT＋後續 `content_update` 流程。
+
+- 授權範圍：日常白名單（§2）只覆蓋更新；INSERT 屬結構外新增，測試分支可直接驗證，
+  正式環境每次需使用者授權（影響見 `docs/ops/CHAT_ACCEPT.md` §正式驗收寫入）。
+- 穩定 ID：正式候選沿用既有 Notion ID 格式（TEXT PK）；測試／驗收一律用明顯非正式
+  前綴（如 `00000000-0000-4000-a000-…`），不與正式 ID 混淆，不可事後轉正。
+- 必要欄位：`notion_id, name, region, atlas_state`（新候選一律先 `VERIFY`，
+  不得首插即 `ACTIVE`）；`research_date, last_verified, evidence_as_of` 三日期必填，
+  不拿寫入日期冒充核實日期；`evidence` 存來源＋長研究，`summary` 存短摘要。
+- 來源／查核日期／長研究保存位置：全在 `food_places` 同列
+  （`evidence/research_date/last_verified/evidence_as_of`）；不進 `evidence_log`，
+  不進公開 repo；公開投影僅暴露 §6 表格所列欄。
+- 去重、重送及併發：去重＝「先查再插／先比再寫」的應用層守門，
+  **無原子去重保證**（如實標示）。同 ID 併發 INSERT 以 PK 唯一約束擋下後者
+  （報錯回滾，非靜默合併）；同值重送守門跳過則不產生新版本新稽核；
+  同值併發 UPDATE 會各產生版本＋稽核，需人工核對。`content_update` 的版本衝突
+  語義（§4：過期 base 報錯回滾、零稽核）保持不變。
+- 追溯紀錄：INSERT 成功後，該列 `version=1` 即追溯起點；後續修改一律走 §4
+  `content_update`（先讀版本、一次一欄、讀回＋真實前值稽核）；還原走 §5 新紀錄語義。
+- 公開可見性：新列經 `/api/foods` 與 JSON 備援可見的欄位與既有列相同
+  （公開投影契約，不含 `kid_plan/migration/updated_at` 等非公開欄）；
+  候選未升池前不進 `/api/pool`（池成員新增需內容決策＋明確 INSERT，不自動擴）。
+- 證據分開標示：測試分支隔離證據見 `docs/ops/CANDIDATE_INSERT_ACCEPT.md`
+  （去識別）；正式環境能力（INSERT 需授權、UPDATE 走 §4）以 ChatGPT 獨立實測為準，
+  開發端測試分支成功不代表正式可用。
+- 公開欄位測試禁令：不得使用私人資料（金額、訂單碼、聯絡方式、證件）做任何
+  公開欄位測試；驗收字串一律用明顯虛構前綴，清理時連同稽核在測試分支刪除
+  （正式庫還原語義見 §5，不刪歷史）。
+
 ## 5. 修改紀錄與還原
 
 - 每次資料變更必須同交易寫入 `content_revisions`（對象、穩定 ID、
