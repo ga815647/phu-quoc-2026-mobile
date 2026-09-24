@@ -219,6 +219,24 @@ VALUES ('food','<notion_id>','2026-10-12 現場觀察：...（僅當日觀察，
   Chat connector 實際身分經 ChatGPT 自查（`effective_role/login_role`
   皆 `neondb_owner`）＋ OpenCode 側 `current_user/session_user` 雙重確認，
   故不需新增 GRANT 即可維持合法內容維護。
+  2026-09-24 OpenCode 側重查：`current_user/session_user` 仍為
+  `neondb_owner`；`routine_privileges` 顯示 `content_update` 僅
+  `neondb_owner` 有 EXECUTE；`phq_web_ro` 欄級 SELECT 78 欄、整表授權 0、
+  `content_revisions` 無授權。Chat 端身分重確認待 Chat 自查（§4 讀前確認流程不變）。
+
+  讀取完整性（2026-09-24 實測，不新增端點／結構）：
+- 分頁：`food_places` 69 筆以 `ORDER BY notion_id LIMIT/OFFSET`
+  得 20/20/20/9，全覆蓋、無重複；keyset（`notion_id > 上頁末鍵`）同樣 69 筆。
+  Chat 讀取大量資料一律帶 `ORDER BY＋LIMIT/OFFSET`（或 keyset）＋回傳
+  `next cursor／has_more` 語義，不得整表一次塞給模型。
+- 長項目：先讀摘要欄（`summary/notes/evidence_as_of/version`），再以
+  `SUBSTRING(欄, 起點, 長度)` 分段取 `stops/dining` 等長欄；單段過長
+  不以截斷冒充完整。
+- 摘要追溯：`food_pool.pool_key → notion_id → food_places` JOIN 可查
+  （`vinwonders-inside` 為唯一的 `notion_id IS NULL` 純靜態列，只吃池文案）。
+  使用者行程安排欄伺服器端不存在（`information_schema` 查無此類欄），
+  摘要刷新先天不觸及使用者安排；跨系統部分成功分階段回報、安全重試，
+  不宣稱單一交易。
 
 現行業務限制仍保留：`chatgpt-instructions.md` 的旅途中主表凍結
 （只追加 `evidence_log`）、私人欄位不公開、批量覆寫／硬刪除／改動已確認
@@ -239,6 +257,14 @@ Chat 寫入 Neon 後，網站重整經 Function／備援讀到（備援需再匯
 不宣稱本機狀態等於跨裝置同步。
 
 ## 8. 個人紀錄現狀（先釐清，不假裝已完成）
+
+> 2026-09-24 查證補充：私人準備頁「富國島 2026｜出發準備（私人）」存在且可讀
+> （待辦／付款期限、私人費用小計 NT$15,911、越盾現金底線 450 萬 VND、
+> 行李勾選、研究連結；整理日期 2026-09-23，最後編輯 2026-09-23）。
+> 舊 `connectors.md` 在 repo 與 Notion 搜尋皆無，應視為不存在，不作能力依據。
+> 無背景排程（CI 皆為 push 路徑觸發或手動）。日常 Notion／Neon 更新不依賴
+> 網站匯出與發布（§6 生效鏈路已分開）。新版日常更新不應依賴網站匯出與發布；
+> 舊站退役前舊投影維護需求見 `docs/ops/RETIREMENT.md`。
 
 以下表格描述 **Neon／網站能力**，不是 Notion 的能力限制。私人準備頁不需新增網站 DB 結構。
 

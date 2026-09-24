@@ -22,3 +22,8 @@ Data backend (cutover 2026-09-22):
 Content split (2026-09-23): the website serves trip execution; private preparation (payment tracking, budgets, packing and retained comparisons) stays in private Notion, with no automatic two-way sync or private links/data in this public repo. Existing Notion research and Food Atlas remain historical reference. See `CONTENT_CONTRACT.md` §8 for maintenance boundaries.
 
 `v2.html` remains a separate UI/content candidate until it is explicitly accepted for promotion to the canonical GitHub Pages experience.
+
+Ops evidence (2026-09-24, read-only re-verified, zero prod writes):
+- `docs/ops/MIGRATION_MAP.md` — row/ID parity across SQLite archive, Neon production and JSON fallback.
+- `docs/ops/RETIREMENT.md` — old site kept as recovery entry; retirement conditions not yet met.
+- `docs/ops/CHAT_ACCEPT.md` — one-shot Chat acceptance prompt, marked 待 ChatGPT 驗證.

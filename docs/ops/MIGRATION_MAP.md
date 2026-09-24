@@ -1,0 +1,46 @@
+# 搬遷對照（2026-09-24 核對）
+
+> 方法：筆數＋ID 全量比對。正式庫以 production 分支唯讀查詢為準；
+> SQLite 為唯讀封存；JSON 為公開投影。正式庫零寫入。
+
+## 筆數對照
+
+| 表 | SQLite 封存 | Neon 正式 | JSON 備援 | 結論 |
+|---|---|---|---|---|
+| food_places／foods | 69 | 69 | 69 | 一致 |
+| dishes | 18 | 18 | —（內嵌 carriers） | 一致 |
+| dish_carriers | 7 | 7 | 7 | 一致 |
+| points | 48 | 48 | 48 | 一致 |
+| cards | 7 | 7 | 7 | 一致 |
+| bookings | 8（全欄） | 8 | 8（公開 6 欄） | 一致（投影差異為設計） |
+| transport_options | 7 | 7 | 7 | 一致 |
+| food_pool | 無（pre-004） | 18 | 18 | 一致（004 新增，非漂移） |
+| evidence_log | 0 | 0 | — | 一致 |
+| content_revisions | — | 31（含部署 smoke＋測試分支歷史） | 不匯出（設計） | 正常 |
+
+## ID 對照（全量）
+
+- cards slug：`anthoi/cable/khem/onbird/safari/starfish/vinwonders` ——
+  三處一致；`khem=RETIRED`、`anthoi=OPTIONAL` 語義保留。
+- bookings slug：`cosy/insurance/island-transport/onbird/sim-viettel-6d2gb/tw-transport/vjl844/vjl845` —— 三處一致。
+- food_pool rank 1–18 順序 —— Neon 與 JSON 一致。
+- foods notion_id 抽查 2 筆（`bun-ken-ut-luom`、`ganh-dau-market`）——
+  SQLite 與 Neon 同 ID 同名。
+
+## 來源處置
+
+| 來源 | 處置 |
+|---|---|
+| Neon 正式資料＋關聯 | 保留原處（SSOT），本輪零寫入 |
+| 私人 Notion 頁（出發準備） | 保留原處；本輪只讀結構＋草稿隔離驗證，未動私人頁 |
+| 舊 Notion 研究樹／Trip SSOT／Food Atlas | 封存參考，不搬、不刪、不重啟 ETL |
+| 網站獨有文字（暫排下拉、交通分段、空狀態文案） | 留在 `tools/build_site.py` 生成邏輯，無需搬遷 |
+| 裝置 localStorage（暫排、吃過） | 需使用者裝置提供；提供一次性查看步驟，未搬遷亦未放棄 |
+| 舊 Function／CI／Pages | 保留，見 `RETIREMENT.md` |
+| SQLite／父目錄 .db 備份 | 封存保留 |
+
+## 缺漏
+
+- 無資料缺漏。唯一已知差異：測試分支 `food_pool.ganh-dau-market`
+  既有漂移（`desc_copy='T18'`，早於本輪的 candidate-sync-proof 殘留），
+  本輪驗證已還原為 `T18`（該分支原值），正式庫不受影響（正式值為中文原句，version=1）。

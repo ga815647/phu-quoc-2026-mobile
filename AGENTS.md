@@ -33,6 +33,10 @@
 - Verify: `SELECT slug,kind,amount,status FROM bookings` and reload `data/bookings.json` after export.
 
 ## Gotchas
+- 2026-09-24 查證狀態：Neon 正式庫唯讀重查（各表筆數、ACL、ro 欄級 78／整表 0、
+  Function deployment 5 行為）與契約一致；正式庫零寫入，寫入驗證走測試分支。
+  舊 `connectors.md` 不存在；Chat 實測待驗（見 `docs/ops/CHAT_ACCEPT.md`）；
+  舊站未退役（見 `docs/ops/RETIREMENT.md`）；搬遷對照見 `docs/ops/MIGRATION_MAP.md`。
 - Workdir `E:\CS\projects\富國島` contains CJK; `glob` may return nothing — use `read` on directories and `bash` with `workdir` instead of `cd`.
 - Console is `cp950`: printing `↔`/CJK from sqlite crashes; set `PYTHONUTF8=1` and avoid bare `print(row)` with wide chars.
 - `git status` shows repo-wide LF→CRLF warnings; ignore the noise — real diffs are `data/bookings.json`, `data/phuquoc.db`, `data/snapshot.json`.
