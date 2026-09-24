@@ -219,7 +219,9 @@ VALUES ('food','<notion_id>','2026-10-12 現場觀察：...（僅當日觀察，
   正式 production 皆已驗（PUBLIC／ro 關閉、owner 可用、寫入還原稽核正常）。
   Chat connector 實際身分經 ChatGPT 自查（`effective_role/login_role`
   皆 `neondb_owner`）＋ OpenCode 側 `current_user/session_user` 雙重確認，
-  故不需新增 GRANT 即可維持合法內容維護。
+  故當時不需新增 GRANT 即可維持合法內容維護。
+  此為當時有效權限實測結論，不是永久綁定：日常一律以 §4 讀前確認
+  （唯讀確認目標與有效權限）為準，不以角色名推定可用。
   2026-09-24 OpenCode 側重查（角色名僅作當時記錄，能力以有效權限實測為準）：
   當時 `current_user/session_user` 為 owner 身分；`routine_privileges` 顯示
   `content_update` 僅具寫入能力身分有 EXECUTE；唯讀角色為欄級 SELECT、
