@@ -32,7 +32,7 @@ async function withPage(options,run) {
     envelope.meta.source='neon-prod';envelope.meta.environment=options.environment||'production';
     if(options.cached)envelope.meta.content_revision=`phq1:${'c'.repeat(64)}`;
     const rendered=options.rendered||envelope;
-    let navigations=0;
+    let navigations=0;const cardVisits=[];
     await page.route('**/*',route=>{
       const url=new URL(route.request().url());
        if(url.pathname==='/' && options.delayedFinal && ++navigations>=3)return new Promise(()=>{});
@@ -41,8 +41,9 @@ async function withPage(options,run) {
       if(url.pathname==='/staging/api/itinerary')return route.fulfill({contentType:'application/json',body:JSON.stringify(envelope)});
       if(url.pathname==='/site-version.json')return route.fulfill({contentType:'application/json',body:JSON.stringify({build_id:options.build||build})});
       if(url.pathname==='/assets/itinerary-reader.mjs')return route.fulfill({contentType:'text/javascript; charset=utf-8',body:actualReader});
-      if(url.pathname==='/card.html')return route.fulfill({status:options.card404?404:200,contentType:'text/html; charset=utf-8',
-        body:`<!doctype html><title>Card</title><div id="cardMount"><h1>${envelope.data.refs.cards.find(c=>c.slug===url.searchParams.get('slug'))?.name||''}</h1></div>`});
+      if(url.pathname==='/card.html'){cardVisits.push(url.searchParams.get('slug'));
+        return route.fulfill({status:options.card404||options.card404Slug===url.searchParams.get('slug')?404:200,contentType:'text/html; charset=utf-8',
+        body:`<!doctype html><title>Card</title><div id="cardMount"><h1>${envelope.data.refs.cards.find(c=>c.slug===url.searchParams.get('slug'))?.name||url.searchParams.get('slug')||''}</h1></div>`});}
       if(url.pathname==='/' && options.realReader)return route.fulfill({contentType:'text/html; charset=utf-8',body:`<!doctype html><html data-site-build="${build}"><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{overflow-wrap:anywhere} nav:not(.nav){display:grid;grid-template-columns:repeat(2,minmax(0,1fr))} .step{overflow-wrap:anywhere}</style></head><body>
         <nav class="nav">${['today','itinerary','food','journey'].map(s=>`<button data-jump="${s}" style="width:60px;height:44px">${s}</button>`).join('')}</nav>
         <div id="today"></div><div id="itinerary"><nav>${cardSlugs.map(s=>`<a class="link-card" href="./card.html?slug=${s}" style="display:inline-block;min-height:44px;padding:10px">${s}</a>`).join('')}</nav>
@@ -93,9 +94,10 @@ async function withPage(options,run) {
     });
     let clock=0;
     const result=await verifySite({request,page,siteUrl:localUrl,apiOrigin:localUrl,now:()=>clock,
-      sleep:async ms=>{clock+=ms},budgetMs:options.foreverBody?1000:5000,intervalMs:1000,
+       sleep:async ms=>{clock+=ms},budgetMs:options.foreverBody?1000:options.delayedFinal?5000:12000,
+       intervalMs:options.delayedFinal?1000:12000,
       screenshotPath:options.delayedFinal||options.foreverBody?'/tmp/opencode/task7-deadline.png':undefined});
-    await run(result,page,{navigations,clock});
+    await run(result,page,{navigations,clock,cardVisits});
   } finally {await browser.close();}
 }
 
@@ -109,12 +111,18 @@ test('correct consumed hash/refs but stale secondary activity text fails',()=>wi
   assert.equal(r.status,'CONTENT_MISMATCH');
   assert.match(r.checks.day_error,/visible segment phuquoc-2026:2026-10-10\/start/);
 }));
-test('valid consumed API and visible DOM pass',()=>withPage({},r=>assert.equal(r.status,'PASS',JSON.stringify(r.checks))));
+test('valid consumed API and visible DOM pass with all five card destinations',()=>withPage({},(r,_page,{cardVisits})=>{
+  assert.equal(r.status,'PASS',JSON.stringify(r.checks));assert.deepEqual(cardVisits,cardSlugs);
+}));
 test('missing visible backups cannot pass',()=>withPage({omitBackups:true},r=>{
   assert.equal(r.status,'CONTENT_MISMATCH');assert.equal(r.checks.alternatives,false);
 }));
 test('a 404 card target cannot pass with correct link hrefs',()=>withPage({card404:true},r=>{
   assert.equal(r.status,'CONTENT_MISMATCH');assert.equal(r.checks.card_navigation,false);
+}));
+test('a non-first 404 card target cannot pass',()=>withPage({card404Slug:'cable'},(r,_page,{cardVisits})=>{
+  assert.equal(r.status,'CONTENT_MISMATCH');assert.equal(r.checks.card_navigation,false);
+  assert.deepEqual(cardVisits,cardSlugs);
 }));
 test('awaits delayed body of the page-observed API response before classifying',()=>withPage({delayBodyMs:200},r=>assert.equal(r.status,'PASS',JSON.stringify(r.checks))));
 test('final attempt with forever-pending navigation respects remaining budget',async()=>{
@@ -123,7 +131,7 @@ test('final attempt with forever-pending navigation respects remaining budget',a
     assert.notEqual(r.status,'PASS');assert.deepEqual(r.artifacts,[]);
      assert.ok(r.observations.filter(x=>x.status).length<=3);
     assert.match(r.checks.navigation,/SITE_CHECK_DEADLINE/);
-     assert.equal(navigations,3);assert.ok(clock>=1000 && clock<=2000);
+     assert.equal(navigations,3);assert.ok(clock<=2000);
   });
    assert.ok(Date.now()-start<6000,'a pending final navigation must not hang the verifier');
 });

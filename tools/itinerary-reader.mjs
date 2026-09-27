@@ -66,7 +66,7 @@ export function validateEnvelope(value) {
       if(!keys(tr,['from_ref','to_ref','mode','wait_minutes','buffer_minutes','condition_refs']) ||
           !['operator_pickup','grab','taxi','bus','charter','walk','cable'].includes(tr.mode) ||
           !interval(tr.wait_minutes) || !Number.isInteger(tr.buffer_minutes) || tr.buffer_minutes < 0 ||
-          !Array.isArray(tr.condition_refs)) fail();
+           !Array.isArray(tr.condition_refs) || !tr.condition_refs.every(string)) fail();
       ref(tr.from_ref); ref(tr.to_ref);
       if(!tr.from_ref || !tr.to_ref) fail();
     } else if(s.transfer !== undefined) fail();

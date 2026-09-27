@@ -16,7 +16,7 @@ Maintain one record per target application (private release record, no credentia
 | Approver / approved scope | Explicit authorization for this branch, migration, ACL and, separately, approved six-day content |
 | Operator / role | Verify `session_user`, `current_user`, function owner and existing maintenance identity; no guessed GRANT |
 | `applied_at` (UTC) | DB `clock_timestamp()` observed **after commit**, with commit/result noted |
-| Test result | Current local itinerary suite (47 tests at this fix wave), isolated branch ACL/update/projection/schema rerun outcomes, counts/hash and date |
+| Test result | Current local itinerary suite (49 tests at this corrective pass), isolated branch ACL/update/projection/schema rerun outcomes, counts/hash and date |
 | Release and rollback | API/UI revision, public revision, six-day validation and separately authorized publication evidence |
 
 Never record DSNs, tokens, private Notion details, or sample credentials in this
@@ -125,10 +125,16 @@ Only after isolated results, review and **explicit production authorization**:
       projected only as `refs.cards[].condition_labels` for Starfish so the
       reader can display the existing card text for each key. A card-gate
       text change that breaks the mapping blocks a Starfish edit. The
-      Starfish main activity must carry **all** condition keys; its first
-      outbound transfer from Starfish must follow the activity, point directly
-      to `return_base`, use `charter` or `operator_pickup`, and carry `return`
-      as a transfer condition. An unrelated segment cannot satisfy the return.
+      Every executable Starfish route—main segments or a flat
+      `use_alternative.replacement_segments` route that references Starfish—
+      must contain a Starfish activity carrying **all** condition keys. Its
+      first outbound transfer from Starfish in that *same route* must follow
+      the activity, point directly to `return_base`, use `charter` or
+      `operator_pickup`, and carry `return` as a transfer condition. A segment
+      from another route cannot satisfy the return. Every segment/transfer
+      condition key is valid only against card refs on that individual
+      segment/transfer; an unrelated meal cannot borrow a Starfish gate from
+      elsewhere on the day. Alternatives remain flat (no nested alternatives).
       Missing/malformed settings forbid selecting Starfish; default Vin/cable/
       Safari days do not require Starfish configuration.
 

@@ -98,7 +98,7 @@ class UpdateTests(ItineraryDBCase):
         self.failure('22023',[day],message='LOCKED_ARRANGEMENT')
         tr['transfer']['mode']='charter'
         tr['transfer']['from_ref']={'type':'point','id':'fixture-point'}
-        self.failure('22023',[day],message='LOCKED_ARRANGEMENT')
+        self.failure('22023',[day],message='INVALID_PLAN')
         tr['transfer']['from_ref']={'type':'card','id':'starfish'}
         receipt=self.update(self.new_request_id(),[day])
         self.assertEqual(receipt['content_revision'],self.snapshot()['revision'])
@@ -109,8 +109,64 @@ class UpdateTests(ItineraryDBCase):
         outbound=copy.deepcopy(tr);outbound['id']='grab-first';outbound['transfer']['mode']='grab'
         disguised['plan']['segments'].insert(1,outbound)
         self.failure('22023',[disguised],message='LOCKED_ARRANGEMENT')
+        before=self.snapshot()
         self.execute("UPDATE cards SET gates='[\"Weather and boat checked\"]' WHERE slug='starfish'")
+        self.execute('SAVEPOINT changed_gate')
+        try:
+            with self.assertRaises(psycopg2.Error) as raised:
+                self.update(self.new_request_id(),[day],base=before['version'],revision=before['revision'])
+            self.assertEqual((raised.exception.pgcode,raised.exception.diag.message_primary),('22023','INVALID_PLAN'))
+        finally:
+            self.execute('ROLLBACK TO SAVEPOINT changed_gate')
+        self.execute("UPDATE cards SET gates=%s WHERE slug='starfish'",
+                     (json.dumps(['Weather and boat checked','Return charter arranged']),))
+        self.assertEqual(before,self.snapshot())
+
+    def configure_starfish(self):
+        self.execute('INSERT INTO cards(slug,name,gates) VALUES (%s,%s,%s)',
+          ('starfish','Starfish',json.dumps(['Weather and boat checked','Return charter arranged'])))
+        self.execute('''UPDATE itineraries SET locked_constraints=jsonb_set(locked_constraints,'{starfish}',%s::jsonb)''',
+          (json.dumps({'conditions':{'weather':'Weather and boat checked','return':'Return charter arranged'},
+                       'return_base':'hotel'}),))
+
+    def test_unrelated_meal_cannot_borrow_starfish_condition_key(self):
+        self.configure_starfish()
+        day=self.candidate('2026-10-12','starfish')
+        day['plan']['segments'][0]['condition_refs']=['weather','return']
+        transfer=copy.deepcopy(self.candidate('2026-10-10')['plan']['segments'][2])
+        transfer['transfer'].update(from_ref={'type':'card','id':'starfish'},mode='charter',condition_refs=['return'])
+        day['plan']['segments'].append(transfer)
+        meal=copy.deepcopy(self.candidate('2026-10-10')['plan']['segments'][1])
+        meal['condition_refs']=['return']
+        day['plan']['segments'].append(meal)
+        self.failure('22023',[day],message='INVALID_PLAN')
+        meal['condition_refs']=[]
+        self.update(self.new_request_id(),[day])
+        self.assert_projection_readable()
+
+    def test_cable_backup_starfish_requires_conditions_and_ordered_return(self):
+        self.configure_starfish()
+        day=self.candidate('2026-10-12','cable')
+        star=copy.deepcopy(day['plan']['segments'][0]);star['id']='star-main'
+        star['ref']={'type':'card','id':'starfish'}
+        transfer=copy.deepcopy(self.candidate('2026-10-10')['plan']['segments'][2])
+        transfer['id']='star-return'
+        transfer['transfer'].update(from_ref={'type':'card','id':'starfish'},mode='grab')
+        day['plan']['alternatives']=[{'id':'use-starfish','trigger_kind':'manual',
+          'trigger_text':'Use alternative','action':'use_alternative','target_segment_ids':['main'],
+          'replacement_segments':[star,transfer]}]
         self.failure('22023',[day],message='LOCKED_ARRANGEMENT')
+        star['condition_refs']=['weather','return']
+        self.failure('22023',[day],message='LOCKED_ARRANGEMENT')
+        transfer['transfer'].update(mode='charter',condition_refs=['return'])
+        self.update(self.new_request_id(),[day])
+        self.assert_projection_readable()
+        no_gate=copy.deepcopy(day)
+        no_gate['plan']['alternatives'][0]['replacement_segments'][0]['condition_refs']=[]
+        self.failure('22023',[no_gate],message='LOCKED_ARRANGEMENT')
+        grab=copy.deepcopy(day)
+        grab['plan']['alternatives'][0]['replacement_segments'][1]['transfer']['mode']='grab'
+        self.failure('22023',[grab],message='LOCKED_ARRANGEMENT')
 
     def assert_projection_readable(self):
         state=self.snapshot()

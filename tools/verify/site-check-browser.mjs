@@ -231,24 +231,29 @@ export async function verifySite({request,page,siteUrl=SITE_URL,apiOrigin=API_OR
        if(checks.cards){
          // The consumed envelope above is already resolved and validated. Do not
          // overwrite that evidence with an independent fetch after navigation.
-         const observed=consumed[0],href=await links.first().getAttribute('href');
-         const destination=new URL(href,siteUrl);
-         const [response]=await Promise.all([
-           page.waitForNavigation({waitUntil:'domcontentloaded',timeout:Math.min(10000,remaining())}),
-           links.first().click({timeout:Math.min(10000,remaining())})
-         ]);
-         await page.locator('#cardMount h1').waitFor({timeout:Math.min(8000,remaining())}).catch(()=>{});
-         checks.card_navigation=!!observed && response?.status()===200 &&
-           page.url()===destination.href && await page.locator('#cardMount h1').isVisible() &&
-           (await page.locator('#cardMount h1').innerText()).trim().length>0;
-         if(!checks.card_navigation)checks.card_error=`status ${response?.status()} url ${page.url()} expected ${destination.href} heading ${await page.locator('#cardMount h1').allInnerTexts()}`;
-         if(checks.card_navigation){
+         const observed=consumed[0];checks.card_navigation=!!observed;
+         for(const [index,slug] of slugs.entries()){
+           const href=await links.nth(index).getAttribute('href');
+           const destination=new URL(href,siteUrl);
+           const [response]=await Promise.all([
+             page.waitForNavigation({waitUntil:'domcontentloaded',timeout:Math.min(10000,remaining())}),
+             links.nth(index).click({timeout:Math.min(10000,remaining())})
+           ]);
+           if(response?.status()===200)
+             await page.locator('#cardMount h1').waitFor({timeout:Math.min(3000,remaining())}).catch(()=>{});
+           const heading=await page.locator('#cardMount h1').allInnerTexts();
+           const cardOk=response?.status()===200 && page.url()===destination.href &&
+             heading.length===1 && heading[0].trim().length>0;
+           if(!cardOk){checks.card_navigation=false;
+             checks.card_error=`${slug}: status ${response?.status()} url ${page.url()} expected ${destination.href} heading ${heading}`;}
            await page.goBack({waitUntil:'domcontentloaded',timeout:Math.min(10000,remaining())});
            await page.locator('[data-itinerary][data-source]').waitFor({timeout:Math.min(10000,remaining())});
-           checks.card_navigation=page.url()===siteUrl &&
+           const returned=page.url()===siteUrl &&
              await page.locator('[data-itinerary]').getAttribute('data-source')==='live' &&
              await page.locator('[data-itinerary]').getAttribute('data-content-revision')===revision;
-           if(!checks.card_navigation)checks.card_error=`return ${page.url()} revision ${await page.locator('[data-itinerary]').getAttribute('data-content-revision')}`;
+           if(!returned){checks.card_navigation=false;
+             checks.card_error=`${slug}: return ${page.url()} revision ${await page.locator('[data-itinerary]').getAttribute('data-content-revision')}`;
+             break;}
          }
        }
       checks.navigation=await page.locator('.nav [data-jump]').evaluateAll(nodes=>

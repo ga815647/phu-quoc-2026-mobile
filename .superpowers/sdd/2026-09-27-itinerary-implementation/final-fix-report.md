@@ -26,3 +26,63 @@ Environment: `source /tmp/opencode/phq-pg18-test-env`, local PG18.6 private sock
 - The actual approved OnBird timing/operative segment and Starfish key-to-source-gate/return-base mapping **do not exist in this commit**; a separately authorized, reviewed initialization is necessary. If content cannot be verified, fail closed; do not use the synthetic times, gate strings or base.
 - The invoker update never changes `locked_constraints`, and the web role cannot access private rows. A privileged DB owner can still bypass procedure/ACL controls; an exceptional lock correction needs separate review. SQL cannot prove geographic route feasibility or actual operator availability merely from stable refs, modes and order; content/operator review remains essential.
 - Isolated Neon role ownership/ACL, real Function/Pages deployment, genuine Chat readback, formal browser CI and phone acceptance remain distinct release gates. No production migration, writes, fallback publication, preview or release was attempted.
+
+## Narrow corrective pass after `final-rereview.md` (base `4b141ea`)
+
+The re-review found two remaining Important gaps and one Minor gap in this wave's paths. This pass changes only their accepted behavior: SQL checks each segment/transfer condition key against cards actually referenced **on that segment/transfer**, matching the JS validator; it no longer borrows the Starfish main-card gate for an unrelated meal. A single invoker-only `itinerary_starfish_route_ok` helper validates the reviewed configuration, all required activity conditions and first ordered, conditioned return for both main segments and each flat executable `use_alternative.replacement_segments` route containing Starfish. Other alternatives do not require Starfish configuration or gain nesting. The web role cannot execute the helper. The browser verifier follows **all five** card hrefs, checks HTTP 200/visible heading and live-revision return under its existing single watchdog; original consumed response evidence is preserved. No real gate text, time, base or content was seeded.
+
+### Focused red → green (local private-socket PG18 and isolated Chromium only)
+
+| Check | Before fix (`4b141ea` SQL/verifier) | After fix |
+| --- | --- | --- |
+| `source /tmp/opencode/phq-pg18-test-env; python3 -m unittest discover -s tools/verify -p 'test_itinerary_update.py' -k 'test_unrelated_meal_cannot_borrow_starfish_condition_key' -v` | **FAIL**, `AssertionError: Error not raised`: unrelated meal `return` key admitted; no rejection. | **OK**, 1 test; `INVALID_PLAN`, snapshot equality includes itinerary version, public revision, audit and request counts; a corrected plan is accepted and passes JS `validateEnvelope`. |
+| Same command, `-k 'test_cable_backup_starfish_requires_conditions_and_ordered_return'` | **FAIL**, `AssertionError: Error not raised`: cable backup with unconditioned Starfish and Grab-only return admitted. | **OK**, 1 test; rejects missing gate/Grab, accepts a synthetic conditioned charter branch, validates projected envelope, then rejects removed gate/Grab regression with unchanged snapshot. |
+| `source /tmp/opencode/phq-pg18-test-env; node --test --test-name-pattern='non-first 404' tools/verify/test_site_check_browser.mjs` | **FAIL**, actual status `PASS` rather than expected `CONTENT_MISMATCH` when only cable's card returns 404. | **PASS**; both success and non-first-404 fixtures assert the browser visited all five slugs. |
+
+The migration was re-applied **only** to the guarded local PG18 socket before green DB runs. During the full run, the existing gate-drift test needed to assert `INVALID_PLAN` before the now-invalid source projection is read: changing a used card gate invalidates the current envelope immediately; the test restores source text and verifies the original snapshot. This is fail-closed behavior, not a production data change.
+
+### Full affected suite output (final pass)
+
+Commands use `source /tmp/opencode/phq-pg18-test-env` (no remote credentials). Full output from the final Python run:
+
+```text
+$ python3 -m unittest discover -s tools/verify -p 'test_itinerary_*.py'
+.................................................
+----------------------------------------------------------------------
+Ran 49 tests in 33.025s
+
+OK
+source: neon (DATABASE_URL host redacted)
+foods 2 bytes -> /tmp/tmpllz4k_l7/foods.json
+points 2 bytes -> /tmp/tmpllz4k_l7/points.json
+cards 2 bytes -> /tmp/tmpllz4k_l7/cards.json
+bookings 2 bytes -> /tmp/tmpllz4k_l7/bookings.json
+pool 2 bytes -> /tmp/tmpllz4k_l7/pool.json
+snapshot 374 bytes -> /tmp/tmpllz4k_l7/snapshot.json
+itinerary 1552 bytes -> /tmp/tmpllz4k_l7/itinerary.json
+counts: {'foods': 0, 'carriers': 0, 'points': 0, 'cards': 0, 'bookings': 0, 'transport': 0, 'pool': 0}
+source: neon (DATABASE_URL host redacted)
+foods 2 bytes -> /tmp/tmp5pfubdln/foods.json
+points 2 bytes -> /tmp/tmp5pfubdln/points.json
+cards 2 bytes -> /tmp/tmp5pfubdln/cards.json
+bookings 2 bytes -> /tmp/tmp5pfubdln/bookings.json
+pool 2 bytes -> /tmp/tmp5pfubdln/pool.json
+source: neon (DATABASE_URL host redacted)
+```
+
+The Python exporter paths above are synthetic temporary test artifacts, not public data or an export publication. `neon` is a mocked source label, not a remote write.
+
+```text
+$ node --test --test-reporter=dot tools/verify/test_itinerary_reader.mjs tools/verify/test_site_check_browser.mjs tools/verify/test_site_check_contract.mjs tools/verify/test_site_check_publish.mjs
+....................
+..................
+```
+
+The same Node suite under the detailed default reporter returned **38 tests, 38 pass, 0 fail**. The dot reporter's two lines above represent all 38 tests. The integrated check also returned:
+
+```text
+$ node tools/verify/itinerary_e2e_candidate.mjs
+LOCAL FIXTURE PASS: PG18 rollback update/audit -> public view/export -> generated candidate -> Chromium verifier -> fake GitHub immutable result
+```
+
+The original outstanding release/authorization gates above are unchanged. No production or remote/network write, published site change, real schedule or gate mapping was attempted.

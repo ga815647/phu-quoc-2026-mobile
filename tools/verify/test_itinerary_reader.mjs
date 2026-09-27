@@ -45,6 +45,15 @@ test('main card must be active and mapped condition keys must match card gate te
   card.gates=JSON.stringify(['Changed source text']);invalid(mapped);
 });
 
+test('mapped card keys cannot be borrowed by a segment without that card',()=>{
+  const mapped=clone(),card=mapped.data.refs.cards.find(c=>c.slug==='onbird');
+  card.gates=JSON.stringify(['Existing public gate']);card.condition_labels={check:'Existing public gate'};
+  mapped.data.days[1].plan.segments[0].condition_refs=['check'];validateEnvelope(mapped);
+  mapped.data.days[0].plan.segments[1].condition_refs=['check'];invalid(mapped);
+  mapped.data.days[0].plan.segments[1].condition_refs=[];
+  mapped.data.days[0].plan.segments[2].transfer.condition_refs=['check'];invalid(mapped);
+});
+
 test('uses entire dated fallback after invalid live response', async () => {
   const bad = clone(); bad.data.days.pop();
   const seen = [];

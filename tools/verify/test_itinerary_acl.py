@@ -47,6 +47,7 @@ class ACLTests(ItineraryDBCase):
                 self.denied(f'SELECT {column} FROM public.{table} LIMIT 1')
         self.denied("SELECT public.itinerary_read_for_edit('phuquoc-2026')")
         self.denied("SELECT public.itinerary_validate_day('{}'::jsonb)")
+        self.denied("SELECT public.itinerary_starfish_route_ok('[]'::jsonb,'{}'::jsonb)")
         self.denied("SELECT public.itinerary_update('phuquoc-2026',1,'x',gen_random_uuid(),'[]'::jsonb,'[]'::jsonb,NULL,'test','test')")
         self.denied("UPDATE public.itinerary_days SET version=version+1 WHERE id='phuquoc-2026:2026-10-10'")
 
@@ -57,8 +58,9 @@ class ACLTests(ItineraryDBCase):
                          self.scalar('SELECT payload FROM public.itinerary_public'))
         self.assertIsNone(self.scalar("SELECT public.itinerary_payload('not-an-itinerary')"))
         for signature in (UPDATE_SIGNATURE, 'public.itinerary_read_for_edit(text)',
-                          'public.itinerary_validate_day(jsonb)',
-                          'public.itinerary_dependency_ids(text,jsonb)'):
+                           'public.itinerary_validate_day(jsonb)',
+                           'public.itinerary_dependency_ids(text,jsonb)',
+                           'public.itinerary_starfish_route_ok(jsonb,jsonb)'):
             with self.subTest(signature=signature):
                 self.assertFalse(self.scalar('SELECT has_function_privilege(current_user,%s,\'EXECUTE\')',
                                              (signature,)))

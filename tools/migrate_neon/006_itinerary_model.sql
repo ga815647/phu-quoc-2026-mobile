@@ -100,15 +100,14 @@ CREATE OR REPLACE FUNCTION public.itinerary_validate_day(p_day jsonb) RETURNS vo
 LANGUAGE plpgsql AS $$
 DECLARE p jsonb; s jsonb; a jsonb; t jsonb; tr jsonb; r jsonb; c jsonb; condition_segment record;
         ids text[] := '{}'; alt_ids text[] := '{}'; target text; cond text;
-        constraints jsonb; itinerary_tz text; main_slug text; card_condition_slugs text[] := '{}';
+        constraints jsonb; itinerary_tz text; main_slug text; segment_card_slugs text[];
 BEGIN
  IF p_day IS NULL OR octet_length(p_day::text)>131072 THEN RAISE EXCEPTION 'invalid'; END IF;
  IF NOT public.itinerary_keys(p_day, ARRAY['id','date','day_kind','main_card_slug','plan'],
      ARRAY['day_kind','main_card_slug','plan']) THEN RAISE EXCEPTION 'invalid'; END IF;
  IF p_day->>'day_kind' NOT IN ('arrival','activity','light','departure')
     OR jsonb_typeof(p_day->'day_kind') <> 'string' THEN RAISE EXCEPTION 'invalid'; END IF;
- main_slug := p_day->>'main_card_slug';
- IF main_slug IS NOT NULL THEN card_condition_slugs := array_append(card_condition_slugs,main_slug); END IF;
+  main_slug := p_day->>'main_card_slug';
  IF p_day->'main_card_slug' IS NULL OR jsonb_typeof(p_day->'main_card_slug') NOT IN ('null','string')
     OR (p_day->>'day_kind'='activity' AND main_slug IS NULL)
      OR (main_slug IS NOT NULL AND (main_slug NOT IN ('onbird','vinwonders','cable','starfish','safari')
@@ -172,7 +171,6 @@ BEGIN
       OR EXISTS(SELECT 1 FROM jsonb_array_elements(t->'source_refs') v WHERE jsonb_typeof(v)<>'string')
       THEN RAISE EXCEPTION 'invalid'; END IF;
   IF NOT public.itinerary_ref_ok(s->'ref',constraints) THEN RAISE EXCEPTION 'invalid'; END IF;
-  IF s->'ref'->>'type'='card' THEN card_condition_slugs:=array_append(card_condition_slugs,s->'ref'->>'id'); END IF;
   IF s->>'kind'='transfer' THEN
    tr := s->'transfer';
    IF NOT public.itinerary_keys(tr,ARRAY['from_ref','to_ref','mode','wait_minutes','buffer_minutes','condition_refs'],
@@ -184,8 +182,6 @@ BEGIN
      OR NOT public.itinerary_interval(tr->'wait_minutes',false)
      OR jsonb_typeof(tr->'buffer_minutes')<>'number' OR tr->>'buffer_minutes' !~ '^[0-9]+$'
      OR jsonb_typeof(tr->'condition_refs')<>'array' THEN RAISE EXCEPTION 'invalid'; END IF;
-   IF tr->'from_ref'->>'type'='card' THEN card_condition_slugs:=array_append(card_condition_slugs,tr->'from_ref'->>'id'); END IF;
-   IF tr->'to_ref'->>'type'='card' THEN card_condition_slugs:=array_append(card_condition_slugs,tr->'to_ref'->>'id'); END IF;
    IF EXISTS(SELECT 1 FROM jsonb_array_elements(tr->'condition_refs') v WHERE jsonb_typeof(v)<>'string') THEN RAISE EXCEPTION 'invalid'; END IF;
   ELSIF s ? 'transfer' THEN RAISE EXCEPTION 'invalid'; END IF;
  END LOOP;
@@ -195,19 +191,27 @@ BEGIN
     THEN RAISE EXCEPTION 'invalid'; END IF;
   END LOOP;
  END LOOP;
- FOR condition_segment IN SELECT value AS segment, false AS replacement FROM jsonb_array_elements(p->'segments')
-     UNION ALL SELECT s2.value, true FROM jsonb_array_elements(p->'alternatives') a2,
-       LATERAL jsonb_array_elements(a2->'replacement_segments') s2 LOOP
-  FOR cond IN SELECT v #>> '{}' FROM jsonb_array_elements(condition_segment.segment->'condition_refs') v
-      UNION ALL SELECT v #>> '{}' FROM jsonb_array_elements(COALESCE(condition_segment.segment->'transfer'->'condition_refs','[]'::jsonb)) v LOOP
-   IF (condition_segment.replacement AND cond=ANY(alt_ids)) OR
+  FOR condition_segment IN SELECT value AS segment, false AS replacement FROM jsonb_array_elements(p->'segments')
+      UNION ALL SELECT s2.value, true FROM jsonb_array_elements(p->'alternatives') a2,
+        LATERAL jsonb_array_elements(a2->'replacement_segments') s2 LOOP
+   SELECT coalesce(array_agg(local_refs.card_ref->>'id'),'{}') INTO segment_card_slugs FROM (
+     SELECT condition_segment.segment->'ref' AS card_ref
+     UNION ALL SELECT condition_segment.segment->'transfer'->'from_ref'
+     UNION ALL SELECT condition_segment.segment->'transfer'->'to_ref') local_refs
+     WHERE local_refs.card_ref->>'type'='card';
+   FOR cond IN SELECT v #>> '{}' FROM jsonb_array_elements(condition_segment.segment->'condition_refs') v
+       UNION ALL SELECT v #>> '{}' FROM jsonb_array_elements(COALESCE(condition_segment.segment->'transfer'->'condition_refs','[]'::jsonb)) v LOOP
+    IF (condition_segment.replacement AND cond=ANY(alt_ids)) OR
        (NOT cond=ANY(alt_ids) AND NOT EXISTS (SELECT 1 FROM public.cards
-        WHERE slug=ANY(card_condition_slugs) AND gates IS NOT NULL AND CASE WHEN gates ~ '^\s*\[' THEN
-         (gates::jsonb) ? cond ELSE false END)
-        AND NOT (cond=ANY(ARRAY(SELECT jsonb_object_keys(CASE
-          WHEN jsonb_typeof(constraints->'starfish'->'conditions')='object'
-          THEN constraints->'starfish'->'conditions' ELSE '{}'::jsonb END)))
-          AND 'starfish'=ANY(card_condition_slugs))) THEN RAISE EXCEPTION 'invalid'; END IF;
+        WHERE slug=ANY(segment_card_slugs) AND gates IS NOT NULL AND CASE WHEN gates ~ '^\s*\[' THEN
+         jsonb_typeof(gates::jsonb)='array' AND (gates::jsonb) ? cond ELSE false END)
+        AND NOT ('starfish'=ANY(segment_card_slugs)
+          AND jsonb_typeof(constraints->'starfish'->'conditions')='object'
+          AND constraints->'starfish'->'conditions' ? cond
+          AND EXISTS (SELECT 1 FROM public.cards c WHERE c.slug='starfish' AND c.gates IS NOT NULL
+            AND CASE WHEN c.gates ~ '^\s*\[' THEN jsonb_typeof(c.gates::jsonb)='array'
+              AND (c.gates::jsonb) ? (constraints->'starfish'->'conditions'->>cond) ELSE false END)))
+       THEN RAISE EXCEPTION 'invalid'; END IF;
   END LOOP;
  END LOOP;
 EXCEPTION WHEN OTHERS THEN
@@ -408,6 +412,53 @@ BEGIN
  END IF;
  IF new_segment->'ref' IS NULL OR new_segment->'ref'='null'::jsonb THEN RETURN 'remove'; END IF;
  RETURN 'replace';
+ END $$;
+
+-- A Starfish route is executable whether it is the main route or a selected
+-- use_alternative replacement. Validate each flat route independently; a
+-- transfer/condition in another alternative cannot complete this route.
+CREATE OR REPLACE FUNCTION public.itinerary_starfish_route_ok(p_segments jsonb, p_constraints jsonb)
+RETURNS boolean LANGUAGE plpgsql STABLE SECURITY INVOKER SET search_path=pg_catalog,public AS $$
+DECLARE config jsonb; activity jsonb; activity_order bigint; first_return jsonb; first_order bigint;
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM jsonb_array_elements(p_segments) s WHERE
+      s->'ref'='{"type":"card","id":"starfish"}'::jsonb
+      OR s->'transfer'->'from_ref'='{"type":"card","id":"starfish"}'::jsonb
+      OR s->'transfer'->'to_ref'='{"type":"card","id":"starfish"}'::jsonb) THEN
+    RETURN true;
+  END IF;
+  config:=p_constraints->'starfish';
+  IF NOT public.itinerary_keys(config,ARRAY['conditions','return_base'],ARRAY['conditions','return_base'])
+    OR jsonb_typeof(config->'conditions')<>'object'
+    OR NOT (config->'conditions' ? 'return')
+    OR (SELECT count(*) FROM jsonb_object_keys(CASE WHEN jsonb_typeof(config->'conditions')='object'
+      THEN config->'conditions' ELSE '{}'::jsonb END))<2
+    OR EXISTS(SELECT 1 FROM jsonb_each(CASE WHEN jsonb_typeof(config->'conditions')='object'
+      THEN config->'conditions' ELSE '{}'::jsonb END) gate WHERE jsonb_typeof(gate.value)<>'string')
+    OR jsonb_typeof(config->'return_base')<>'string'
+    OR NOT public.itinerary_ref_ok(jsonb_build_object('type','base','id',config->>'return_base'),p_constraints)
+    OR EXISTS(SELECT 1 FROM jsonb_each_text(CASE WHEN jsonb_typeof(config->'conditions')='object'
+      THEN config->'conditions' ELSE '{}'::jsonb END) gate
+      WHERE gate.key !~ '^[a-z0-9][a-z0-9-]{0,39}$' OR gate.value=''
+        OR NOT EXISTS (SELECT 1 FROM public.cards c WHERE c.slug='starfish' AND c.gates IS NOT NULL
+          AND CASE WHEN c.gates ~ '^\s*\[' THEN jsonb_typeof(c.gates::jsonb)='array'
+            AND (c.gates::jsonb) ? gate.value ELSE false END)) THEN
+    RETURN false;
+  END IF;
+  SELECT s.value,s.ordinality INTO activity,activity_order
+    FROM jsonb_array_elements(p_segments) WITH ORDINALITY s(value,ordinality)
+    WHERE s.value->>'kind'='activity' AND s.value->'ref'='{"type":"card","id":"starfish"}'::jsonb
+    ORDER BY s.ordinality LIMIT 1;
+  IF activity IS NULL OR EXISTS (SELECT 1 FROM jsonb_object_keys(config->'conditions') gate
+      WHERE NOT (activity->'condition_refs' ? gate)) THEN RETURN false; END IF;
+  SELECT s.value,s.ordinality INTO first_return,first_order
+    FROM jsonb_array_elements(p_segments) WITH ORDINALITY s(value,ordinality)
+    WHERE s.value->>'kind'='transfer' AND s.value->'transfer'->'from_ref'='{"type":"card","id":"starfish"}'::jsonb
+    ORDER BY s.ordinality LIMIT 1;
+  RETURN first_return IS NOT NULL AND first_order>activity_order
+    AND first_return->'transfer'->'to_ref'=jsonb_build_object('type','base','id',config->>'return_base')
+    AND first_return->'transfer'->>'mode' IN ('charter','operator_pickup')
+    AND first_return->'transfer'->'condition_refs' ? 'return';
 END $$;
 
 CREATE OR REPLACE FUNCTION public.itinerary_update(
@@ -421,7 +472,7 @@ DECLARE v_version integer; v_constraints jsonb; v_hash text; v_receipt jsonb;
  v_day jsonb; v_old record; v_new_version integer; v_changed jsonb := '[]'::jsonb;
  v_old_segment jsonb; v_decision jsonb; v_required text;
   v_protected jsonb; v_base text; v_locked integer; v_booking_ref jsonb;
-  v_core jsonb; v_core_segment jsonb; v_starfish jsonb; v_star_segment jsonb; v_gate text;
+  v_core jsonb; v_alternative jsonb;
 BEGIN
  IF p_itinerary_id IS DISTINCT FROM 'phuquoc-2026' OR p_request_id IS NULL
     OR p_base_version IS NULL OR p_expected_content_revision IS NULL
@@ -571,43 +622,15 @@ BEGIN
      RAISE EXCEPTION USING ERRCODE='22023', MESSAGE='LOCKED_ARRANGEMENT';
     END IF;
    END IF;
-   IF v_day->>'main_card_slug'='starfish' THEN
-    v_starfish:=v_constraints->'starfish';
-    IF NOT public.itinerary_keys(v_starfish,ARRAY['conditions','return_base'],ARRAY['conditions','return_base'])
-      OR jsonb_typeof(v_starfish->'conditions')<>'object'
-      OR NOT (v_starfish->'conditions' ? 'return')
-      OR (SELECT count(*) FROM jsonb_object_keys(CASE WHEN jsonb_typeof(v_starfish->'conditions')='object'
-          THEN v_starfish->'conditions' ELSE '{}'::jsonb END))<2
-      OR EXISTS(SELECT 1 FROM jsonb_each(CASE WHEN jsonb_typeof(v_starfish->'conditions')='object'
-          THEN v_starfish->'conditions' ELSE '{}'::jsonb END) gate
-          WHERE jsonb_typeof(gate.value)<>'string')
-      OR jsonb_typeof(v_starfish->'return_base')<>'string'
-      OR v_starfish->>'return_base' IS NULL
-      OR NOT public.itinerary_ref_ok(jsonb_build_object('type','base','id',v_starfish->>'return_base'),v_constraints)
-      OR EXISTS(SELECT 1 FROM jsonb_each_text(CASE WHEN jsonb_typeof(v_starfish->'conditions')='object'
-          THEN v_starfish->'conditions' ELSE '{}'::jsonb END) gate
-        WHERE gate.key !~ '^[a-z0-9][a-z0-9-]{0,39}$' OR gate.value=''
-          OR NOT EXISTS (SELECT 1 FROM public.cards c WHERE c.slug='starfish'
-            AND c.gates IS NOT NULL AND CASE WHEN c.gates ~ '^\s*\[' THEN (c.gates::jsonb) ? gate.value ELSE false END))
-      THEN RAISE EXCEPTION USING ERRCODE='22023', MESSAGE='LOCKED_ARRANGEMENT'; END IF;
-    SELECT s.value INTO v_star_segment FROM jsonb_array_elements(v_day->'plan'->'segments') s
-      WHERE s.value->>'kind'='activity' AND s.value->'ref'='{"type":"card","id":"starfish"}'::jsonb LIMIT 1;
-    IF v_star_segment IS NULL OR EXISTS(SELECT 1 FROM jsonb_object_keys(v_starfish->'conditions') gate
-        WHERE NOT (v_star_segment->'condition_refs' ? gate))
-      OR EXISTS (SELECT 1 FROM jsonb_array_elements(v_day->'plan'->'segments') WITH ORDINALITY s(value,ordinality)
-        WHERE s.value->>'kind'='transfer' AND s.value->'transfer'->'from_ref'='{"type":"card","id":"starfish"}'::jsonb
-          AND s.ordinality <= (SELECT a.ordinality FROM jsonb_array_elements(v_day->'plan'->'segments') WITH ORDINALITY a(value,ordinality)
-            WHERE a.value->>'id'=v_star_segment->>'id'))
-      OR NOT EXISTS (SELECT 1 FROM (
-        SELECT s.value FROM jsonb_array_elements(v_day->'plan'->'segments') WITH ORDINALITY s(value,ordinality)
-        WHERE s.value->>'kind'='transfer' AND s.value->'transfer'->'from_ref'='{"type":"card","id":"starfish"}'::jsonb
-        ORDER BY s.ordinality LIMIT 1) first_return
-        WHERE first_return.value->'transfer'->'to_ref'=jsonb_build_object('type','base','id',v_starfish->>'return_base')
-          AND first_return.value->'transfer'->>'mode' IN ('charter','operator_pickup')
-          AND first_return.value->'transfer'->'condition_refs' ? 'return') THEN
-      RAISE EXCEPTION USING ERRCODE='22023', MESSAGE='LOCKED_ARRANGEMENT';
-    END IF;
+   IF NOT public.itinerary_starfish_route_ok(v_day->'plan'->'segments',v_constraints) THEN
+     RAISE EXCEPTION USING ERRCODE='22023', MESSAGE='LOCKED_ARRANGEMENT';
    END IF;
+   FOR v_alternative IN SELECT value FROM jsonb_array_elements(v_day->'plan'->'alternatives')
+       WHERE value->>'action'='use_alternative' LOOP
+     IF NOT public.itinerary_starfish_route_ok(v_alternative->'replacement_segments',v_constraints) THEN
+       RAISE EXCEPTION USING ERRCODE='22023', MESSAGE='LOCKED_ARRANGEMENT';
+     END IF;
+   END LOOP;
   -- If a protected booking/base appeared on this date, it must still occur
   -- somewhere on this same date (not necessarily in the original transfer).
   FOR v_base IN SELECT key FROM jsonb_each(COALESCE(v_constraints->'bases','{}'::jsonb))
@@ -701,8 +724,9 @@ REVOKE ALL ON FUNCTION public.itinerary_validate_day(jsonb),public.itinerary_rea
   public.itinerary_ref_ok(jsonb,jsonb),public.itinerary_interval(jsonb,boolean),
   public.itinerary_keys(jsonb,text[],text[]) FROM PUBLIC,phq_web_ro;
 REVOKE ALL ON FUNCTION public.itinerary_payload(text) FROM PUBLIC,phq_web_ro;
-REVOKE ALL ON FUNCTION public.itinerary_dependency_ids(text,jsonb),
-  public.itinerary_explicit_decision(jsonb,jsonb,text),
-  public.itinerary_update(text,integer,text,uuid,jsonb,jsonb,text,text,text) FROM PUBLIC,phq_web_ro;
+ REVOKE ALL ON FUNCTION public.itinerary_dependency_ids(text,jsonb),
+   public.itinerary_explicit_decision(jsonb,jsonb,text),
+   public.itinerary_starfish_route_ok(jsonb,jsonb),
+   public.itinerary_update(text,integer,text,uuid,jsonb,jsonb,text,text,text) FROM PUBLIC,phq_web_ro;
 GRANT SELECT (itinerary_id,payload,content_revision) ON public.itinerary_public TO phq_web_ro;
 GRANT EXECUTE ON FUNCTION public.itinerary_payload(text) TO phq_web_ro;
