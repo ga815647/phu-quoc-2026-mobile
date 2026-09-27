@@ -172,3 +172,86 @@ class ProjectionTests(ItineraryDBCase):
         with self.assertRaises(psycopg2.Error) as raised:
             self.execute('SELECT itinerary_validate_day(%s::jsonb)', (json.dumps(day),))
         self.assertEqual(raised.exception.pgcode, '22023')
+
+    def test_schema_rejects_other_trip_dates_and_timezone_without_poisoning_view(self):
+        invalid_writes = (
+            ("INSERT INTO itineraries(id,start_date,end_date,timezone) VALUES (%s,%s,%s,%s)",
+             ('other-trip', '2026-10-10', '2026-10-15', 'Asia/Ho_Chi_Minh')),
+            ("UPDATE itineraries SET start_date=%s WHERE id='phuquoc-2026'", ('2026-10-09',)),
+            ("UPDATE itineraries SET end_date=%s WHERE id='phuquoc-2026'", ('2026-10-16',)),
+            ("UPDATE itineraries SET timezone=%s WHERE id='phuquoc-2026'", ('UTC',)),
+            ("UPDATE itinerary_days SET date=%s, id=%s WHERE date='2026-10-15'",
+             ('2026-10-16', 'phuquoc-2026:2026-10-16')),
+        )
+        original = self.snapshot()['revision']
+        for sql, params in invalid_writes:
+            with self.subTest(sql=sql, params=params):
+                self.execute('SAVEPOINT invalid_trip')
+                try:
+                    with self.assertRaises(psycopg2.Error) as raised:
+                        self.execute(sql, params)
+                    self.assertEqual(raised.exception.pgcode, '23514')
+                finally:
+                    self.execute('ROLLBACK TO SAVEPOINT invalid_trip')
+                self.assertEqual(self.snapshot()['revision'], original)
+
+    def test_only_referenced_bases_contribute_to_public_refs_and_revision(self):
+        self.execute("INSERT INTO bookings(slug,kind,title) VALUES ('fixture-spare-booking','hotel','Unused')")
+        self.execute("INSERT INTO points(slug,name,area) VALUES ('fixture-spare-point','Unused','Test')")
+        before = self.snapshot()
+        self.execute("""UPDATE itineraries SET locked_constraints=jsonb_set(
+            locked_constraints, '{bases}', (locked_constraints->'bases') ||
+            '{"spare_booking":{"type":"booking","id":"fixture-spare-booking"},
+              "spare_point":{"type":"point","id":"fixture-spare-point"}}'::jsonb)
+            WHERE id='phuquoc-2026'""")
+        after = self.snapshot()
+        self.assertEqual(after['revision'], before['revision'])
+        self.assertEqual(after['payload']['refs'], before['payload']['refs'])
+        self.execute("UPDATE bookings SET title='Changed unused booking' WHERE slug='fixture-spare-booking'")
+        self.execute("UPDATE points SET durable_note='Changed unused point' WHERE slug='fixture-spare-point'")
+        self.assertEqual(self.snapshot()['revision'], before['revision'])
+        self.execute("""UPDATE itinerary_days SET plan=jsonb_set(plan,'{segments,2,transfer,to_ref}',
+            '{"type":"base","id":"spare_booking"}'::jsonb) WHERE date='2026-10-10'""")
+        used = self.snapshot()
+        self.assertNotEqual(used['revision'], before['revision'])
+        self.assertEqual({b['slug'] for b in used['payload']['refs']['bookings']},
+                         {'fixture-booking', 'fixture-spare-booking'})
+        self.assertNotIn('fixture-spare-point',
+                         {p['slug'] for p in used['payload']['refs']['points']})
+
+    def test_replacement_conditions_cannot_activate_self_or_other_alternative(self):
+        original = self.scalar("SELECT jsonb_build_object('day_kind',day_kind,'main_card_slug',main_card_slug,'plan',plan) FROM itinerary_days WHERE date='2026-10-10'")
+        # Main-line conditions may still point to a declared alternative.
+        valid = copy.deepcopy(original)
+        valid['plan']['segments'][0]['condition_refs'] = ['rain']
+        self.execute('SELECT itinerary_validate_day(%s::jsonb)', (json.dumps(valid),))
+        for target in ('rain', 'other'):
+            with self.subTest(target=target):
+                invalid = copy.deepcopy(original)
+                if target == 'other':
+                    other = copy.deepcopy(invalid['plan']['alternatives'][0])
+                    other['id'] = 'other'
+                    other['replacement_segments'][0]['id'] = 'other-rest'
+                    invalid['plan']['alternatives'].append(other)
+                invalid['plan']['alternatives'][0]['replacement_segments'][0]['condition_refs'] = [target]
+                self.execute('SAVEPOINT nested_alternative')
+                try:
+                    with self.assertRaises(psycopg2.Error) as raised:
+                        self.execute('SELECT itinerary_validate_day(%s::jsonb)', (json.dumps(invalid),))
+                    self.assertEqual(raised.exception.pgcode, '22023')
+                finally:
+                    self.execute('ROLLBACK TO SAVEPOINT nested_alternative')
+
+    def test_replacement_transfer_conditions_cannot_activate_alternatives(self):
+        invalid = self.scalar("SELECT jsonb_build_object('day_kind',day_kind,'main_card_slug',main_card_slug,'plan',plan) FROM itinerary_days WHERE date='2026-10-10'")
+        replacement = invalid['plan']['alternatives'][0]['replacement_segments'][0]
+        replacement['kind'] = 'transfer'
+        replacement['transfer'] = {
+            'from_ref': {'type': 'point', 'id': 'fixture-point'},
+            'to_ref': {'type': 'base', 'id': 'hotel'},
+            'mode': 'grab', 'wait_minutes': None, 'buffer_minutes': 0,
+            'condition_refs': ['rain'],
+        }
+        with self.assertRaises(psycopg2.Error) as raised:
+            self.execute('SELECT itinerary_validate_day(%s::jsonb)', (json.dumps(invalid),))
+        self.assertEqual(raised.exception.pgcode, '22023')

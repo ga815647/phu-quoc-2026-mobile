@@ -8,7 +8,9 @@ CREATE TABLE IF NOT EXISTS public.itineraries (
  timezone text NOT NULL, version integer NOT NULL DEFAULT 1 CHECK(version > 0),
  updated_at timestamptz NOT NULL DEFAULT now(),
  locked_constraints jsonb NOT NULL DEFAULT '{}'::jsonb,
- CHECK (start_date <= end_date)
+ CONSTRAINT itineraries_fixed_trip_check CHECK (
+   id = 'phuquoc-2026' AND start_date = DATE '2026-10-10'
+   AND end_date = DATE '2026-10-15' AND timezone = 'Asia/Ho_Chi_Minh')
 );
 CREATE TABLE IF NOT EXISTS public.itinerary_days (
  id text PRIMARY KEY, itinerary_id text NOT NULL REFERENCES public.itineraries(id),
@@ -17,8 +19,26 @@ CREATE TABLE IF NOT EXISTS public.itinerary_days (
  version integer NOT NULL DEFAULT 1 CHECK(version > 0),
  updated_at timestamptz NOT NULL DEFAULT now(),
  UNIQUE (itinerary_id,date), CHECK (id = itinerary_id || ':' || date::text),
- CHECK (day_kind <> 'activity' OR main_card_slug IS NOT NULL)
+ CHECK (day_kind <> 'activity' OR main_card_slug IS NOT NULL),
+ CONSTRAINT itinerary_days_fixed_trip_check CHECK (
+   itinerary_id = 'phuquoc-2026' AND date BETWEEN DATE '2026-10-10' AND DATE '2026-10-15')
 );
+-- CREATE TABLE IF NOT EXISTS does not add constraints to already-created tables.
+-- Keep the migration rerunnable on the isolated test database and fail if
+-- existing rows violate the approved trip boundaries.
+DO $$ BEGIN
+ IF NOT EXISTS (SELECT 1 FROM pg_constraint
+     WHERE conrelid='public.itineraries'::regclass AND conname='itineraries_fixed_trip_check') THEN
+  ALTER TABLE public.itineraries ADD CONSTRAINT itineraries_fixed_trip_check CHECK (
+    id = 'phuquoc-2026' AND start_date = DATE '2026-10-10'
+    AND end_date = DATE '2026-10-15' AND timezone = 'Asia/Ho_Chi_Minh');
+ END IF;
+ IF NOT EXISTS (SELECT 1 FROM pg_constraint
+     WHERE conrelid='public.itinerary_days'::regclass AND conname='itinerary_days_fixed_trip_check') THEN
+  ALTER TABLE public.itinerary_days ADD CONSTRAINT itinerary_days_fixed_trip_check CHECK (
+    itinerary_id = 'phuquoc-2026' AND date BETWEEN DATE '2026-10-10' AND DATE '2026-10-15');
+ END IF;
+END $$;
 CREATE TABLE IF NOT EXISTS public.itinerary_requests (
  itinerary_id text NOT NULL REFERENCES public.itineraries(id), request_id uuid NOT NULL,
  canonical_request_hash text NOT NULL, base_version integer NOT NULL,
@@ -78,7 +98,7 @@ END $$;
 
 CREATE OR REPLACE FUNCTION public.itinerary_validate_day(p_day jsonb) RETURNS void
 LANGUAGE plpgsql AS $$
-DECLARE p jsonb; s jsonb; a jsonb; t jsonb; tr jsonb; r jsonb; c jsonb;
+DECLARE p jsonb; s jsonb; a jsonb; t jsonb; tr jsonb; r jsonb; c jsonb; condition_segment record;
         ids text[] := '{}'; alt_ids text[] := '{}'; target text; cond text;
         constraints jsonb; itinerary_tz text; main_slug text; card_condition_slugs text[] := '{}';
 BEGIN
@@ -173,14 +193,15 @@ BEGIN
     THEN RAISE EXCEPTION 'invalid'; END IF;
   END LOOP;
  END LOOP;
- FOR s IN SELECT value FROM jsonb_array_elements(p->'segments')
-     UNION ALL SELECT s2.value FROM jsonb_array_elements(p->'alternatives') a2,
+ FOR condition_segment IN SELECT value AS segment, false AS replacement FROM jsonb_array_elements(p->'segments')
+     UNION ALL SELECT s2.value, true FROM jsonb_array_elements(p->'alternatives') a2,
        LATERAL jsonb_array_elements(a2->'replacement_segments') s2 LOOP
-  FOR cond IN SELECT v #>> '{}' FROM jsonb_array_elements(s->'condition_refs') v
-      UNION ALL SELECT v #>> '{}' FROM jsonb_array_elements(COALESCE(s->'transfer'->'condition_refs','[]'::jsonb)) v LOOP
-   IF NOT cond=ANY(alt_ids) AND NOT EXISTS (SELECT 1 FROM public.cards
-      WHERE slug=ANY(card_condition_slugs) AND gates IS NOT NULL AND CASE WHEN gates ~ '^\s*\[' THEN
-       (gates::jsonb) ? cond ELSE false END) THEN RAISE EXCEPTION 'invalid'; END IF;
+  FOR cond IN SELECT v #>> '{}' FROM jsonb_array_elements(condition_segment.segment->'condition_refs') v
+      UNION ALL SELECT v #>> '{}' FROM jsonb_array_elements(COALESCE(condition_segment.segment->'transfer'->'condition_refs','[]'::jsonb)) v LOOP
+   IF (condition_segment.replacement AND cond=ANY(alt_ids)) OR
+      (NOT cond=ANY(alt_ids) AND NOT EXISTS (SELECT 1 FROM public.cards
+       WHERE slug=ANY(card_condition_slugs) AND gates IS NOT NULL AND CASE WHEN gates ~ '^\s*\[' THEN
+        (gates::jsonb) ? cond ELSE false END)) THEN RAISE EXCEPTION 'invalid'; END IF;
   END LOOP;
  END LOOP;
 EXCEPTION WHEN OTHERS THEN
@@ -191,7 +212,7 @@ CREATE OR REPLACE FUNCTION public.itinerary_payload(p_id text) RETURNS jsonb
 LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path=pg_catalog,public AS $$
 DECLARE trip record; d record; s jsonb; r jsonb; alt jsonb; result_days jsonb := '[]';
         card_ids text[] := '{}'; food_ids text[] := '{}'; pool_ids text[] := '{}'; point_ids text[] := '{}';
-        booking_ids text[] := '{}'; transport_ids text[] := '{}'; bases jsonb; base jsonb;
+        booking_ids text[] := '{}'; transport_ids text[] := '{}'; base_ids text[] := '{}'; base jsonb;
         k text; ids text[]; out_refs jsonb := '{}'::jsonb; vals jsonb; n integer;
 BEGIN
  SELECT * INTO trip FROM public.itineraries WHERE id=p_id;
@@ -215,13 +236,14 @@ BEGIN
     WHEN 'food' THEN food_ids := array_append(food_ids,r->>'id');
     WHEN 'pool' THEN pool_ids := array_append(pool_ids,r->>'id');
     WHEN 'point' THEN point_ids := array_append(point_ids,r->>'id');
+    WHEN 'base' THEN base_ids := array_append(base_ids,r->>'id');
     ELSE NULL;
     END CASE;
    END LOOP;
   END LOOP;
  END LOOP;
  IF jsonb_array_length(result_days)<>6 THEN RAISE EXCEPTION 'invalid'; END IF;
- FOR k IN SELECT jsonb_object_keys(COALESCE(trip.locked_constraints->'bases','{}'::jsonb)) LOOP
+ FOR k IN SELECT DISTINCT unnest(base_ids) LOOP
   base := trip.locked_constraints->'bases'->k;
   IF base->>'type'='booking' THEN booking_ids:=array_append(booking_ids,base->>'id');
   ELSIF base->>'type'='point' THEN point_ids:=array_append(point_ids,base->>'id');
