@@ -1,7 +1,10 @@
 """Rollback-only PG18 fixture harness. Never guesses or migrates a database."""
 import os
+import copy
+import json
 from pathlib import Path
 import unittest
+import uuid
 
 import psycopg2
 
@@ -70,3 +73,36 @@ class ItineraryDBCase(unittest.TestCase):
             payload, revision, canonical, version, audit_count, request_count = cur.fetchone()
         return dict(payload=payload, revision=revision, canonical=canonical,
                     version=version, audit_count=audit_count, request_count=request_count)
+
+    def candidate(self, day, card=None):
+        original = next(d for d in self.snapshot()['payload']['days'] if d['date'] == day)
+        result = copy.deepcopy(original)
+        if card is not None:
+            result['day_kind'] = 'activity'
+            result['main_card_slug'] = card
+            segments = result['plan']['segments']
+            # Keep non-activity segments, including their meal/transfer assignments.
+            segments[:] = [s for s in segments if s['kind'] != 'activity']
+            template = copy.deepcopy(self.snapshot()['payload']['days'][1]['plan']['segments'][0])
+            template['ref'] = {'type': 'card', 'id': card}
+            template['id'] = 'main' if not any(s['id'] == 'main' for s in segments) else 'main-card'
+            segments.insert(0, template)
+        return result
+
+    @staticmethod
+    def new_request_id():
+        return str(uuid.uuid4())
+
+    def update(self, request_id, changes, base=None, revision=None, decisions=None,
+               actor=None, source='fixture', reason='itinerary test'):
+        if base is None or revision is None:
+            current = self.snapshot()
+            if base is None:
+                base = current['version']
+            if revision is None:
+                revision = current['revision']
+        return self.scalar('''SELECT public.itinerary_update(%s,%s,%s,%s::uuid,
+            %s::jsonb,%s::jsonb,%s,%s,%s)''',
+            (ID, base, revision, request_id, json.dumps(changes, ensure_ascii=False),
+             json.dumps([] if decisions is None else decisions, ensure_ascii=False),
+             actor, source, reason))

@@ -307,7 +307,276 @@ LANGUAGE sql STABLE SECURITY INVOKER AS $$
        'version',d.version) ORDER BY d.date) FROM public.itinerary_days d
        WHERE d.itinerary_id=i.id),'[]'::jsonb))
  FROM public.itineraries i JOIN public.itinerary_public v ON v.itinerary_id=i.id WHERE i.id=p_id
-$$;
+ $$;
+
+-- Only IDs used by the existing itinerary, its approved bases and the proposed
+-- days are locked. pool -> food is expanded before locking and compared again
+-- after the pool locks: a changed edge must restart from a fresh source read.
+CREATE OR REPLACE FUNCTION public.itinerary_dependency_ids(p_id text, p_changes jsonb)
+RETURNS jsonb LANGUAGE plpgsql STABLE SECURITY INVOKER
+SET search_path=pg_catalog,public AS $$
+DECLARE d jsonb; s jsonb; r jsonb; base jsonb; constraints jsonb;
+        deps jsonb := '{"cards":[],"pool":[],"foods":[],"points":[],"bookings":[],"transport":[]}'::jsonb;
+        kind text; ident text; category text; k text;
+BEGIN
+ SELECT locked_constraints INTO constraints FROM public.itineraries WHERE id=p_id;
+ FOR d IN SELECT jsonb_build_object('main_card_slug',main_card_slug,'plan',plan)
+     FROM public.itinerary_days WHERE itinerary_id=p_id
+     UNION ALL SELECT value FROM jsonb_array_elements(p_changes) LOOP
+  IF d->>'main_card_slug' IS NOT NULL THEN
+   deps := jsonb_set(deps,'{cards}',deps->'cards'||to_jsonb(d->>'main_card_slug'));
+  END IF;
+  FOR s IN SELECT value FROM jsonb_array_elements(d->'plan'->'segments')
+      UNION ALL SELECT x.value FROM jsonb_array_elements(d->'plan'->'alternatives') a,
+        LATERAL jsonb_array_elements(a->'replacement_segments') x LOOP
+   FOR r IN SELECT s->'ref' UNION ALL SELECT s->'transfer'->'from_ref'
+       UNION ALL SELECT s->'transfer'->'to_ref' LOOP
+    kind := r->>'type'; ident := r->>'id';
+    IF kind='base' THEN
+     base := constraints->'bases'->ident;
+     kind := base->>'type'; ident := base->>'id';
+    END IF;
+    category := CASE kind WHEN 'card' THEN 'cards' WHEN 'food' THEN 'foods'
+      WHEN 'pool' THEN 'pool' WHEN 'point' THEN 'points'
+      WHEN 'booking' THEN 'bookings' ELSE NULL END;
+    IF category IS NOT NULL AND ident IS NOT NULL THEN
+     deps := jsonb_set(deps,ARRAY[category],deps->category||to_jsonb(ident));
+    END IF;
+   END LOOP;
+  END LOOP;
+ END LOOP;
+ FOR k IN SELECT value #>> '{}' FROM jsonb_array_elements(COALESCE(constraints->'bookings','[]'::jsonb)) LOOP
+  deps := jsonb_set(deps,'{bookings}',deps->'bookings'||to_jsonb(k));
+ END LOOP;
+ FOR k IN SELECT value #>> '{}' FROM jsonb_array_elements(COALESCE(constraints->'transport','[]'::jsonb)) LOOP
+  deps := jsonb_set(deps,'{transport}',deps->'transport'||to_jsonb(k));
+ END LOOP;
+ FOR k IN SELECT DISTINCT notion_id FROM public.food_pool
+     WHERE pool_key IN (SELECT value #>> '{}' FROM jsonb_array_elements(deps->'pool'))
+       AND notion_id IS NOT NULL LOOP
+  deps := jsonb_set(deps,'{foods}',deps->'foods'||to_jsonb(k));
+ END LOOP;
+ FOR category IN SELECT unnest(ARRAY['cards','pool','foods','points','bookings','transport']) LOOP
+  SELECT coalesce(jsonb_agg(id ORDER BY id),'[]'::jsonb) INTO r FROM
+    (SELECT DISTINCT value #>> '{}' AS id FROM jsonb_array_elements(deps->category)) x;
+  deps := jsonb_set(deps,ARRAY[category],r);
+ END LOOP;
+ RETURN deps;
+END $$;
+
+CREATE OR REPLACE FUNCTION public.itinerary_update(
+ p_itinerary_id text, p_base_version integer, p_expected_content_revision text,
+ p_request_id uuid, p_changes jsonb, p_explicit_selection_decisions jsonb,
+ p_actor text, p_source text, p_reason text) RETURNS jsonb
+LANGUAGE plpgsql VOLATILE SECURITY INVOKER SET search_path=pg_catalog,public AS $$
+DECLARE v_version integer; v_constraints jsonb; v_hash text; v_receipt jsonb;
+ v_request jsonb; v_deps jsonb; v_after_deps jsonb; v_revision text;
+ v_table text; v_column text; v_category text; v_id text; v_row_id text;
+ v_day jsonb; v_old record; v_new_version integer; v_changed jsonb := '[]'::jsonb;
+ v_old_segment jsonb; v_new_segment jsonb; v_decision jsonb; v_required text;
+ v_protected jsonb; v_base text; v_locked integer;
+BEGIN
+ IF p_itinerary_id IS DISTINCT FROM 'phuquoc-2026' OR p_request_id IS NULL
+    OR p_base_version IS NULL OR p_expected_content_revision IS NULL
+    OR p_source IS NULL OR btrim(p_source)='' OR p_reason IS NULL OR btrim(p_reason)=''
+    OR jsonb_typeof(p_changes) IS DISTINCT FROM 'array'
+    OR jsonb_typeof(p_explicit_selection_decisions) IS DISTINCT FROM 'array' THEN
+  RAISE EXCEPTION USING ERRCODE='22023', MESSAGE='INVALID_PLAN';
+ END IF;
+ IF jsonb_array_length(p_changes) NOT BETWEEN 1 AND 6 THEN
+  RAISE EXCEPTION USING ERRCODE='22023', MESSAGE='INVALID_PLAN';
+ END IF;
+ v_request := jsonb_build_object('itinerary_id',p_itinerary_id,'base_version',p_base_version,
+  'expected_content_revision',p_expected_content_revision,'changes',p_changes,
+  'explicit_selection_decisions',p_explicit_selection_decisions,'actor',p_actor,
+  'source',p_source,'reason',p_reason);
+ IF octet_length(convert_to(v_request::text,'UTF8'))>131072 THEN
+  RAISE EXCEPTION USING ERRCODE='22023', MESSAGE='INVALID_PLAN';
+ END IF;
+ v_hash := encode(sha256(convert_to(v_request::text,'UTF8')),'hex');
+ -- The itinerary lock serializes both the first submission and retries.
+ SELECT version,locked_constraints INTO v_version,v_constraints
+  FROM public.itineraries WHERE id=p_itinerary_id FOR UPDATE;
+ IF NOT FOUND THEN RAISE EXCEPTION USING ERRCODE='22023', MESSAGE='INVALID_PLAN'; END IF;
+ SELECT canonical_request_hash,
+   jsonb_build_object('request_id',request_id,'resulting_version',resulting_version,
+    'changed_day_ids',changed_day_ids,'content_revision',result_content_revision)
+   INTO v_row_id,v_receipt FROM public.itinerary_requests
+   WHERE itinerary_id=p_itinerary_id AND request_id=p_request_id;
+ IF FOUND THEN
+  IF v_row_id<>v_hash THEN RAISE EXCEPTION USING ERRCODE='22023', MESSAGE='REQUEST_ID_REUSED'; END IF;
+  RETURN v_receipt;
+ END IF;
+ IF v_version<>p_base_version THEN RAISE EXCEPTION USING ERRCODE='40001', MESSAGE='VERSION_CONFLICT'; END IF;
+
+ -- Reject duplicate/missing dates and malformed candidates before touching rows.
+ IF EXISTS(SELECT 1 FROM jsonb_array_elements(p_changes) d WHERE
+    NOT public.itinerary_keys(d,ARRAY['id','date','day_kind','main_card_slug','plan'],
+      ARRAY['id','date','day_kind','main_card_slug','plan'])
+    OR jsonb_typeof(d->'id')<>'string' OR jsonb_typeof(d->'date')<>'string'
+    OR NOT EXISTS (SELECT 1 FROM public.itinerary_days old
+     WHERE old.itinerary_id=p_itinerary_id AND old.id=d->>'id' AND old.date::text=d->>'date'))
+  OR (SELECT count(DISTINCT d->>'id') FROM jsonb_array_elements(p_changes) d)<>jsonb_array_length(p_changes)
+  OR EXISTS (SELECT 1 FROM jsonb_array_elements(p_explicit_selection_decisions) d WHERE
+      NOT public.itinerary_keys(d,ARRAY['day_id','segment_id','previous_ref','decision'],
+       ARRAY['day_id','segment_id','previous_ref','decision'])
+      OR jsonb_typeof(d->'day_id')<>'string' OR jsonb_typeof(d->'segment_id')<>'string'
+      OR d->>'decision' NOT IN ('keep','remove','replace'))
+  OR (SELECT count(DISTINCT (d->>'day_id',d->>'segment_id'))
+      FROM jsonb_array_elements(p_explicit_selection_decisions) d)
+     <>jsonb_array_length(p_explicit_selection_decisions) THEN
+  RAISE EXCEPTION USING ERRCODE='22023', MESSAGE='INVALID_PLAN';
+ END IF;
+ -- Preflight shape/ref validation gives malformed candidate IDs INVALID_PLAN;
+ -- run it again under source locks below to close the concurrent-change gap.
+ FOR v_day IN SELECT value FROM jsonb_array_elements(p_changes) LOOP
+  BEGIN
+   PERFORM public.itinerary_validate_day(v_day);
+  EXCEPTION WHEN OTHERS THEN
+   RAISE EXCEPTION USING ERRCODE='22023', MESSAGE='INVALID_PLAN';
+  END;
+ END LOOP;
+ -- Collect pre-lock closure, then lock each source row FOR SHARE in a fixed
+ -- category and stable-ID order. No candidate facts are assumed covered by the
+ -- old public fingerprint: their current rows must be present and validated.
+ BEGIN
+  v_deps := public.itinerary_dependency_ids(p_itinerary_id,p_changes);
+ EXCEPTION WHEN OTHERS THEN
+  RAISE EXCEPTION USING ERRCODE='22023', MESSAGE='INVALID_PLAN';
+ END;
+ FOR v_category IN SELECT unnest(ARRAY['cards','pool','foods','points','bookings','transport']) LOOP
+  v_table := CASE v_category WHEN 'foods' THEN 'food_places' WHEN 'pool' THEN 'food_pool'
+    WHEN 'transport' THEN 'transport_options' ELSE v_category END;
+  v_column := CASE v_category WHEN 'foods' THEN 'notion_id' WHEN 'pool' THEN 'pool_key' ELSE 'slug' END;
+  FOR v_id IN SELECT value #>> '{}' FROM jsonb_array_elements(v_deps->v_category) ORDER BY value #>> '{}' LOOP
+   EXECUTE format('SELECT %I FROM public.%I WHERE %I=$1 FOR SHARE',v_column,v_table,v_column)
+    INTO v_row_id USING v_id;
+   GET DIAGNOSTICS v_locked = ROW_COUNT;
+   IF v_locked<>1 THEN RAISE EXCEPTION USING ERRCODE='40001', MESSAGE='SOURCE_CHANGED'; END IF;
+  END LOOP;
+ END LOOP;
+ v_after_deps := public.itinerary_dependency_ids(p_itinerary_id,p_changes);
+ IF v_after_deps<>v_deps THEN RAISE EXCEPTION USING ERRCODE='40001', MESSAGE='SOURCE_CHANGED'; END IF;
+ BEGIN
+  SELECT content_revision INTO v_revision FROM public.itinerary_public WHERE itinerary_id=p_itinerary_id;
+ EXCEPTION WHEN OTHERS THEN
+  RAISE EXCEPTION USING ERRCODE='40001', MESSAGE='SOURCE_CHANGED';
+ END;
+ IF v_revision IS DISTINCT FROM p_expected_content_revision THEN
+  RAISE EXCEPTION USING ERRCODE='40001', MESSAGE='SOURCE_CHANGED';
+ END IF;
+
+ -- Validate every candidate and every protected/explicit choice first; only
+ -- after the entire request passes do we write a single day or audit row.
+ FOR v_day IN SELECT value FROM jsonb_array_elements(p_changes) ORDER BY value->>'id' LOOP
+  SELECT * INTO v_old FROM public.itinerary_days
+    WHERE itinerary_id=p_itinerary_id AND id=v_day->>'id';
+  BEGIN
+   PERFORM public.itinerary_validate_day(v_day);
+  EXCEPTION WHEN OTHERS THEN
+   RAISE EXCEPTION USING ERRCODE='22023', MESSAGE='INVALID_PLAN';
+  END;
+  IF v_day->>'date'<>v_old.date::text THEN RAISE EXCEPTION USING ERRCODE='22023', MESSAGE='INVALID_PLAN'; END IF;
+  v_protected := v_constraints->'days'->v_old.date::text;
+  IF (v_day->>'main_card_slug'='onbird' AND v_old.date<>DATE '2026-10-11')
+    OR (v_old.date=DATE '2026-10-11' AND v_old.main_card_slug='onbird'
+      AND (v_day->>'main_card_slug'<>'onbird' OR v_day->>'day_kind'<>'activity'))
+    OR (v_protected ? 'main_card_slug' AND v_day->'main_card_slug'<>v_protected->'main_card_slug')
+    OR (v_protected ? 'day_kind' AND v_day->>'day_kind'<>v_protected->>'day_kind') THEN
+   RAISE EXCEPTION USING ERRCODE='22023', MESSAGE='LOCKED_ARRANGEMENT';
+  END IF;
+  -- If a protected booking/base appeared on this date, it must still occur
+  -- somewhere on this same date (not necessarily in the original transfer).
+  FOR v_base IN SELECT key FROM jsonb_each(COALESCE(v_constraints->'bases','{}'::jsonb))
+     WHERE value->>'type'='booking' AND value->>'id' IN
+      (SELECT value #>> '{}' FROM jsonb_array_elements(COALESCE(v_constraints->'bookings','[]'::jsonb))) LOOP
+   IF EXISTS (SELECT 1 FROM (SELECT value FROM jsonb_array_elements(v_old.plan->'segments')
+      UNION ALL SELECT s.value FROM jsonb_array_elements(v_old.plan->'alternatives') a,
+        LATERAL jsonb_array_elements(a->'replacement_segments') s) old
+       WHERE old.value->'ref'=jsonb_build_object('type','base','id',v_base)
+         OR old.value->'transfer'->'from_ref'=jsonb_build_object('type','base','id',v_base)
+         OR old.value->'transfer'->'to_ref'=jsonb_build_object('type','base','id',v_base))
+    AND NOT EXISTS (SELECT 1 FROM (SELECT value FROM jsonb_array_elements(v_day->'plan'->'segments')
+      UNION ALL SELECT s.value FROM jsonb_array_elements(v_day->'plan'->'alternatives') a,
+        LATERAL jsonb_array_elements(a->'replacement_segments') s) new
+       WHERE new.value->'ref'=jsonb_build_object('type','base','id',v_base)
+         OR new.value->'transfer'->'from_ref'=jsonb_build_object('type','base','id',v_base)
+         OR new.value->'transfer'->'to_ref'=jsonb_build_object('type','base','id',v_base)) THEN
+    RAISE EXCEPTION USING ERRCODE='22023', MESSAGE='LOCKED_ARRANGEMENT';
+   END IF;
+  END LOOP;
+  FOR v_old_segment IN SELECT value FROM jsonb_array_elements(v_old.plan->'segments')
+    UNION ALL SELECT s.value FROM jsonb_array_elements(v_old.plan->'alternatives') a,
+      LATERAL jsonb_array_elements(a->'replacement_segments') s LOOP
+   IF v_old_segment->>'selection' IS DISTINCT FROM 'explicit' THEN CONTINUE; END IF;
+   SELECT value INTO v_new_segment FROM (SELECT value FROM jsonb_array_elements(v_day->'plan'->'segments')
+      UNION ALL SELECT s.value FROM jsonb_array_elements(v_day->'plan'->'alternatives') a,
+      LATERAL jsonb_array_elements(a->'replacement_segments') s) x
+     WHERE value->>'id'=v_old_segment->>'id';
+   IF v_new_segment->>'selection'='explicit' AND v_new_segment->'ref'=v_old_segment->'ref' THEN CONTINUE; END IF;
+   v_required := CASE WHEN v_new_segment IS NULL OR v_new_segment->'ref' IS NULL
+     OR v_new_segment->'ref'='null'::jsonb THEN 'remove' ELSE 'replace' END;
+   IF NOT EXISTS (SELECT 1 FROM jsonb_array_elements(p_explicit_selection_decisions) d
+     WHERE d->>'day_id'=v_old.id AND d->>'segment_id'=v_old_segment->>'id'
+      AND d->'previous_ref'=v_old_segment->'ref' AND d->>'decision'=v_required) THEN
+    RAISE EXCEPTION USING ERRCODE='22023', MESSAGE='EXPLICIT_DECISION_REQUIRED';
+   END IF;
+  END LOOP;
+ END LOOP;
+ -- Decisions must describe an existing explicit segment of a changed day;
+ -- stale/mismatched or duplicate declarations never silently authorize edits.
+ FOR v_decision IN SELECT value FROM jsonb_array_elements(p_explicit_selection_decisions) LOOP
+  IF NOT EXISTS (SELECT 1 FROM public.itinerary_days d,
+     LATERAL (SELECT value FROM jsonb_array_elements(d.plan->'segments')
+       UNION ALL SELECT s.value FROM jsonb_array_elements(d.plan->'alternatives') a,
+         LATERAL jsonb_array_elements(a->'replacement_segments') s) old
+     WHERE d.id=v_decision->>'day_id' AND d.itinerary_id=p_itinerary_id
+      AND EXISTS (SELECT 1 FROM jsonb_array_elements(p_changes) c WHERE c->>'id'=d.id)
+      AND old.value->>'id'=v_decision->>'segment_id'
+      AND old.value->>'selection'='explicit' AND old.value->'ref'=v_decision->'previous_ref') THEN
+   RAISE EXCEPTION USING ERRCODE='22023', MESSAGE='EXPLICIT_DECISION_REQUIRED';
+  END IF;
+  SELECT value INTO v_new_segment FROM (
+    SELECT s.value FROM jsonb_array_elements(p_changes) c,
+      LATERAL jsonb_array_elements(c->'plan'->'segments') s WHERE c->>'id'=v_decision->>'day_id'
+    UNION ALL SELECT s.value FROM jsonb_array_elements(p_changes) c,
+      LATERAL jsonb_array_elements(c->'plan'->'alternatives') a,
+      LATERAL jsonb_array_elements(a->'replacement_segments') s WHERE c->>'id'=v_decision->>'day_id'
+    ) candidate WHERE value->>'id'=v_decision->>'segment_id';
+  v_required := CASE
+    WHEN v_new_segment->>'selection'='explicit'
+      AND v_new_segment->'ref'=v_decision->'previous_ref' THEN 'keep'
+    WHEN v_new_segment IS NULL OR v_new_segment->'ref' IS NULL
+      OR v_new_segment->'ref'='null'::jsonb THEN 'remove'
+    ELSE 'replace' END;
+  IF v_decision->>'decision'<>v_required THEN
+   RAISE EXCEPTION USING ERRCODE='22023', MESSAGE='EXPLICIT_DECISION_REQUIRED';
+  END IF;
+ END LOOP;
+
+ FOR v_day IN SELECT value FROM jsonb_array_elements(p_changes) ORDER BY value->>'id' LOOP
+  SELECT * INTO v_old FROM public.itinerary_days WHERE id=v_day->>'id';
+  UPDATE public.itinerary_days SET day_kind=v_day->>'day_kind',
+   main_card_slug=v_day->>'main_card_slug',plan=v_day->'plan',
+   version=version+1,updated_at=now() WHERE id=v_old.id RETURNING version INTO v_new_version;
+  INSERT INTO public.content_revisions(target_table,target_id,field_name,old_value,new_value,
+    actor,source,reason,base_version,resulting_version,request_id)
+   VALUES ('itinerary_days',v_old.id,'day_plan',
+    jsonb_build_object('day_kind',v_old.day_kind,'main_card_slug',v_old.main_card_slug,'plan',v_old.plan)::text,
+    jsonb_build_object('day_kind',v_day->'day_kind','main_card_slug',v_day->'main_card_slug','plan',v_day->'plan')::text,
+    p_actor,p_source,p_reason,v_old.version,v_new_version,p_request_id);
+  v_changed := v_changed || to_jsonb(v_old.id);
+ END LOOP;
+ UPDATE public.itineraries SET version=version+1,updated_at=now()
+   WHERE id=p_itinerary_id RETURNING version INTO v_version;
+ SELECT content_revision INTO v_revision FROM public.itinerary_public WHERE itinerary_id=p_itinerary_id;
+ v_receipt := jsonb_build_object('request_id',p_request_id,'resulting_version',v_version,
+   'changed_day_ids',v_changed,'content_revision',v_revision);
+ INSERT INTO public.itinerary_requests(itinerary_id,request_id,canonical_request_hash,base_version,
+    resulting_version,changed_day_ids,result_content_revision)
+  VALUES(p_itinerary_id,p_request_id,v_hash,p_base_version,v_version,v_changed,v_revision);
+ RETURN v_receipt;
+END $$;
 
 REVOKE ALL ON public.itineraries,public.itinerary_days,public.itinerary_requests FROM PUBLIC;
 REVOKE ALL ON public.itinerary_public FROM PUBLIC;
@@ -315,5 +584,7 @@ REVOKE ALL ON FUNCTION public.itinerary_validate_day(jsonb),public.itinerary_rea
  public.itinerary_ref_ok(jsonb,jsonb),public.itinerary_interval(jsonb,boolean),
  public.itinerary_keys(jsonb,text[],text[]) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.itinerary_payload(text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.itinerary_dependency_ids(text,jsonb),
+ public.itinerary_update(text,integer,text,uuid,jsonb,jsonb,text,text,text) FROM PUBLIC;
 GRANT SELECT (itinerary_id,payload,content_revision) ON public.itinerary_public TO phq_web_ro;
 GRANT EXECUTE ON FUNCTION public.itinerary_payload(text) TO phq_web_ro;
