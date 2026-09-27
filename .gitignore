@@ -14,3 +14,7 @@ __pycache__/
 .env.*
 *.pem
 *.key
+
+# Isolated engineering workspaces
+/.worktrees/
+/.superpowers/
