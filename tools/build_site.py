@@ -394,7 +394,7 @@ CARD_CSS = """
 """
 
 
-def build_card_page(candidate_api="", prod=False, snapshot_src=""):
+def build_card_page(candidate_api="", prod=False, snapshot_src="", back_href="./#itinerary"):
     L_D_API = ("取得時間 " if prod else "測試 API 取得時間 ")
     L_D_FB = "備援資料 · 快照 "
     fb_day = " · 快照 " + snapshot_day(snapshot_src) if snapshot_day(snapshot_src) else ""
@@ -419,7 +419,7 @@ def build_card_page(candidate_api="", prod=False, snapshot_src=""):
 </head>
 <body>
 <div class="wrap">
-<a class="back-link" id="backLink" href="./#itinerary">← 回行程</a>
+<a class="back-link" id="backLink" href="{h.escape(back_href, quote=True)}">← 回行程</a>
 <div class="src-fallback" id="srcFallback" hidden>更新暫不可用，顯示備援資料{fb_day}</div>
 <div class="tiny" id="srcLine">卡片資料 · 取得時間 載入中</div>
 <div id="cardMount"><div class="panel pad"><div class="tiny">載入中…</div></div></div>
@@ -437,7 +437,7 @@ function jparse(s,fb){{try{{const v=JSON.parse(s);return v??fb}}catch(e){{return
 function fetchWithTimeout(url,ms){{ms=ms||8000;var c=new AbortController();var t=setTimeout(()=>c.abort(),ms);return fetch(url,{{signal:c.signal}}).then(r=>{{clearTimeout(t);if(!r.ok)throw 0;return r.json().then(j=>{{if(!j||j.data===undefined)throw 0;return j}})}}).catch(e=>{{clearTimeout(t);throw 0}})}}
 function gmap(query,label){{const q=encodeURIComponent((query||label)+' Phú Quốc');return `<a class="place-link" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=${{q}}">${{esc(label)}}</a>`}}
 {fetch_js}
-  if(!c){{mount.innerHTML='<div class="callout red">找不到這張卡。<a href="./#itinerary">回行程</a></div>';return}}
+  if(!c){{mount.innerHTML='<div class="callout red">找不到這張卡。<a href="{h.escape(back_href, quote=True)}">回行程</a></div>';return}}
   document.title=c.name+'｜富國島 2026';
   const badges=jparse(c.badges,[]),keyTimes=jparse(c.key_times,[]),
         stops=jparse(c.stops,[]),out=jparse(c.transport_out,[]),
@@ -459,7 +459,7 @@ function gmap(query,label){{const q=encodeURIComponent((query||label)+' Phú Qu�
     +`<div class="section-head t-block"><h2>當日吃飯</h2></div><div class="panel pad">${{meals}}</div>`
     +(cut.length?`<div class="section-head t-block"><h2>時間不夠時怎麼調整</h2></div><div class="panel pad"><ul class="cut-list">${{cut.map(x=>`<li>${{esc(x)}}</li>`).join('')}}</ul></div>`:'')
     +(gates.length?`<div class="section-head t-block"><h2>成行條件</h2></div><div class="panel pad"><ul class="cut-list">${{gates.map(x=>`<li>${{esc(x)}}</li>`).join('')}}</ul></div>`:'');
-}}).catch(()=>{{mount.innerHTML='<div class="callout red">資料載入失敗，請檢查連線後重新整理。<a href="./#itinerary">回行程</a></div>'}});
+  }}).catch(()=>{{mount.innerHTML='<div class="callout red">資料載入失敗，請檢查連線後重新整理。<a href="{h.escape(back_href, quote=True)}">回行程</a></div>'}});
 }})();
 </script>
 </body>
@@ -778,7 +778,7 @@ mountItinerary({{root:document.querySelector('[data-itinerary]'),todayRoot:docum
         (out / "data-candidate.html").write_text(
             page.replace("PLACEHOLDER_API_BASE", _API_BASE), encoding="utf-8")
         (out / "card-candidate.html").write_text(
-            card_with_build(candidate_api=_API_BASE), encoding="utf-8")
+            card_with_build(candidate_api=_API_BASE, back_href="./data-candidate.html#itinerary"), encoding="utf-8")
         print("wrote candidate:", out / "data-candidate.html",
               "+", out / "card-candidate.html")
     elif PROD:

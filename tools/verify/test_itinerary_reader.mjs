@@ -51,6 +51,19 @@ test('fails clearly when neither complete source is available', async () => {
     {message:'ITINERARY_UNAVAILABLE'});
 });
 
+test('accepts a live read without export date but rejects an undated backup', async () => {
+  const undated=clone();delete undated.meta.exported_at;
+  assert.equal(validateEnvelope(undated).meta.exported_at,undefined);
+  await assert.rejects(loadItinerary({apiUrl:'live',fallbackUrl:'backup',fetchImpl:async url => url==='live'
+    ? new Response('{}',{status:503}) : new Response(JSON.stringify(undated))}),{message:'ITINERARY_UNAVAILABLE'});
+});
+
+test('rejects fallback export dates that are not timestamps', async () => {
+  const backup=clone();backup.meta.exported_at='2026-09-27';
+  await assert.rejects(loadItinerary({apiUrl:'live',fallbackUrl:'backup',fetchImpl:async url => url==='live'
+    ? new Response('{}',{status:503}) : new Response(JSON.stringify(backup))}),{message:'ITINERARY_UNAVAILABLE'});
+});
+
 test('times out a stalled source before trying backup', async () => {
   const seen=[];
   const loaded=await loadItinerary({apiUrl:'live',fallbackUrl:'backup',timeoutMs:15,fetchImpl:(url,{signal}) => {

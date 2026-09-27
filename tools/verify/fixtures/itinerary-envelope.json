@@ -17,19 +17,23 @@
                 "kind": "estimated",
                 "timezone": "Asia/Ho_Chi_Minh",
                 "day_offset": 1,
-                "source_refs": [],
+                "source_refs": [
+                  "測試估時紀錄"
+                ],
                 "start_window": {
                   "max": "10:00",
                   "min": "09:00"
                 },
-                "evidence_as_of": null,
+                "evidence_as_of": "2026-08-01",
                 "duration_minutes": {
                   "max": 30,
                   "min": 10
                 }
               },
               "label": "Start",
-              "condition_refs": []
+              "condition_refs": [
+                "rain"
+              ]
             },
             {
               "id": "meal",
@@ -109,6 +113,26 @@
                   "condition_refs": []
                 }
               ]
+            },
+            {
+              "id": "tired",
+              "action": "skip_optional",
+              "trigger_kind": "fatigue",
+              "trigger_text": "孩子累了",
+              "target_segment_ids": [
+                "start"
+              ],
+              "replacement_segments": []
+            },
+            {
+              "id": "late",
+              "action": "return_or_rest",
+              "trigger_kind": "late",
+              "trigger_text": "太晚出發",
+              "target_segment_ids": [
+                "go"
+              ],
+              "replacement_segments": []
             }
           ],
           "schema_version": 1
@@ -129,13 +153,16 @@
               },
               "kind": "activity",
               "time": {
-                "kind": "unknown",
+                "kind": "planned",
                 "timezone": "Asia/Ho_Chi_Minh",
                 "day_offset": 0,
                 "source_refs": [],
                 "start_window": null,
                 "evidence_as_of": null,
-                "duration_minutes": null
+                "duration_minutes": {
+                  "max": 90,
+                  "min": 60
+                }
               },
               "label": "Activity",
               "condition_refs": []
@@ -160,16 +187,26 @@
               },
               "kind": "activity",
               "time": {
-                "kind": "unknown",
+                "kind": "scheduled",
                 "timezone": "Asia/Ho_Chi_Minh",
                 "day_offset": 0,
-                "source_refs": [],
-                "start_window": null,
-                "evidence_as_of": null,
-                "duration_minutes": null
+                "source_refs": [
+                  "測試預約通知"
+                ],
+                "start_window": {
+                  "max": "13:00",
+                  "min": "13:00"
+                },
+                "evidence_as_of": "2026-09-25",
+                "duration_minutes": {
+                  "max": 30,
+                  "min": 30
+                }
               },
               "label": "Activity",
-              "condition_refs": []
+              "condition_refs": [
+                "測試開放狀態"
+              ]
             }
           ],
           "alternatives": [],
@@ -237,7 +274,7 @@
         {
           "name": "測試纜車",
           "slug": "cable",
-          "gates": null,
+          "gates": "[\"測試開放狀態\"]",
           "notes": null,
           "route": null,
           "stops": null,
@@ -251,7 +288,7 @@
           "key_times": null,
           "transport": null,
           "transport_out": null,
-          "evidence_as_of": null,
+          "evidence_as_of": "2026-09-25",
           "transport_back": null
         },
         {
@@ -288,7 +325,7 @@
           "op_conf": null,
           "summary": null,
           "dish_ids": null,
-          "evidence": null,
+          "evidence": "測試店家公開核實紀錄",
           "neg_warn": null,
           "data_conf": null,
           "local_idx": null,
@@ -301,9 +338,9 @@
           "time_slots": null,
           "atlas_state": null,
           "convenience": null,
-          "last_verified": null,
+          "last_verified": "2026-08-01",
           "research_date": null,
-          "evidence_as_of": null
+          "evidence_as_of": "2026-08-01"
         }
       ],
       "points": [
@@ -355,7 +392,7 @@
   },
   "meta": {
     "schema_version": 1,
-    "content_revision": "phq1:79a41d5d7abaa83c7b2172f112a6edd63eed08bd90273718731933eaff567f72",
+    "content_revision": "phq1:0a5ed61b8dcebe1af3a37bf4fb59f1bb54b69cdbcc31c58e9fe99568ce420d04",
     "source": "neon-test",
     "environment": "candidate",
     "fetched_at": "2026-09-27T00:00:00Z",

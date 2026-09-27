@@ -8,6 +8,7 @@ const fail = () => { throw Error('INVALID_ITINERARY'); };
 const interval = x => x === null || (keys(x,['min','max']) && Number.isInteger(x.min) && Number.isInteger(x.max) && x.min >= 0 && x.min <= x.max);
 const hhmm = x => /^([01]\d|2[0-3]):[0-5]\d$/.test(x);
 const timezoneValid = x => {try {new Intl.DateTimeFormat('en',{timeZone:x});return true;} catch {return false;}};
+const timestamp = x => typeof x === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(x) && Number.isFinite(Date.parse(x));
 const windowValid = x => x === null || (keys(x,['min','max']) && hhmm(x.min) && hhmm(x.max) && x.min <= x.max);
 
 export function validateEnvelope(value) {
@@ -18,7 +19,7 @@ export function validateEnvelope(value) {
       !keys(meta,['schema_version','content_revision','source','environment','fetched_at'],['exported_at']) ||
       meta.schema_version !== 1 || !/^phq1:[0-9a-f]{64}$/.test(meta.content_revision) ||
       !string(meta.source) || !string(meta.environment) || !Number.isFinite(Date.parse(meta.fetched_at)) ||
-      (meta.exported_at !== undefined && !Number.isFinite(Date.parse(meta.exported_at))) ||
+      (meta.exported_at !== undefined && !timestamp(meta.exported_at)) ||
       !keys(refs,['cards','foods','pool','points','bases','bookings','transport']) ||
       Object.values(refs).some(v=>!Array.isArray(v)) || !Array.isArray(data.days) || data.days.length !== 6) fail();
 
@@ -113,7 +114,9 @@ async function fetchOne(url, fetchImpl, timeoutMs) {
 
 export async function loadItinerary({apiUrl,fallbackUrl,fetchImpl=fetch,timeoutMs=8000}) {
   try { return {envelope:await fetchOne(apiUrl,fetchImpl,timeoutMs),mode:'live'}; }
-  catch { try { return {envelope:await fetchOne(fallbackUrl,fetchImpl,timeoutMs),mode:'fallback'}; }
+  catch { try { const envelope=await fetchOne(fallbackUrl,fetchImpl,timeoutMs);
+      if (!timestamp(envelope.meta.exported_at)) fail();
+      return {envelope,mode:'fallback'}; }
     catch {throw Error('ITINERARY_UNAVAILABLE');} }
 }
 
@@ -135,17 +138,30 @@ function timeText(t) {
   const slot=t.start_window ? `${t.start_window.min}${t.start_window.min===t.start_window.max?'':`–${t.start_window.max}`}` : '時間待定';
   const duration=t.duration_minutes ? `${t.duration_minutes.min}${t.duration_minutes.min===t.duration_minutes.max?'':`–${t.duration_minutes.max}`} 分鐘`:'待估';
   const zone=new Intl.DateTimeFormat('zh-Hant',{timeZone:t.timezone,timeZoneName:'short'}).formatToParts(new Date()).find(p=>p.type==='timeZoneName')?.value || t.timezone;
-  return `${prefix}${slot}（${t.timezone} ${zone}） · ${t.kind==='unknown'?'時間未核實':t.kind} · ${duration}`;
+  const kinds={scheduled:'已核對時刻（非完成）',estimated:'估算（非實測）',planned:'預留（非實測）',unknown:'時間未核實'};
+  return `${prefix}${slot}（${t.timezone} ${zone}） · ${kinds[t.kind]} · ${duration}`;
 }
-function appendSegment(list,s,refs) {
+const recheck=date=>date && (Date.now()-Date.parse(`${date}T00:00:00Z`))/86400000 > 30;
+function evidence(body,dates,source) {
+  const unique=[...new Set(dates.filter(Boolean))];
+  unique.forEach(date=>body.append(el('p','tiny',`核實 ${date}${recheck(date)?' · 出發前重查':''}`)));
+  if(source)body.append(el('p','tiny',`依據：${source}`));
+}
+function appendSegment(list,s,refs,alternatives) {
   const item=el('div','step');item.dataset.segmentId=s.id;
   item.dataset.refType=s.ref?.type || '';item.dataset.refId=s.ref?.id || '';
   const time=el('div','time',timeText(s.time));const body=el('div');
   body.append(el('b','',s.label));
+  evidence(body,[s.time.evidence_as_of],s.time.source_refs.join('、'));
+  const conditionLabel=id=>alternatives.find(a=>a.id===id)?.trigger_text || id;
+  if(s.kind==='optional')body.append(el('p','tiny','可選，非必做'));
+  if(s.condition_refs.length)body.append(el('p','tiny',`條件：${s.condition_refs.map(conditionLabel).join('、')}`));
   if(s.ref) {
     body.append(el('p','',nameFor(refs,s.ref)));
     const row=refs[TYPES[s.ref.type][0]].find(x=>x[TYPES[s.ref.type][1]]===s.ref.id);
-    const mapQuery=s.ref.type==='base' ? null : row?.maps_query;
+    const place=s.ref.type==='pool' && row.notion_id ? refs.foods.find(f=>f.notion_id===row.notion_id) : row;
+    evidence(body,[place?.last_verified,place?.evidence_as_of],place?.evidence);
+    const mapQuery=s.ref.type==='base' ? null : place?.maps_query;
     if(mapQuery) {
       const link=el('a','place-link','地圖');link.href='https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(mapQuery);
       link.target='_blank';link.rel='noopener';body.append(link);
@@ -157,6 +173,7 @@ function appendSegment(list,s,refs) {
   if(s.kind==='transfer') {
     const tr=s.transfer;item.dataset.fromRef=refId(tr.from_ref);item.dataset.toRef=refId(tr.to_ref);item.dataset.mode=tr.mode;
     body.append(el('p','',`${nameFor(refs,tr.from_ref)} → ${nameFor(refs,tr.to_ref)} · ${tr.mode} · 等車 ${tr.wait_minutes ? `${tr.wait_minutes.min}–${tr.wait_minutes.max} 分鐘`:'待估'} · 緩衝 ${tr.buffer_minutes} 分鐘`));
+    if(tr.condition_refs.length)body.append(el('p','tiny',`交通條件：${tr.condition_refs.map(conditionLabel).join('、')}`));
   }
   if(s.note)body.append(el('p','',s.note));
   item.append(time,body);list.append(item);
@@ -175,9 +192,13 @@ export function renderItinerary(root,loaded) {
     panel.append(el('div','today-big',d.date+(d.main_card_slug ? ' · '+nameFor(data.refs,{type:'card',id:d.main_card_slug}) : ' · '+d.day_kind)));
     if(d.plan.public_note)panel.append(el('p','tiny',d.plan.public_note));
     if(!d.plan.segments.length)panel.append(el('p','tiny','當日目前沒有安排段落。'));
-    const list=el('div','timeline');d.plan.segments.forEach(s=>appendSegment(list,s,data.refs));panel.append(list);
+    const list=el('div','timeline');d.plan.segments.forEach(s=>appendSegment(list,s,data.refs,d.plan.alternatives));panel.append(list);
     if(d.plan.alternatives.length){const details=el('details','itinerary-alternatives');details.append(el('summary','','備案（按需查看）'));
-      d.plan.alternatives.forEach(a=>{const group=el('div','panel pad');group.append(el('b','',a.trigger_text));a.replacement_segments.forEach(s=>appendSegment(group,s,data.refs));details.append(group);});panel.append(details);}
+      const actions={use_alternative:'改用備案，取代',skip_optional:'略過可選',return_or_rest:'返回或休息，調整'};
+      d.plan.alternatives.forEach(a=>{const group=el('div','panel pad');group.append(el('b','',a.trigger_text));
+        const targets=a.target_segment_ids.map(id=>d.plan.segments.find(s=>s.id===id)?.label || id);
+        group.append(el('p','tiny',`${actions[a.action]} ${targets.join('、')}`));
+        a.replacement_segments.forEach(s=>appendSegment(group,s,data.refs,d.plan.alternatives));details.append(group);});panel.append(details);}
     panels.append(panel);
     button.addEventListener('click',()=>{tabs.querySelectorAll('button').forEach(b=>{b.setAttribute('aria-selected',String(b===button));b.setAttribute('aria-pressed',String(b===button));});panels.querySelectorAll('.day-panel').forEach(p=>p.classList.toggle('active',p===panel));});
   });
