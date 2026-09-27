@@ -364,6 +364,37 @@ BEGIN
  RETURN deps;
 END $$;
 
+-- A stable ID/ref is not enough to preserve an explicit choice: a meal moved
+-- from the main route to an alternative (or converted to rest) is no longer
+-- the ordinary selected meal. Keep this classification shared by the required
+-- decision check and the supplied-decision consistency check.
+CREATE OR REPLACE FUNCTION public.itinerary_explicit_decision(
+ p_old_plan jsonb, p_new_plan jsonb, p_segment_id text) RETURNS text
+LANGUAGE plpgsql IMMUTABLE SECURITY INVOKER SET search_path=pg_catalog,public AS $$
+DECLARE old_segment jsonb; new_segment jsonb; old_location text; new_location text;
+BEGIN
+ SELECT segment,location INTO old_segment,old_location FROM (
+   SELECT s.value AS segment,'main'::text AS location FROM jsonb_array_elements(p_old_plan->'segments') s
+   UNION ALL SELECT s.value,'alternative:' || (a->>'id')
+      FROM jsonb_array_elements(p_old_plan->'alternatives') a,
+        LATERAL jsonb_array_elements(a->'replacement_segments') s) old
+   WHERE segment->>'id'=p_segment_id;
+ IF old_segment->>'selection' IS DISTINCT FROM 'explicit' THEN RETURN NULL; END IF;
+ SELECT segment,location INTO new_segment,new_location FROM (
+   SELECT s.value AS segment,'main'::text AS location FROM jsonb_array_elements(p_new_plan->'segments') s
+   UNION ALL SELECT s.value,'alternative:' || (a->>'id')
+      FROM jsonb_array_elements(p_new_plan->'alternatives') a,
+        LATERAL jsonb_array_elements(a->'replacement_segments') s) candidate
+   WHERE segment->>'id'=p_segment_id;
+ IF new_segment IS NULL OR new_location IS DISTINCT FROM old_location
+   OR new_segment->>'kind' IS DISTINCT FROM old_segment->>'kind' THEN RETURN 'remove'; END IF;
+ IF new_segment->>'selection'='explicit' AND new_segment->'ref'=old_segment->'ref' THEN
+  RETURN 'keep';
+ END IF;
+ IF new_segment->'ref' IS NULL OR new_segment->'ref'='null'::jsonb THEN RETURN 'remove'; END IF;
+ RETURN 'replace';
+END $$;
+
 CREATE OR REPLACE FUNCTION public.itinerary_update(
  p_itinerary_id text, p_base_version integer, p_expected_content_revision text,
  p_request_id uuid, p_changes jsonb, p_explicit_selection_decisions jsonb,
@@ -373,8 +404,8 @@ DECLARE v_version integer; v_constraints jsonb; v_hash text; v_receipt jsonb;
  v_request jsonb; v_deps jsonb; v_after_deps jsonb; v_revision text;
  v_table text; v_column text; v_category text; v_id text; v_row_id text;
  v_day jsonb; v_old record; v_new_version integer; v_changed jsonb := '[]'::jsonb;
- v_old_segment jsonb; v_new_segment jsonb; v_decision jsonb; v_required text;
- v_protected jsonb; v_base text; v_locked integer;
+ v_old_segment jsonb; v_decision jsonb; v_required text;
+ v_protected jsonb; v_base text; v_locked integer; v_booking_ref jsonb;
 BEGIN
  IF p_itinerary_id IS DISTINCT FROM 'phuquoc-2026' OR p_request_id IS NULL
     OR p_base_version IS NULL OR p_expected_content_revision IS NULL
@@ -490,65 +521,56 @@ BEGIN
   FOR v_base IN SELECT key FROM jsonb_each(COALESCE(v_constraints->'bases','{}'::jsonb))
      WHERE value->>'type'='booking' AND value->>'id' IN
       (SELECT value #>> '{}' FROM jsonb_array_elements(COALESCE(v_constraints->'bookings','[]'::jsonb))) LOOP
-   IF EXISTS (SELECT 1 FROM (SELECT value FROM jsonb_array_elements(v_old.plan->'segments')
-      UNION ALL SELECT s.value FROM jsonb_array_elements(v_old.plan->'alternatives') a,
-        LATERAL jsonb_array_elements(a->'replacement_segments') s) old
-       WHERE old.value->'ref'=jsonb_build_object('type','base','id',v_base)
-         OR old.value->'transfer'->'from_ref'=jsonb_build_object('type','base','id',v_base)
-         OR old.value->'transfer'->'to_ref'=jsonb_build_object('type','base','id',v_base))
-    AND NOT EXISTS (SELECT 1 FROM (SELECT value FROM jsonb_array_elements(v_day->'plan'->'segments')
-      UNION ALL SELECT s.value FROM jsonb_array_elements(v_day->'plan'->'alternatives') a,
-        LATERAL jsonb_array_elements(a->'replacement_segments') s) new
-       WHERE new.value->'ref'=jsonb_build_object('type','base','id',v_base)
-         OR new.value->'transfer'->'from_ref'=jsonb_build_object('type','base','id',v_base)
-         OR new.value->'transfer'->'to_ref'=jsonb_build_object('type','base','id',v_base)) THEN
-    RAISE EXCEPTION USING ERRCODE='22023', MESSAGE='LOCKED_ARRANGEMENT';
-   END IF;
+   v_booking_ref := jsonb_build_object('type','base','id',v_base);
+   -- Preserve the operative main-route role and transfer direction. A booking
+   -- moved to a conditional replacement or an unrelated rest is not protected.
+   FOR v_old_segment IN SELECT value FROM jsonb_array_elements(v_old.plan->'segments') LOOP
+    IF v_old_segment->'ref'=v_booking_ref AND NOT EXISTS (
+       SELECT 1 FROM jsonb_array_elements(v_day->'plan'->'segments') s
+       WHERE s->>'kind'=v_old_segment->>'kind' AND s->'ref'=v_booking_ref) THEN
+     RAISE EXCEPTION USING ERRCODE='22023', MESSAGE='LOCKED_ARRANGEMENT';
+    END IF;
+    IF v_old_segment->'transfer'->'from_ref'=v_booking_ref AND NOT EXISTS (
+       SELECT 1 FROM jsonb_array_elements(v_day->'plan'->'segments') s
+       WHERE s->>'kind'='transfer' AND s->'transfer'->'from_ref'=v_booking_ref) THEN
+     RAISE EXCEPTION USING ERRCODE='22023', MESSAGE='LOCKED_ARRANGEMENT';
+    END IF;
+    IF v_old_segment->'transfer'->'to_ref'=v_booking_ref AND NOT EXISTS (
+       SELECT 1 FROM jsonb_array_elements(v_day->'plan'->'segments') s
+       WHERE s->>'kind'='transfer' AND s->'transfer'->'to_ref'=v_booking_ref) THEN
+     RAISE EXCEPTION USING ERRCODE='22023', MESSAGE='LOCKED_ARRANGEMENT';
+    END IF;
+   END LOOP;
   END LOOP;
   FOR v_old_segment IN SELECT value FROM jsonb_array_elements(v_old.plan->'segments')
-    UNION ALL SELECT s.value FROM jsonb_array_elements(v_old.plan->'alternatives') a,
-      LATERAL jsonb_array_elements(a->'replacement_segments') s LOOP
-   IF v_old_segment->>'selection' IS DISTINCT FROM 'explicit' THEN CONTINUE; END IF;
-   SELECT value INTO v_new_segment FROM (SELECT value FROM jsonb_array_elements(v_day->'plan'->'segments')
-      UNION ALL SELECT s.value FROM jsonb_array_elements(v_day->'plan'->'alternatives') a,
-      LATERAL jsonb_array_elements(a->'replacement_segments') s) x
-     WHERE value->>'id'=v_old_segment->>'id';
-   IF v_new_segment->>'selection'='explicit' AND v_new_segment->'ref'=v_old_segment->'ref' THEN CONTINUE; END IF;
-   v_required := CASE WHEN v_new_segment IS NULL OR v_new_segment->'ref' IS NULL
-     OR v_new_segment->'ref'='null'::jsonb THEN 'remove' ELSE 'replace' END;
+     UNION ALL SELECT s.value FROM jsonb_array_elements(v_old.plan->'alternatives') a,
+       LATERAL jsonb_array_elements(a->'replacement_segments') s LOOP
+    IF v_old_segment->>'selection' IS DISTINCT FROM 'explicit' THEN CONTINUE; END IF;
+    v_required := public.itinerary_explicit_decision(v_old.plan,v_day->'plan',v_old_segment->>'id');
+    IF v_required='keep' THEN CONTINUE; END IF;
    IF NOT EXISTS (SELECT 1 FROM jsonb_array_elements(p_explicit_selection_decisions) d
      WHERE d->>'day_id'=v_old.id AND d->>'segment_id'=v_old_segment->>'id'
       AND d->'previous_ref'=v_old_segment->'ref' AND d->>'decision'=v_required) THEN
     RAISE EXCEPTION USING ERRCODE='22023', MESSAGE='EXPLICIT_DECISION_REQUIRED';
    END IF;
   END LOOP;
- END LOOP;
- -- Decisions must describe an existing explicit segment of a changed day;
- -- stale/mismatched or duplicate declarations never silently authorize edits.
- FOR v_decision IN SELECT value FROM jsonb_array_elements(p_explicit_selection_decisions) LOOP
-  IF NOT EXISTS (SELECT 1 FROM public.itinerary_days d,
-     LATERAL (SELECT value FROM jsonb_array_elements(d.plan->'segments')
-       UNION ALL SELECT s.value FROM jsonb_array_elements(d.plan->'alternatives') a,
+  END LOOP;
+  -- Decisions must describe an existing explicit segment of a changed day;
+  -- stale/mismatched or duplicate declarations never silently authorize edits.
+  FOR v_decision IN SELECT value FROM jsonb_array_elements(p_explicit_selection_decisions) LOOP
+   SELECT * INTO v_old FROM public.itinerary_days d
+     WHERE d.id=v_decision->>'day_id' AND d.itinerary_id=p_itinerary_id;
+   SELECT value INTO v_day FROM jsonb_array_elements(p_changes) c
+     WHERE c->>'id'=v_decision->>'day_id';
+   IF v_old.id IS NULL OR v_day IS NULL OR NOT EXISTS (
+     SELECT 1 FROM (SELECT value FROM jsonb_array_elements(v_old.plan->'segments')
+       UNION ALL SELECT s.value FROM jsonb_array_elements(v_old.plan->'alternatives') a,
          LATERAL jsonb_array_elements(a->'replacement_segments') s) old
-     WHERE d.id=v_decision->>'day_id' AND d.itinerary_id=p_itinerary_id
-      AND EXISTS (SELECT 1 FROM jsonb_array_elements(p_changes) c WHERE c->>'id'=d.id)
-      AND old.value->>'id'=v_decision->>'segment_id'
-      AND old.value->>'selection'='explicit' AND old.value->'ref'=v_decision->'previous_ref') THEN
-   RAISE EXCEPTION USING ERRCODE='22023', MESSAGE='EXPLICIT_DECISION_REQUIRED';
-  END IF;
-  SELECT value INTO v_new_segment FROM (
-    SELECT s.value FROM jsonb_array_elements(p_changes) c,
-      LATERAL jsonb_array_elements(c->'plan'->'segments') s WHERE c->>'id'=v_decision->>'day_id'
-    UNION ALL SELECT s.value FROM jsonb_array_elements(p_changes) c,
-      LATERAL jsonb_array_elements(c->'plan'->'alternatives') a,
-      LATERAL jsonb_array_elements(a->'replacement_segments') s WHERE c->>'id'=v_decision->>'day_id'
-    ) candidate WHERE value->>'id'=v_decision->>'segment_id';
-  v_required := CASE
-    WHEN v_new_segment->>'selection'='explicit'
-      AND v_new_segment->'ref'=v_decision->'previous_ref' THEN 'keep'
-    WHEN v_new_segment IS NULL OR v_new_segment->'ref' IS NULL
-      OR v_new_segment->'ref'='null'::jsonb THEN 'remove'
-    ELSE 'replace' END;
+     WHERE old.value->>'id'=v_decision->>'segment_id'
+       AND old.value->>'selection'='explicit' AND old.value->'ref'=v_decision->'previous_ref') THEN
+    RAISE EXCEPTION USING ERRCODE='22023', MESSAGE='EXPLICIT_DECISION_REQUIRED';
+   END IF;
+   v_required := public.itinerary_explicit_decision(v_old.plan,v_day->'plan',v_decision->>'segment_id');
   IF v_decision->>'decision'<>v_required THEN
    RAISE EXCEPTION USING ERRCODE='22023', MESSAGE='EXPLICIT_DECISION_REQUIRED';
   END IF;
@@ -585,6 +607,7 @@ REVOKE ALL ON FUNCTION public.itinerary_validate_day(jsonb),public.itinerary_rea
  public.itinerary_keys(jsonb,text[],text[]) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.itinerary_payload(text) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.itinerary_dependency_ids(text,jsonb),
+ public.itinerary_explicit_decision(jsonb,jsonb,text),
  public.itinerary_update(text,integer,text,uuid,jsonb,jsonb,text,text,text) FROM PUBLIC;
 GRANT SELECT (itinerary_id,payload,content_revision) ON public.itinerary_public TO phq_web_ro;
 GRANT EXECUTE ON FUNCTION public.itinerary_payload(text) TO phq_web_ro;

@@ -46,7 +46,7 @@ class UpdateTests(ItineraryDBCase):
         self.assertEqual(first['changed_day_ids'], [changes[0]['id']])
         self.assertEqual(first['content_revision'], after['revision'])
 
-    def test_two_day_atomic_swap_and_restore_audit(self):
+    def test_two_day_atomic_change_and_restore_audit(self):
         before = self.snapshot()
         a = self.candidate('2026-10-12', 'cable')
         b = self.candidate('2026-10-13')
@@ -72,6 +72,48 @@ class UpdateTests(ItineraryDBCase):
         self.assertNotEqual(restored['request_id'], first['request_id'])
         self.assertEqual(self.snapshot()['revision'], before['revision'])
         self.assertEqual(self.snapshot()['audit_count'], before['audit_count'] + 4)
+
+    def test_two_day_activity_meal_transport_swap(self):
+        self.execute("INSERT INTO cards(slug,name) VALUES ('vinwonders','Fixture VinWonders')")
+        baseline = self.snapshot()
+        first = self.candidate('2026-10-12', 'cable')
+        second = self.candidate('2026-10-13', 'vinwonders')
+        template = baseline['payload']['days'][0]['plan']['segments']
+        for day, meal_ref, mode in (
+            (first, {'type': 'pool', 'id': 'fixture-pool'}, 'grab'),
+            (second, {'type': 'food', 'id': 'fixture-unrelated'}, 'taxi'),
+        ):
+            meal = copy.deepcopy(template[1])
+            meal['ref'] = meal_ref
+            transfer = copy.deepcopy(template[2])
+            transfer['transfer']['from_ref'] = {'type': 'card', 'id': day['main_card_slug']}
+            transfer['transfer']['mode'] = mode
+            day['plan']['segments'].extend([meal, transfer])
+        self.update(self.new_request_id(), [first, second])
+        before = self.snapshot()
+        swapped_first = copy.deepcopy(first)
+        swapped_second = copy.deepcopy(second)
+        for target, source in ((swapped_first, second), (swapped_second, first)):
+            target['day_kind'] = source['day_kind']
+            target['main_card_slug'] = source['main_card_slug']
+            target['plan'] = copy.deepcopy(source['plan'])
+        receipt = self.update(self.new_request_id(), [swapped_first, swapped_second])
+        after = self.snapshot()
+        self.assertEqual(after['version'], before['version'] + 1)
+        self.assertEqual(after['audit_count'], before['audit_count'] + 2)
+        self.assertEqual(receipt['changed_day_ids'], [first['id'], second['id']])
+        days = {d['id']: d for d in after['payload']['days']}
+        self.assertEqual(days[first['id']]['main_card_slug'], second['main_card_slug'])
+        self.assertEqual(days[second['id']]['main_card_slug'], first['main_card_slug'])
+        for target, expected in ((first, second), (second, first)):
+            actual = days[target['id']]['plan']['segments']
+            self.assertEqual(actual, expected['plan']['segments'])
+            self.assertEqual(actual[1]['ref'], expected['plan']['segments'][1]['ref'])
+            self.assertEqual(actual[2]['transfer'], expected['plan']['segments'][2]['transfer'])
+        self.assertEqual([d for d in after['payload']['days'] if d['id'] not in (first['id'], second['id'])],
+                         [d for d in before['payload']['days'] if d['id'] not in (first['id'], second['id'])])
+        self.assertEqual(after['payload']['refs']['cards'], before['payload']['refs']['cards'])
+        self.assertEqual(after['payload']['refs']['foods'], before['payload']['refs']['foods'])
 
     def test_second_bad_day_rolls_back_all_and_rejects_shapes(self):
         a = self.candidate('2026-10-12', 'cable')
@@ -141,6 +183,65 @@ class UpdateTests(ItineraryDBCase):
         self.failure('22023', [changed], decisions=wrong, message='EXPLICIT_DECISION_REQUIRED')
         self.update(self.new_request_id(), [changed], decisions=decision)
         self.assertEqual(self.snapshot()['payload']['days'][0]['plan']['segments'][1]['ref'], {'type':'food','id':'fixture-food'})
+
+    def test_protected_booking_must_remain_on_main_route(self):
+        candidate = self.candidate('2026-10-10')
+        original_transfer = candidate['plan']['segments'][2]
+        candidate['plan']['segments'] = candidate['plan']['segments'][:2]
+        # The booking is visible but conditional: it cannot satisfy the core lock.
+        fallback = copy.deepcopy(original_transfer)
+        fallback['id'] = 'fallback-hotel'
+        candidate['plan']['alternatives'][0]['replacement_segments'].append(fallback)
+        self.execute('SELECT itinerary_validate_day(%s::jsonb)', (json.dumps(candidate),))
+        self.failure('22023', [candidate], message='LOCKED_ARRANGEMENT')
+
+        # Reorganizing the main transfer while keeping the booked base is allowed.
+        reorganized = self.candidate('2026-10-10')
+        reorganized['plan']['segments'][2]['id'] = 'return-hotel'
+        reorganized['plan']['segments'][2]['transfer']['mode'] = 'taxi'
+        self.update(self.new_request_id(), [reorganized])
+
+    def test_explicit_meal_demotion_to_alternative_or_non_meal_requires_decision(self):
+        explicit = self.candidate('2026-10-10')
+        explicit['plan']['segments'][1]['selection'] = 'explicit'
+        self.update(self.new_request_id(), [explicit])
+        declaration = [{'day_id': explicit['id'], 'segment_id': 'meal',
+                        'previous_ref': {'type':'pool','id':'fixture-pool'}, 'decision':'remove'}]
+
+        alternative = self.candidate('2026-10-10')
+        meal = alternative['plan']['segments'].pop(1)
+        alternative['plan']['alternatives'][0]['replacement_segments'].append(meal)
+        self.execute('SELECT itinerary_validate_day(%s::jsonb)', (json.dumps(alternative),))
+        self.failure('22023', [alternative], message='EXPLICIT_DECISION_REQUIRED')
+        self.update(self.new_request_id(), [alternative], decisions=declaration)
+        self.assertNotIn('meal', [s['id'] for s in self.snapshot()['payload']['days'][0]['plan']['segments']])
+
+        # Restore the ordinary explicit meal with a new operation before testing a role change.
+        self.update(self.new_request_id(), [explicit], decisions=declaration)
+        non_meal = self.candidate('2026-10-10')
+        non_meal['plan']['segments'][1]['kind'] = 'rest'
+        self.execute('SELECT itinerary_validate_day(%s::jsonb)', (json.dumps(non_meal),))
+        self.failure('22023', [non_meal], message='EXPLICIT_DECISION_REQUIRED')
+        self.update(self.new_request_id(), [non_meal], decisions=declaration)
+        self.assertEqual(self.snapshot()['payload']['days'][0]['plan']['segments'][1]['kind'], 'rest')
+
+    def test_onbird_protects_activity_not_breakfast_or_evening(self):
+        day = self.candidate('2026-10-11')
+        breakfast = copy.deepcopy(self.candidate('2026-10-10')['plan']['segments'][1])
+        breakfast['id'] = 'breakfast'
+        evening = copy.deepcopy(breakfast)
+        evening['id'] = 'dinner'
+        evening['ref'] = {'type':'food', 'id':'fixture-unrelated'}
+        day['plan']['segments'] = [breakfast, day['plan']['segments'][0], evening]
+        self.update(self.new_request_id(), [day])
+        revised = self.candidate('2026-10-11')
+        revised['plan']['segments'][0]['ref'] = {'type':'food','id':'fixture-food'}
+        revised['plan']['segments'][2]['ref'] = {'type':'pool','id':'fixture-pool'}
+        self.update(self.new_request_id(), [revised])
+        updated = self.snapshot()['payload']['days'][1]
+        self.assertEqual(updated['main_card_slug'], 'onbird')
+        self.assertEqual(updated['plan']['segments'][0]['ref'], {'type':'food','id':'fixture-food'})
+        self.assertEqual(updated['plan']['segments'][2]['ref'], {'type':'pool','id':'fixture-pool'})
 
     def test_acl_no_public_update(self):
         self.execute('SAVEPOINT update_acl')
