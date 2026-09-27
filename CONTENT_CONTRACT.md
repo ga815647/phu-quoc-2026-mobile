@@ -1,7 +1,7 @@
-# 內容維護契約（Chat 資料操作契約 v3，部署後版本）
+# 內容維護契約（Chat 資料操作契約 v3；§10 為未發布工程候選）
 
 > 操作契約，不是新的協作模式或 project instructions。
-> 不修改 `AGENTS.md`、`chatgpt-instructions.md`、部署或權限規則。
+> 既有 v3 `content_update()` 不修改 `AGENTS.md`、`chatgpt-instructions.md`、部署或權限規則；§10 工程候選另同步文件，**未**部署新 ACL。
 > v1 的「UPDATE 後無條件 INSERT 稽核」範例已作廢，改用 §4 `content_update()`。
 > 本文件以正式庫部署後事實為準（004 已套用，見 §7）；測試分支驗證不算正式可用。
 
@@ -362,5 +362,41 @@ Chat 寫入 Neon 後，網站重整經 Function／備援讀到（備援需再匯
   也不把本機操作宣稱為雲端內容更新。
 - 2026-09-27 已選定後續驗站方向：Chat 更新 Neon 並讀回，提交驗站請求，由 CI
   檢查正式網站、將 JSON／文字結果放 GitHub 專用分支供 Chat 讀取。設計輸入見
-  `docs/ops/CHAT_CI_DESIGN.md`；目前 request bridge／公開內容版本尚未實作，
-  本段不新增現行 API 公開欄位或變更 §6 的既有 row version 排除規則。
+   `docs/ops/CHAT_CI_DESIGN.md`；§10 描述本地工程候選，不新增**正式站** API 公開欄位或變更 §6 的既有 row version 排除規則。
+
+## 10. 六日安排：工程候選，正式庫尚未套用
+
+2026-09-27 已在隔離 PG18 實作／測試 `tools/migrate_neon/006_itinerary_model.sql`、
+`tools/itinerary_export.py`、`tools/itinerary-reader.mjs` 與驗站工作流原始碼；
+**不是** production schema／Function／Pages 已部署，亦非 Chat 已固定 SHA 讀新契約。
+使用前需依 [`docs/ops/CHAT_ITINERARY_RUNBOOK.md`](docs/ops/CHAT_ITINERARY_RUNBOOK.md)
+查部署與授權，不可拿舊 `content_update()` 改六天安排。§2–§8 的既有內容白名單、
+旅途中研究主表／訂單限制及私人 Notion 分工維持；新每日安排及其餐飲／交通指派
+**僅在新入口正式核准部署並完成驗收後**為旅途中例外。
+
+候選資料表：`itineraries`（唯一 itinerary ID、區間／timezone、locked_constraints、私有
+`version`）、`itinerary_days`（`id=phuquoc-2026:YYYY-MM-DD`、date、day_kind、
+main_card_slug、`plan` JSONB、私有 `version`）、`itinerary_requests`（UUID、canonical
+request hash、receipt／冪等）；既有 `content_revisions` 加私有 `request_id` 稽核索引。
+`itinerary_read_for_edit(text)` 回私有版本與全部日；`itinerary_update(text,integer,text,uuid,jsonb,jsonb,text,text,text)`
+鎖定依賴、整包驗證並原子變更及稽核；`itinerary_public` view 輸出
+`itinerary_id,payload,content_revision`。`phq_web_ro` 僅獲該 view 三欄 SELECT；
+對三新表沒有授權，亦無 `itinerary_read_for_edit`／`itinerary_update` EXECUTE；
+PUBLIC 的新表／view／函式權限被收回；owner 操作屬具寫入能力身分，
+文字約束不等於硬權限隔離。候選 Function 僅 GET/OPTIONS `/api/itinerary`，
+不存在公開 POST／稽核／request／私有 version API。
+
+**新公開 JSON／API 精確外形**：`{data:{schema_version:1,itinerary:{id,start_date,end_date,timezone},
+days:[{id,date,day_kind,main_card_slug,plan}],refs:{cards,foods,pool,points,bases,bookings,transport}},
+meta:{schema_version:1,content_revision,source,environment,fetched_at,...}}`；
+`data/itinerary.json` 的 `meta` 另有 `exported_at`（詳見 `tools/itinerary_export.py`）。
+六個 `days` 的 `plan` 是有序 segments/alternatives，refs 只取公開投影所需欄位；
+公開 revision 是 view 對完整 payload 的 `phq1:`＋SHA-256，不是私有行版本，
+export 時間不參與 hash；保護的 booking detail/evidence、研究內部欄、
+`locked_constraints`、`version`、`content_revisions`、`itinerary_requests` 不在公開 envelope。
+公開 refs 的逐欄 SQL 白名單以 006 的 `itinerary_payload()` 與
+`tools/verify/test_itinerary_projection.py` 為準，不得以整表 SELECT 或 JSON 混入私人欄。
+
+本地證據與發布閘門見 `docs/ops/CHAT_ACCEPT.md` 新功能區、
+`docs/superpowers/plans/2026-09-27-itinerary-implementation.md`「發布前置與終點」。
+不得把本地假 GitHub PASS 當真 Actions 結果。

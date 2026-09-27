@@ -1,5 +1,7 @@
 # Chat 修改與 CI 驗站：已確認方向與待定契約
 
+> 2026-09-27 工程候選補記：以下為原始設計歷史。具體 v1 request/result、公開 hash、受信任主線驗站程式已在**本地**實作；操作見 `CHAT_ITINERARY_RUNBOOK.md`、`CONTENT_CONTRACT.md` §10。workflow 未啟用／未推送，production Function／正式站未切換，Chat 未實際讀新版規則或跑新請求；下方「尚無」描述設計當時狀態，不是現在原始碼的狀態。
+
 日期：2026-09-27。使用者已確認採用「Chat 修改 Neon → CI 驗正式站 → GitHub 回報」方向。
 此文件是設計輸入，不代表新 workflow、公開版本或六天資料模型已實作；寫碼前仍需規格與計畫審閱。
 

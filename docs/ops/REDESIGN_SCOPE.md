@@ -43,7 +43,9 @@ Chat／OpenCode 是責任分工，不是資料庫的技術角色名稱。工具�
 
 可直接進行唯讀事實查核、需求決策紀錄、術語表與角色／範圍文件維護。規格與實作計畫仍需完成使用者審閱。
 
-2026-09-27 使用者已核准 `../superpowers/specs/2026-09-27-itinerary-chat-ci-design.md` 書面規格。已據此形成三份實作子計畫（資料／reader／CI），入口為 `../superpowers/plans/2026-09-27-itinerary-implementation.md`；目前待使用者審閱計畫。沿用已選定的 Subagent-driven 執行，工程候選驗收與正式內容／視覺／發布前置分別記錄。
+2026-09-27 使用者已核准 `../superpowers/specs/2026-09-27-itinerary-chat-ci-design.md` 書面規格，並以「可以」核准三份實作子計畫（資料／reader／CI），入口為 `../superpowers/plans/2026-09-27-itinerary-implementation.md`。已在 `feat/itinerary-chat-ci` 隔離 worktree 開始 Subagent-driven 工程實作；工程候選驗收與正式內容／視覺／發布前置分別記錄。
+
+2026-09-27 C3 工程候選補記：006 模型／私有更新與公開投影、reader、CI 驗站及假 GitHub 結果鏈在本地整合測試；新操作文件 `CHAT_ITINERARY_RUNBOOK.md`。**未**套 production migration／Function，未推工作流、未發布預覽或正式站，Chat 未實際讀新版規則，手機編輯保留；需先備齊 `../superpowers/plans/2026-09-27-itinerary-implementation.md` 的四項前置，才逐段核准發布。私人 Notion 索引及費用不轉入公開模型。
 
 ### 設計與計畫確認後：工程實作
 

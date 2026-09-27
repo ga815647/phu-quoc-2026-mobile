@@ -36,5 +36,5 @@ SELECT kind, title, status FROM bookings WHERE status != 'Confirmed';
 - 5 卡為準：onbird/vinwonders/cable/starfish/safari；anthoi=OPTIONAL satellite；khem=RETIRED。
 - 回答必帶 `last_verified / evidence_as_of`；超過 30 天標「出發前重查」。
 - `Confirmed` 是訂單確認，不代表已付款；`bookings.amount` 公開，禁止存私人支出。私人付款／預算查 Notion，不靠此欄推定。
-- 旅行中 Neon 只 `INSERT INTO evidence_log(ref_type, ref_id, note)`，不改主表；私人 Notion 清單仍可依使用者要求更新。
+- 旅行中**現行正式庫**僅 `INSERT INTO evidence_log(ref_type, ref_id, note)`，不改既有研究／訂單主表；私人 Notion 清單仍可依使用者要求更新。新的六日每日安排與餐飲／交通指派未部署，正式核准並驗收後才可按 `CONTENT_CONTRACT.md` §10 和 `docs/ops/CHAT_ITINERARY_RUNBOOK.md` 走專用入口，不放寬研究／已確認預訂限制。
 - 不重跑封存 Notion ETL 覆寫 Neon。網站資料更新後依授權匯出 Neon 備援；純 UI 修改不需寫 DB 或重匯 JSON。

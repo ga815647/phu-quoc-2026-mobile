@@ -1,5 +1,7 @@
 # 六天行程模型：方案比較與已確認行為
 
+> 2026-09-27 工程候選補記：本文件記錄實作前提案與當時尚未核准的狀態；已核准書面規格後，006 專用 itinerary＋daily JSONB＋受控函式在隔離 PG18 完成測試，**並未套正式庫**。現時契約與操作／閘門見 `CONTENT_CONTRACT.md` §10、`docs/ops/CHAT_ITINERARY_RUNBOOK.md`；下方歷史選項不取代已實作候選或授權正式 migration。
+
 2026-09-27，兩路 subagent 唯讀查核後的設計提案；尚未核准 migration、尚未實作。依 CONTENT_CONTRACT、REDESIGN_SCOPE 與 CHAT_CI_DESIGN；本文件不取代正式規格。
 
 ## 目標與已知限制

@@ -31,6 +31,7 @@
 - UI/design approval does not itself apply content decisions to Neon or change confirmed bookings. Six-day defaults and meal/transport-following behavior still need an approved data design; don't introduce an independently maintained hardcoded travel-data copy.
 - Give every subagent explicit writable paths, data-write scope, and acceptance criteria. Keep live data updates, fallback publication, preview deployment, and Chat capability verification as separate outcomes.
 - Chat's selected read route is GitHub for rules/code/published evidence and Neon for current travel content. Direct Chat HTTP access to the production site is not a required capability; OpenCode/CI and the user's phone validate runtime behavior. GitHub JSON remains a dated fallback, not live Neon data.
+- Six-day itinerary C3 is a **local engineering candidate**, not a production or Chat capability. The future controlled itinerary exception applies only after approved 006/Function/site deployment and real Chat readback; see `CONTENT_CONTRACT.md` §10 and `docs/ops/CHAT_ITINERARY_RUNBOOK.md`. Keep legacy phone edits until accepted.
 - Approved future scope: Chat may update the new daily itinerary and meal/transport assignments during the trip via its validated controlled entry point; existing research tables and confirmed bookings keep current freeze/authorization rules. This is not permission to run a migration or use an unimplemented entry point. See CONTENT_CONTRACT.md §9.
 
 ## Agent skills

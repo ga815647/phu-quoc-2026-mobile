@@ -1,5 +1,11 @@
 # ChatGPT 端實測與階段收尾
 
+## 2026-09-27 六日新功能：本地工程候選（不改寫下方舊 connector 證據）
+
+隔離 PG18 fixture 以 transaction rollback 執行一次六日受控更新（10/12 主卡、餐廳與交通一起改）→核對同 request UUID 的真前值 audit → `itinerary_public` 完整六日 payload/hash → Python public export envelope → `tools/build_site.py --api-base <localhost> --out-dir <tmp> --itinerary-mode candidate` → 390px Chromium 以本地 API 載入實際生成頁並執行 `verifySite()` → **純記憶體假 GitHub**驗證 request commit provenance、發布結果並依固定假 SHA 讀回 JSON。重跑：`source /tmp/opencode/phq-pg18-test-env; node tools/verify/itinerary_e2e_candidate.mjs`（僅允許 socket PG18；測試環境 fixture 隨交易 rollback）。測試的 `meta.source=neon-prod/environment=production` 是驗證嚴格 verifier 所需的**合成標籤**，不代表碰過正式 Neon；假 GitHub 無 token／遠端 branch／Actions，PASS 只指這條本機連鎖。
+
+實際上線待：六天真實內容（彈性日順序／時間線／餐飲交通來源）、視覺稿＋遠端預覽範圍、006 production 套用的具體核准及 ACL／Function／匯出驗證、Chat 本人真正授權更新及 GitHub 讀結果、使用者手機確認後才切 readonly、OpenCode 再獨立發布備援。**main 尚未發布本契約；Chat 尚未固定 SHA 讀新指示**；不能把 2026-09-27 既有 Chat connector 成功挪用為六日行程通過。
+
 ## 2026-09-27 最新驗收結論（使用者提供的 Chat 端證據）
 
 使用者已貼回 28 項一次性驗收結果，Project「富國島 2026」、模型 GPT-5.6 Sol。
