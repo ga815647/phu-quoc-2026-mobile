@@ -6,9 +6,12 @@ export const UUID_RE=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{
 
 const SHA_RE=/^[0-9a-f]{40}$/;
 const REVISION_RE=/^phq1:[0-9a-f]{64}$/;
-const SEGMENT_RE=/^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/;
+// Match itinerary_validate_day in 006_itinerary_model.sql for source segment IDs.
+const SEGMENT_RE=/^[a-z0-9][a-z0-9-]{0,39}$/;
 const REF_ID_RE=/^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/;
-const CARDS=new Set(['onbird','vinwonders','cable','starfish','safari']);
+const MAIN_CARDS=new Set(['onbird','vinwonders','cable','starfish','safari']);
+// An Thoi is an OPTIONAL satellite endpoint, not a sixth main-day card.
+const REF_CARDS=new Set([...MAIN_CARDS,'anthoi']);
 const MODES=new Set(['operator_pickup','grab','taxi','bus','charter','walk','cable']);
 const REF_TYPES=new Set(['card','food','pool','point','base']);
 const fail=()=>{throw Error('INVALID_REQUEST');};
@@ -20,7 +23,7 @@ const dayId=id=>typeof id==='string' &&
   /^phuquoc-2026:2026-10-1[0-5]$/.test(id);
 const ref=value=>shape(value,['type','id']) && REF_TYPES.has(value.type) &&
   typeof value.id==='string' && REF_ID_RE.test(value.id) &&
-  (value.type!=='card' || CARDS.has(value.id));
+  (value.type!=='card' || REF_CARDS.has(value.id));
 
 /**
  * Validate a fixed v1 assertion, not a write command. `gitContext` is supplied
@@ -54,7 +57,7 @@ export function validateRequest(rawBytes,gitContext) {
   for(const row of request.expected) {
     if(!shape(row,['day_id','main_card_slug','meals','transfers']) ||
         !ids.includes(row.day_id) || expectedIds.has(row.day_id) ||
-        (row.main_card_slug!==null && !CARDS.has(row.main_card_slug)) ||
+        (row.main_card_slug!==null && !MAIN_CARDS.has(row.main_card_slug)) ||
         !Array.isArray(row.meals) || !Array.isArray(row.transfers) ||
         row.meals.length+row.transfers.length>32) fail();
     expectedIds.add(row.day_id);

@@ -83,9 +83,35 @@ test('rejects unknown refs, modes, slug, unsafe IDs, extra keys and duplicate se
     {...base,transfers:[{...transfer,mode:'helicopter'}]},
     {...base,transfers:[{...transfer,segment_id:{toString:null}}]},
     {...base,transfers:[{...transfer,to_ref:{type:'unknown',id:'a'}}]},
+    {...base,transfers:[{...transfer,to_ref:{type:'card',id:'not-a-card'}}]},
     {...base,transfers:[{...transfer,from_ref:{type:'card',id:'khem'}}]},
   ];
   for(const assertion of variants) invalid({...requestFixture,expected:[assertion]});
+});
+test('accepts optional An Thoi as a transfer card, not a main card',()=>{
+  const assertion={...requestFixture.expected[0],transfers:[{
+    segment_id:'to-an-thoi',from_ref:{type:'card',id:'cable'},
+    to_ref:{type:'card',id:'anthoi'},mode:'grab',
+  }]};
+  const request={...requestFixture,expected:[assertion]};
+  assert.deepEqual(check(request),request);
+  invalid({...request,expected:[{...assertion,main_card_slug:'anthoi'}]});
+});
+test('segment IDs follow source boundary: lowercase ASCII, digits, hyphens, 1–40 chars',()=>{
+  const base=requestFixture.expected[0];
+  const meal=segment_id=>({segment_id,ref:{type:'pool',id:'fixture-pool'}});
+  const transfer=segment_id=>({segment_id,from_ref:{type:'base',id:'hotel'},
+    to_ref:{type:'card',id:'cable'},mode:'walk'});
+  for(const segment_id of ['a','0','a-0','a'.repeat(40)]) {
+    const request={...requestFixture,expected:[{...base,meals:[meal(segment_id)],transfers:[]}]};
+    assert.deepEqual(check(request),request);
+    const withTransfer={...requestFixture,expected:[{...base,meals:[],transfers:[transfer(segment_id)]}]};
+    assert.deepEqual(check(withTransfer),withTransfer);
+  }
+  for(const segment_id of ['', 'A','a_B','_first','a'.repeat(41),'a'.repeat(40)+'-']) {
+    invalid({...requestFixture,expected:[{...base,meals:[meal(segment_id)]}]});
+    invalid({...requestFixture,expected:[{...base,transfers:[transfer(segment_id)]}]});
+  }
 });
 test('rejects untrusted provenance even with one added JSON file',()=>{
   const variants=[
