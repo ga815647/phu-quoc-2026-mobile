@@ -23,31 +23,68 @@ const name=(refs,r)=>{
 export async function verifySite({request,page,siteUrl=SITE_URL,apiOrigin=API_ORIGIN,
   now=Date.now,sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms)),budgetMs=360000,
   intervalMs=20000,screenshotPath}) {
-  const start=now(),startedAt=new Date().toISOString(),observations=[];let last=null;
+  const start=now(),wallStart=performance.now(),startedAt=new Date().toISOString(),observations=[];let last=null;
   // Only the production entry point is injectable for isolated browser tests.
   if(siteUrl!==SITE_URL && !['localhost','127.0.0.1'].includes(new URL(siteUrl).hostname))throw Error('INVALID_SITE_URL');
   if(apiOrigin!==API_ORIGIN && !['localhost','127.0.0.1'].includes(new URL(apiOrigin).hostname))throw Error('INVALID_API_ORIGIN');
-  const devtools=await page.context().newCDPSession(page);
-  await devtools.send('Network.setCacheDisabled',{cacheDisabled:true});
+  const deadlineError=()=>Error('SITE_CHECK_DEADLINE');
+  let expired=false;
+  const remaining=()=>Math.min(budgetMs-(now()-start),budgetMs-(performance.now()-wallStart));
+  // A wall-clock watchdog also bounds evaluate(), response.json(), and injected
+  // promises, which have no usable Playwright timeout. Closing the page cancels
+  // any outstanding browser operation; never await an uncooperative operation.
+  const limited=async (operation,maximum=Infinity)=>{
+    const ms=Math.min(remaining(),maximum);
+    if(expired||ms<=0)throw deadlineError();
+    let timer;
+    try {return await Promise.race([
+      Promise.resolve().then(()=>operation(ms)),
+      new Promise((_,reject)=>{timer=setTimeout(()=>{
+        expired=true;
+        void page.close({runBeforeUnload:false}).catch(()=>{});
+        reject(deadlineError());
+      },ms);})
+    ]);}finally {clearTimeout(timer);}
+  };
+  try {await limited(async()=>{
+    const devtools=await page.context().newCDPSession(page);
+    await devtools.send('Network.setCacheDisabled',{cacheDisabled:true});
+  });}catch(e){
+    return {schema_version:1,request_id:request.request_id,request_commit:null,test_commit:null,run_id:null,
+      url:siteUrl,status:'ERROR',expected_content_revision:request.expected_content_revision,
+      observed_content_revision:null,observed_build_id:null,source:null,started_at:startedAt,
+      finished_at:new Date().toISOString(),checks:{setup:String(e)},observations:[],artifacts:[]};
+  }
   do {
-    const errors=[],consumed=[],foreignApi=[];const onError=e=>errors.push(String(e));
-    const onResponse=async response=>{
+    const errors=[],consumed=[],foreignApi=[],bodyReads=[];const onError=e=>errors.push(String(e));
+    let signalResponse;
+    const responseSeen=new Promise(resolve=>{signalResponse=resolve;});
+    const onResponse=response=>{
       if(response.url()!==new URL('/api/itinerary',apiOrigin).href){
         if(new URL(response.url()).pathname.endsWith('/api/itinerary'))foreignApi.push(response.url());
         return;
       }
-      try {consumed.push({status:response.status(),body:await response.json(),url:response.url()});}
-      catch(e){consumed.push({status:response.status(),error:String(e)});}
+      bodyReads.push((async()=>{
+        try {return {status:response.status(),body:await response.json(),url:response.url()};}
+        catch(e){return {status:response.status(),error:String(e)};}
+      })());
+      signalResponse();
     };
     page.on('pageerror',onError);page.on('response',onResponse);
     let checks={},status='UNREACHABLE',source=null,revision=null,buildId=null;
-    try {
-      await page.goto(siteUrl,{waitUntil:'domcontentloaded',timeout:15000});
-      await page.locator('[data-itinerary][data-source]').waitFor({timeout:budgetMs<1000?300:11000}).catch(()=>{});
-      // Response handler is attached before navigation; do not issue a separate API GET and mistake that for page consumption.
-      await page.waitForTimeout(100);
+    try {await limited(async attemptRemaining=>{
+      await page.goto(siteUrl,{waitUntil:'domcontentloaded',timeout:Math.min(15000,attemptRemaining)});
+      await page.locator('[data-itinerary][data-source]').waitFor({timeout:Math.min(budgetMs<1000?25:11000,remaining())})
+        .catch(e=>{if(e.message==='SITE_CHECK_DEADLINE')throw e;});
+      // Await the body of the actual response the page requested; an independent
+      // verifier fetch cannot certify which envelope the UI displayed.
       const root=page.locator('[data-itinerary]');
       source=await root.getAttribute('data-source');revision=await root.getAttribute('data-content-revision');
+      if(source==='live' && bodyReads.length===0)await responseSeen;
+      // Responses can arrive while an earlier body is being read. Drain every
+      // response observed by this point rather than snapshotting the first one.
+      while(consumed.length<bodyReads.length)
+        consumed.push(...await Promise.all(bodyReads.slice(consumed.length)));
       checks.source=source==='live';
       checks.api=consumed.length===1 && consumed[0].status===200 &&
         consumed[0].url===new URL('/api/itinerary',apiOrigin).href;
@@ -79,6 +116,27 @@ export async function verifySite({request,page,siteUrl=SITE_URL,apiOrigin=API_OR
             (day.main_card_slug && !copy.includes(name(refs,{type:'card',id:day.main_card_slug})))){
             checks.all_days=false;break;
           }
+          const visible=await panel.locator('.timeline > .step').evaluateAll(nodes=>nodes.map(node=>({
+            id:node.dataset.segmentId,refType:node.dataset.refType,refId:node.dataset.refId,
+            from:node.dataset.fromRef,to:node.dataset.toRef,mode:node.dataset.mode,
+            text:node.innerText,visible:node.getBoundingClientRect().height>0
+          })));
+          if(visible.length!==day.plan.segments.length){checks.all_days=false;break;}
+          for(const [position,segment] of day.plan.segments.entries()){
+            const row=visible[position],refName=segment.ref&&name(refs,segment.ref);
+            if(!row.visible||row.id!==segment.id||!row.text.includes(segment.label)||
+              row.refType!==(segment.ref?.type||'')||row.refId!==(segment.ref?.id||'')||
+              (segment.ref&&(!refName||!row.text.includes(refName)))||
+              (segment.kind==='transfer'&&(
+                row.from!==key(segment.transfer.from_ref)||row.to!==key(segment.transfer.to_ref)||
+                row.mode!==segment.transfer.mode||
+                !row.text.includes(name(refs,segment.transfer.from_ref))||
+                !row.text.includes(name(refs,segment.transfer.to_ref))||
+                !row.text.includes(segment.transfer.mode)))){
+              checks.all_days=false;checks.day_error=`visible segment ${day.id}/${segment.id}`;break;
+            }
+          }
+          if(!checks.all_days)break;
         }
         checks.days=true;
         for(const expected of request.expected){
@@ -144,19 +202,20 @@ export async function verifySite({request,page,siteUrl=SITE_URL,apiOrigin=API_OR
       checks.errors=errors.length===0;
       status=Object.entries(checks).filter(([key])=>key!=='day_error').every(([,value])=>value===true)
         ?'PASS':source==='fallback'?'FALLBACK':!checks.api?'UNREACHABLE':'CONTENT_MISMATCH';
-    } catch(e){checks.navigation=String(e);status='UNREACHABLE';}
+    });} catch(e){checks.navigation=String(e);status='UNREACHABLE';}
     finally {page.off('pageerror',onError);page.off('response',onResponse);}
     if(errors.length){checks.errors=false;status='ERROR';}
     last={status,checks,source,revision,buildId};
     observations.push({at:new Date().toISOString(),status,source,revision,build_id:buildId,checks,errors});
     if(status==='PASS')break;
-    if(now()-start+intervalMs>budgetMs)break;
-    await sleep(intervalMs);
+    if(expired||remaining()<=intervalMs)break;
+    try {await limited(()=>sleep(intervalMs));}catch{break;}
   } while(true);
   const artifacts=[];
-  if(screenshotPath){try {await page.screenshot({path:screenshotPath,fullPage:true,
-    timeout:Math.max(1000,Math.min(10000,budgetMs-(now()-start)))});artifacts.push('screenshot.png');}
-    catch(e){last.status='ERROR';observations.push({at:new Date().toISOString(),screenshot_error:String(e)});}}
+  if(screenshotPath){try {
+    await limited(ms=>page.screenshot({path:screenshotPath,fullPage:true,timeout:ms}),10000);
+    artifacts.push('screenshot.png');
+  }catch(e){last.status='ERROR';observations.push({at:new Date().toISOString(),screenshot_error:String(e)});}}
   return {schema_version:1,request_id:request.request_id,request_commit:null,test_commit:null,run_id:null,url:siteUrl,
     status:last.status,expected_content_revision:request.expected_content_revision,
     observed_content_revision:last.revision,observed_build_id:last.buildId,source:last.source,

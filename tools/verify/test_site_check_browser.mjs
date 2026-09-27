@@ -21,12 +21,21 @@ async function withPage(options,run) {
   const browser=await chromium.launch({headless:true});
   try {
     const page=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
+    if(options.delayBodyMs||options.foreverBody)page.on('response',response=>{
+      if(new URL(response.url()).pathname!=='/api/itinerary')return;
+      const original=response.json.bind(response);
+      response.json=async()=>{options.bodyStarted?.();
+        if(options.foreverBody)return new Promise(()=>{});
+        await new Promise(resolve=>setTimeout(resolve,options.delayBodyMs));return original();};
+    });
     const envelope=structuredClone(fixture);
     envelope.meta.source='neon-prod';envelope.meta.environment=options.environment||'production';
     if(options.cached)envelope.meta.content_revision=`phq1:${'c'.repeat(64)}`;
     const rendered=options.rendered||envelope;
+    let navigations=0;
     await page.route('**/*',route=>{
       const url=new URL(route.request().url());
+      if(url.pathname==='/' && options.delayedFinal && ++navigations>=5)return new Promise(()=>{});
       if(url.pathname==='/api/itinerary') return route.fulfill({status:options.unreachable?503:200,
         contentType:'application/json',body:JSON.stringify(envelope)});
       if(url.pathname==='/staging/api/itinerary')return route.fulfill({contentType:'application/json',body:JSON.stringify(envelope)});
@@ -64,7 +73,7 @@ async function withPage(options,run) {
               step.dataset.refType=s.ref?.type||'';step.dataset.refId=s.ref?.id||'';
               if(s.transfer){step.dataset.fromRef=s.transfer.from_ref.type+':'+s.transfer.from_ref.id;
                 step.dataset.toRef=s.transfer.to_ref.type+':'+s.transfer.to_ref.id;step.dataset.mode=s.transfer.mode;}
-              step.textContent=${JSON.stringify(options.blank?'':null)}===null?(s.label+' '+(s.ref ? (s.ref.type==='pool'?data.data.refs.foods.find(f=>f.notion_id===data.data.refs.pool.find(x=>x.pool_key===s.ref.id).notion_id)?.name||s.ref.id:data.data.refs[s.ref.type==='food'?'foods':s.ref.type==='card'?'cards':s.ref.type==='point'?'points':'bases'].find(x=>[x.notion_id,x.slug,x.id].includes(s.ref.id))?.name||s.ref.id) : s.transfer?'Fixture point → Fixture hotel · grab':'')):'';
+              step.textContent=${JSON.stringify(options.blank?'':null)}===null?(s.id==='start'&&${JSON.stringify(!!options.staleActivity)}?'Old secondary activity':s.label+' '+(s.ref ? (s.ref.type==='pool'?data.data.refs.foods.find(f=>f.notion_id===data.data.refs.pool.find(x=>x.pool_key===s.ref.id).notion_id)?.name||s.ref.id:data.data.refs[s.ref.type==='food'?'foods':s.ref.type==='card'?'cards':s.ref.type==='point'?'points':'bases'].find(x=>[x.notion_id,x.slug,x.id].includes(s.ref.id))?.name||s.ref.id) : s.transfer?'Fixture point → Fixture hotel · grab':'')):'';
               timeline.append(step);}
             root.append(p);}
         });</script></body></html>`});
@@ -72,8 +81,9 @@ async function withPage(options,run) {
     });
     let clock=0;
     const result=await verifySite({request,page,siteUrl:localUrl,apiOrigin:localUrl,now:()=>clock,
-      sleep:async ms=>{clock+=ms},budgetMs:100,intervalMs:20});
-    await run(result,page);
+      sleep:async ms=>{clock+=ms},budgetMs:options.foreverBody?1000:5000,intervalMs:1000,
+      screenshotPath:options.delayedFinal||options.foreverBody?'/tmp/opencode/task7-deadline.png':undefined});
+    await run(result,page,{navigations,clock});
   } finally {await browser.close();}
 }
 
@@ -83,7 +93,31 @@ test('API hash correct but stale visible restaurant fails',()=>{
   return withPage({rendered:stale},r=>assert.notEqual(r.status,'PASS'));
 });
 test('matching hooks but blank visible copy fails',()=>withPage({blank:true},r=>assert.notEqual(r.status,'PASS')));
+test('correct consumed hash/refs but stale secondary activity text fails',()=>withPage({staleActivity:true},r=>{
+  assert.equal(r.status,'CONTENT_MISMATCH');
+  assert.match(r.checks.day_error,/visible segment phuquoc-2026:2026-10-10\/start/);
+}));
 test('valid consumed API and visible DOM pass',()=>withPage({},r=>assert.equal(r.status,'PASS',JSON.stringify(r.checks))));
+test('awaits delayed body of the page-observed API response before classifying',()=>withPage({delayBodyMs:200},r=>assert.equal(r.status,'PASS',JSON.stringify(r.checks))));
+test('final attempt with forever-pending navigation respects remaining budget',async()=>{
+  const start=Date.now();
+  await withPage({delayedFinal:true,environment:'test'},(r,_page,{navigations,clock})=>{
+    assert.notEqual(r.status,'PASS');assert.deepEqual(r.artifacts,[]);
+    assert.ok(r.observations.filter(x=>x.status).length<=5);
+    assert.match(r.checks.navigation,/SITE_CHECK_DEADLINE/);
+    assert.equal(navigations,5);assert.equal(clock,4000);
+  });
+  assert.ok(Date.now()-start<4500,'a pending final navigation must not hang the verifier');
+});
+test('a forever-pending observed response body cannot hang or be certified',async()=>{
+  let bodies=0;const start=Date.now();
+  await withPage({foreverBody:true,bodyStarted:()=>bodies++},r=>{
+    assert.ok(bodies>0,'the intercepted page response body was actually requested');
+    assert.notEqual(r.status,'PASS');assert.deepEqual(r.artifacts,[]);
+    assert.match(r.checks.navigation,/SITE_CHECK_DEADLINE/);
+  });
+  assert.ok(Date.now()-start<3500);
+});
 test('real B2 reader renders the consumed fixture and passes visible assertions',()=>withPage({realReader:true},r=>assert.equal(r.status,'PASS',JSON.stringify(r.checks))));
 test('wrong environment, JS error, unreachable, stale build and overflow classify safely',async()=>{
   for(const [opts,status] of [[{environment:'test'},'CONTENT_MISMATCH'],[{jsError:true},'ERROR'],
