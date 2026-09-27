@@ -11,6 +11,7 @@ def main():
     try:
         case.execute("INSERT INTO cards(slug,name) VALUES ('cable','Fixture cable')")
         before = case.snapshot()
+        original = next(d for d in before['payload']['days'] if d['date'] == '2026-10-12')
         day = case.candidate('2026-10-12', 'cable')
         # The changed day has a card, a meal and a transfer; the latter two follow the route.
         import copy
@@ -25,8 +26,9 @@ def main():
         audit = case.scalar("""SELECT jsonb_build_object('old',old_value::jsonb,'new',new_value::jsonb,
             'base',base_version,'result',resulting_version) FROM content_revisions
             WHERE request_id=%s::uuid AND target_id=%s""", (request_id, day['id']))
-        assert audit['old']['main_card_slug'] is None
-        assert audit['new']['plan'] == day['plan']
+        for field in ('day_kind', 'main_card_slug', 'plan'):
+            assert audit['old'][field] == original[field], f'wrong audited old {field}'
+            assert audit['new'][field] == day[field], f'wrong audited new {field}'
         assert (audit['base'], audit['result']) == (before['version'], before['version'] + 1)
         assert case.scalar('SELECT count(*) FROM content_revisions WHERE request_id=%s::uuid', (request_id,)) == 1
         # Same view as Function/export; metadata is explicitly synthetic for local browser verifier.

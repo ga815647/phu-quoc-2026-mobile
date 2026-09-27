@@ -25,6 +25,7 @@ const id=receipt.request_id, requestSha='a'.repeat(40),parent='b'.repeat(40),mai
 const request={schema_version:1,request_id:id,target:'production',itinerary_id:'phuquoc-2026',
   expected_content_revision:receipt.content_revision,changed_day_ids:[changed],
   expected:[{day_id:changed,main_card_slug:day.main_card_slug,meals,transfers}]};
+assert.equal(request.request_id,receipt.request_id,'first site-check request must correlate with the edit receipt');
 const requestPath=`bridge/site-check/requests/${id}.json`;
 const resultPath=`requests/${id}/result.json`;
 const trees=new Map([['root',new Map()]]),commits=new Map([[main,{tree:'root'}]]),blobs=new Map();
@@ -92,7 +93,7 @@ try {
   assert.equal(readback.status,'PASS');
   assert.equal(readback.request_commit,requestSha);
   assert.equal(readback.observed_content_revision,receipt.content_revision);
-  assert.equal(readback.request_id,id);
+  assert.equal(readback.request_id,receipt.request_id);
   console.log('LOCAL FIXTURE PASS: PG18 rollback update/audit -> public view/export -> generated candidate -> Chromium verifier -> fake GitHub immutable result');
 } finally {
   await browser?.close();
