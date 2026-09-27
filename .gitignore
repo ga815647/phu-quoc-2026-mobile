@@ -1,5 +1,6 @@
 # Build + runtime artifacts (never commit)
 node_modules/
+/node_modules
 *.db-shm
 *.db-wal
 __pycache__/
