@@ -1,0 +1,364 @@
+{
+  "data": {
+    "days": [
+      {
+        "id": "phuquoc-2026:2026-10-10",
+        "date": "2026-10-10",
+        "plan": {
+          "segments": [
+            {
+              "id": "start",
+              "ref": {
+                "id": "fixture-point",
+                "type": "point"
+              },
+              "kind": "activity",
+              "time": {
+                "kind": "estimated",
+                "timezone": "Asia/Ho_Chi_Minh",
+                "day_offset": 1,
+                "source_refs": [],
+                "start_window": {
+                  "max": "10:00",
+                  "min": "09:00"
+                },
+                "evidence_as_of": null,
+                "duration_minutes": {
+                  "max": 30,
+                  "min": 10
+                }
+              },
+              "label": "Start",
+              "condition_refs": []
+            },
+            {
+              "id": "meal",
+              "ref": {
+                "id": "fixture-pool",
+                "type": "pool"
+              },
+              "kind": "meal",
+              "time": {
+                "kind": "unknown",
+                "timezone": "Asia/Ho_Chi_Minh",
+                "day_offset": 0,
+                "source_refs": [],
+                "start_window": null,
+                "evidence_as_of": null,
+                "duration_minutes": null
+              },
+              "label": "Lunch",
+              "selection": "derived",
+              "condition_refs": []
+            },
+            {
+              "id": "go",
+              "ref": null,
+              "kind": "transfer",
+              "time": {
+                "kind": "unknown",
+                "timezone": "Asia/Ho_Chi_Minh",
+                "day_offset": 0,
+                "source_refs": [],
+                "start_window": null,
+                "evidence_as_of": null,
+                "duration_minutes": null
+              },
+              "label": "Go",
+              "transfer": {
+                "mode": "grab",
+                "to_ref": {
+                  "id": "hotel",
+                  "type": "base"
+                },
+                "from_ref": {
+                  "id": "fixture-point",
+                  "type": "point"
+                },
+                "wait_minutes": null,
+                "buffer_minutes": 5,
+                "condition_refs": []
+              },
+              "condition_refs": []
+            }
+          ],
+          "alternatives": [
+            {
+              "id": "rain",
+              "action": "use_alternative",
+              "trigger_kind": "weather",
+              "trigger_text": "Rain",
+              "target_segment_ids": [
+                "start"
+              ],
+              "replacement_segments": [
+                {
+                  "id": "rain-rest",
+                  "ref": null,
+                  "kind": "rest",
+                  "time": {
+                    "kind": "unknown",
+                    "timezone": "Asia/Ho_Chi_Minh",
+                    "day_offset": 0,
+                    "source_refs": [],
+                    "start_window": null,
+                    "evidence_as_of": null,
+                    "duration_minutes": null
+                  },
+                  "label": "Rest",
+                  "condition_refs": []
+                }
+              ]
+            }
+          ],
+          "schema_version": 1
+        },
+        "day_kind": "light",
+        "main_card_slug": null
+      },
+      {
+        "id": "phuquoc-2026:2026-10-11",
+        "date": "2026-10-11",
+        "plan": {
+          "segments": [
+            {
+              "id": "main",
+              "ref": {
+                "id": "onbird",
+                "type": "card"
+              },
+              "kind": "activity",
+              "time": {
+                "kind": "unknown",
+                "timezone": "Asia/Ho_Chi_Minh",
+                "day_offset": 0,
+                "source_refs": [],
+                "start_window": null,
+                "evidence_as_of": null,
+                "duration_minutes": null
+              },
+              "label": "Activity",
+              "condition_refs": []
+            }
+          ],
+          "alternatives": [],
+          "schema_version": 1
+        },
+        "day_kind": "activity",
+        "main_card_slug": "onbird"
+      },
+      {
+        "id": "phuquoc-2026:2026-10-12",
+        "date": "2026-10-12",
+        "plan": {
+          "segments": [
+            {
+              "id": "main",
+              "ref": {
+                "id": "cable",
+                "type": "card"
+              },
+              "kind": "activity",
+              "time": {
+                "kind": "unknown",
+                "timezone": "Asia/Ho_Chi_Minh",
+                "day_offset": 0,
+                "source_refs": [],
+                "start_window": null,
+                "evidence_as_of": null,
+                "duration_minutes": null
+              },
+              "label": "Activity",
+              "condition_refs": []
+            }
+          ],
+          "alternatives": [],
+          "schema_version": 1
+        },
+        "day_kind": "activity",
+        "main_card_slug": "cable"
+      },
+      {
+        "id": "phuquoc-2026:2026-10-13",
+        "date": "2026-10-13",
+        "plan": {
+          "segments": [],
+          "alternatives": [],
+          "schema_version": 1
+        },
+        "day_kind": "light",
+        "main_card_slug": null
+      },
+      {
+        "id": "phuquoc-2026:2026-10-14",
+        "date": "2026-10-14",
+        "plan": {
+          "segments": [],
+          "alternatives": [],
+          "schema_version": 1
+        },
+        "day_kind": "light",
+        "main_card_slug": null
+      },
+      {
+        "id": "phuquoc-2026:2026-10-15",
+        "date": "2026-10-15",
+        "plan": {
+          "segments": [],
+          "alternatives": [],
+          "schema_version": 1
+        },
+        "day_kind": "light",
+        "main_card_slug": null
+      }
+    ],
+    "refs": {
+      "pool": [
+        {
+          "divider": null,
+          "pool_key": "fixture-pool",
+          "desc_copy": "",
+          "notion_id": "fixture-food",
+          "pool_rank": 1,
+          "pool_role": "fallback",
+          "order_copy": ""
+        }
+      ],
+      "bases": [
+        {
+          "id": "hotel",
+          "ref": {
+            "id": "fixture-booking",
+            "type": "booking"
+          }
+        }
+      ],
+      "cards": [
+        {
+          "name": "測試纜車",
+          "slug": "cable",
+          "gates": null,
+          "notes": null,
+          "route": null,
+          "stops": null,
+          "badges": null,
+          "dining": null,
+          "status": "ACTIVE",
+          "callout": null,
+          "summary": null,
+          "kid_note": null,
+          "cut_order": null,
+          "key_times": null,
+          "transport": null,
+          "transport_out": null,
+          "evidence_as_of": null,
+          "transport_back": null
+        },
+        {
+          "name": "Fixture card",
+          "slug": "onbird",
+          "gates": null,
+          "notes": null,
+          "route": null,
+          "stops": null,
+          "badges": null,
+          "dining": null,
+          "status": "ACTIVE",
+          "callout": null,
+          "summary": null,
+          "kid_note": null,
+          "cut_order": null,
+          "key_times": null,
+          "transport": null,
+          "transport_out": null,
+          "evidence_as_of": null,
+          "transport_back": null
+        }
+      ],
+      "foods": [
+        {
+          "name": "測試店家",
+          "grade": null,
+          "worth": null,
+          "region": null,
+          "cluster": null,
+          "cuisine": null,
+          "housing": null,
+          "kid_fit": null,
+          "op_conf": null,
+          "summary": null,
+          "dish_ids": null,
+          "evidence": null,
+          "neg_warn": null,
+          "data_conf": null,
+          "local_idx": null,
+          "notion_id": "fixture-food",
+          "op_status": null,
+          "hours_text": "old hours",
+          "maps_query": "測試店家 富國島",
+          "pq_feature": null,
+          "price_text": null,
+          "time_slots": null,
+          "atlas_state": null,
+          "convenience": null,
+          "last_verified": null,
+          "research_date": null,
+          "evidence_as_of": null
+        }
+      ],
+      "points": [
+        {
+          "area": "Test",
+          "name": "Fixture point",
+          "slug": "fixture-point",
+          "status": null,
+          "interest": null,
+          "mandatory": null,
+          "play_mode": null,
+          "durable_note": null,
+          "returnability": null,
+          "trip_priority": null,
+          "condition_gate": null,
+          "evidence_as_of": null
+        }
+      ],
+      "bookings": [
+        {
+          "kind": "hotel",
+          "slug": "fixture-booking",
+          "title": "Fixture hotel",
+          "amount": null,
+          "status": "Confirmed",
+          "evidence_as_of": null
+        }
+      ],
+      "transport": [
+        {
+          "note": null,
+          "plan": "Fixture transfer",
+          "slug": "fixture-transport",
+          "status": null,
+          "station": null,
+          "priority": null,
+          "direction": null,
+          "evidence_as_of": null
+        }
+      ]
+    },
+    "itinerary": {
+      "id": "phuquoc-2026",
+      "end_date": "2026-10-15",
+      "timezone": "Asia/Ho_Chi_Minh",
+      "start_date": "2026-10-10"
+    },
+    "schema_version": 1
+  },
+  "meta": {
+    "schema_version": 1,
+    "content_revision": "phq1:79a41d5d7abaa83c7b2172f112a6edd63eed08bd90273718731933eaff567f72",
+    "source": "neon-test",
+    "environment": "candidate",
+    "fetched_at": "2026-09-27T00:00:00Z",
+    "exported_at": "2026-09-27T00:00:00Z"
+  }
+}

@@ -30,6 +30,8 @@ Design contract (2026-09-22 upgrade):
 import json
 import html as h
 import re as _re
+import hashlib
+import shutil
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -42,6 +44,9 @@ _PROD = "--prod" in _sys.argv[1:]
 _API_BASE = PROD_API if _PROD else ""
 _OUT_DIR = None
 _args = _sys.argv[1:]
+ITINERARY_MODE = _args[_args.index('--itinerary-mode') + 1] if '--itinerary-mode' in _args else 'legacy'
+if ITINERARY_MODE not in ('legacy', 'candidate', 'readonly'):
+    raise SystemExit('invalid --itinerary-mode')
 if "--api-base" in _args:
     _API_BASE = _args[_args.index("--api-base") + 1].rstrip("/")
 if "--out-dir" in _args:
@@ -49,6 +54,17 @@ if "--out-dir" in _args:
 CANDIDATE = bool(_API_BASE and _OUT_DIR)
 PROD = _PROD
 DYNAMIC = CANDIDATE or PROD
+if ITINERARY_MODE != 'legacy' and not (CANDIDATE or PROD):
+    raise SystemExit('new itinerary modes require explicit --api-base/--out-dir or --prod')
+
+
+def site_build_id():
+    digest = hashlib.sha256()
+    for name in sorted(('tools/build_site.py', 'tools/site.css', 'tools/itinerary-reader.mjs')):
+        digest.update(name.encode('utf-8') + b'\0')
+        digest.update((ROOT / name).read_bytes() + b'\0')
+    digest.update(ITINERARY_MODE.encode('utf-8'))
+    return 'sha256:' + digest.hexdigest()
 # Source labels live in the setSrc() JS helper: a one-line visible fallback
 # notice plus a small <details class="src-info">. No big banners on success.
 
@@ -480,6 +496,7 @@ def build_itinerary_days_html():
 
 
 def main():
+    build_id = site_build_id()
     snap, byname, bynotion = load()
     pool = snap.get("pool", [])
     pool_html, n_food = build_food_pool(pool, bynotion, byname, candidate=True)
@@ -503,7 +520,9 @@ def main():
     bookings_js = ""
     foods_js = ""
     transport_js = ""
-    itinerary_days = build_itinerary_days_html()
+    itinerary_days = build_itinerary_days_html() if ITINERARY_MODE == 'legacy' else (
+        '<div class="itinerary-reader" data-itinerary><div class="tiny">六日行程載入中…</div></div>'
+        '<div class="row-actions"><button class="ghost" id="refreshItinerary" type="button">重新整理資料</button></div>')
     if DYNAMIC:
         api = _API_BASE
         cards_fetch = (
@@ -615,7 +634,7 @@ def main():
     # same grouping as live (main cards + collapsed backups, history hidden).
     transport_fallback = build_transport_html(transport)
 
-    page = f"""<!doctype html><html lang="zh-Hant">
+    page = f"""<!doctype html><html lang="zh-Hant" data-site-build="{build_id}" data-itinerary-mode="{ITINERARY_MODE}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -702,17 +721,17 @@ function setActiveNav(id){{document.querySelectorAll('.nav button').forEach(btn=
 function syncNav(){{if(!sticky)return;const offset=sticky.offsetHeight+18;let current=navIds[0];navIds.forEach(id=>{{const el=document.getElementById(id);if(el&&el.getBoundingClientRect().top<=offset)current=id}});setActiveNav(current)}}
 function jumpTo(id){{const el=document.getElementById(id);if(!el)return;const y=el.getBoundingClientRect().top+window.scrollY-((sticky&&sticky.offsetHeight)||60)-8;window.scrollTo(0,Math.max(0,y));setActiveNav(id);requestAnimationFrame(syncNav)}}
 navButtons.forEach(btn=>btn.addEventListener('click',()=>jumpTo(btn.dataset.jump)));document.querySelectorAll('[data-goto]').forEach(btn=>btn.addEventListener('click',()=>jumpTo(btn.getAttribute('data-goto'))));
-let navTick=false;window.addEventListener('scroll',()=>{{if(navTick)return;navTick=true;requestAnimationFrame(()=>{{syncNav();navTick=false}})}},{{passive:true}});window.addEventListener('resize',syncNav);syncNav();renderToday();
+let navTick=false;window.addEventListener('scroll',()=>{{if(navTick)return;navTick=true;requestAnimationFrame(()=>{{syncNav();navTick=false}})}},{{passive:true}});window.addEventListener('resize',syncNav);syncNav();{'renderToday();' if ITINERARY_MODE == 'legacy' else ''}
 // date tabs
 document.querySelectorAll('.date-tab').forEach(btn=>btn.addEventListener('click',()=>{{document.querySelectorAll('.date-tab').forEach(b=>{{b.setAttribute('aria-pressed','false');b.setAttribute('aria-selected','false')}});btn.setAttribute('aria-pressed','true');btn.setAttribute('aria-selected','true');var d=btn.getAttribute('data-date');document.querySelectorAll('[data-day-panel]').forEach(p=>p.classList.toggle('active',p.getAttribute('data-day-panel')===d))}}));
 // device slots/eaten migration (keep old keys untouched)
 function migrateLS(){{try{{var OLD_S='phq-v2-slots',NEW_S='phq-v3-slots',OLD_F='phq-v2-food-eaten',NEW_F='phq-v3-food-eaten';var hasNewS=!!localStorage.getItem(NEW_S),hasNewF=!!localStorage.getItem(NEW_F);var oldS=localStorage.getItem(OLD_S),oldF=localStorage.getItem(OLD_F);var msg=[];if(!hasNewS&&oldS){{localStorage.setItem(NEW_S,oldS);msg.push('暫排已保留')}}if(!hasNewF&&oldF){{localStorage.setItem(NEW_F,oldF);msg.push('吃過紀錄已保留')}}if(msg.length){{var el=document.getElementById('slotMigrated');if(el){{el.style.display='';el.textContent='已保留舊版紀錄（'+msg.join('、')+'）。'}}}}}}catch(e){{}}}}
 migrateLS();
-const slotKey='phq-v3-slots';let saved={{}};try{{saved=JSON.parse(localStorage.getItem(slotKey)||'{{}}')}}catch(e){{}}document.querySelectorAll('select[data-day]').forEach(sel=>{{if(saved[sel.dataset.day])sel.value=saved[sel.dataset.day];sel.addEventListener('change',()=>{{saved[sel.dataset.day]=sel.value;if(!sel.value)delete saved[sel.dataset.day];localStorage.setItem(slotKey,JSON.stringify(saved));renderToday()}})}});document.getElementById('resetSlots').addEventListener('click',()=>{{if(!window.confirm('清除暫排行程？（不影響已確認訂單）'))return;saved={{}};localStorage.setItem(slotKey,JSON.stringify(saved));document.querySelectorAll('select[data-day]').forEach(s=>s.value='');renderToday()}});
+const slotKey='phq-v3-slots';let saved={{}};try{{saved=JSON.parse(localStorage.getItem(slotKey)||'{{}}')}}catch(e){{}}document.querySelectorAll('select[data-day]').forEach(sel=>{{if(saved[sel.dataset.day])sel.value=saved[sel.dataset.day];sel.addEventListener('change',()=>{{saved[sel.dataset.day]=sel.value;if(!sel.value)delete saved[sel.dataset.day];try{{localStorage.setItem(slotKey,JSON.stringify(saved))}}catch(e){{}}{'renderToday()' if ITINERARY_MODE == 'legacy' else ''}}})}});var resetSlots=document.getElementById('resetSlots');if(resetSlots)resetSlots.addEventListener('click',()=>{{if(!window.confirm('清除暫排行程？（不影響已確認訂單）'))return;saved={{}};try{{localStorage.setItem(slotKey,JSON.stringify(saved))}}catch(e){{}}document.querySelectorAll('select[data-day]').forEach(s=>s.value='');{'renderToday()' if ITINERARY_MODE == 'legacy' else ''}}});
 // food: eaten + filters
 const foodKey='phq-v3-food-eaten';let eaten={{}};try{{eaten=JSON.parse(localStorage.getItem(foodKey)||'{{}}')}}catch(e){{}}const foodCards=[...document.querySelectorAll('[data-food-id]')],foodProgress=document.getElementById('foodProgress'),foodEmpty=document.getElementById('foodEmpty');let showFull=false;function matchFilters(card){{var r=(document.getElementById('filterRegion')||{{}}).value||'';var s=(document.getElementById('filterSlot')||{{}}).value||'';var e=(document.getElementById('filterEaten')||{{}}).value||'';var id=card.dataset.foodId;var isEaten=!!eaten[id];if(e==='eaten'&&!isEaten)return false;if(e==='uneaten'&&isEaten)return false;if(r){{var cr=card.getAttribute('data-region')||'';if(cr.indexOf(r)<0&&!(r==='南島'&&(cr.indexOf('An Th')>=0))&&!(r==='北島'&&(cr.indexOf('Gành')>=0||cr.indexOf('Grand')>=0)))return false}}if(s){{var ts=card.getAttribute('data-time-slots')||'';if(ts.indexOf(s)<0)return false}}return true}}
 function applyFoodFilters(){{window.applyFoodFilters=applyFoodFilters;let count=0,matched=[];foodCards.forEach(card=>{{const id=card.dataset.foodId,isEaten=!!eaten[id];if(isEaten)count++;card.classList.toggle('eaten',isEaten);const btn=card.querySelector('.eaten-btn');if(btn){{btn.setAttribute('aria-pressed',String(isEaten));btn.textContent=isEaten?'✓ 吃過':'○ 未吃'}}var ok=matchFilters(card);if(ok)matched.push(card)}});let visible=matched;if(!showFull&&matched.length>6)visible=matched.slice(0,6);foodCards.forEach(c=>c.classList.add('hidden'));visible.forEach(c=>c.classList.remove('hidden'));if(foodEmpty)foodEmpty.style.display=matched.length?'none':'';var t=document.getElementById('toggleFull');if(t){{t.textContent=showFull?('顯示較少（'+visible.length+' / '+matched.length+'）'):('看完整清單（'+matched.length+' 項符合）');t.setAttribute('aria-pressed',String(showFull))}}if(foodProgress)foodProgress.textContent=`已吃 ${{count}} / ${{foodCards.length}}`}}
-foodCards.forEach(card=>{{const btn=card.querySelector('.eaten-btn');if(!btn)return;btn.addEventListener('click',()=>{{const id=card.dataset.foodId;eaten[id]=!eaten[id];if(!eaten[id])delete eaten[id];localStorage.setItem(foodKey,JSON.stringify(eaten));applyFoodFilters()}})}});['filterRegion','filterSlot','filterEaten'].forEach(id=>{{var el=document.getElementById(id);if(el)el.addEventListener('change',()=>{{showFull=false;applyFoodFilters()}})}});document.getElementById('toggleFull').addEventListener('click',()=>{{showFull=!showFull;applyFoodFilters()}});document.getElementById('resetFood').addEventListener('click',()=>{{if(!window.confirm('重設吃過紀錄？'))return;eaten={{}};localStorage.setItem(foodKey,JSON.stringify(eaten));applyFoodFilters()}});applyFoodFilters();
+foodCards.forEach(card=>{{const btn=card.querySelector('.eaten-btn');if(!btn)return;btn.addEventListener('click',()=>{{const id=card.dataset.foodId;eaten[id]=!eaten[id];try{{localStorage.setItem(foodKey,JSON.stringify(eaten))}}catch(e){{}}applyFoodFilters()}})}});['filterRegion','filterSlot','filterEaten'].forEach(id=>{{var el=document.getElementById(id);if(el)el.addEventListener('change',()=>{{showFull=false;applyFoodFilters()}})}});document.getElementById('toggleFull').addEventListener('click',()=>{{showFull=!showFull;applyFoodFilters()}});document.getElementById('resetFood').addEventListener('click',()=>{{if(!window.confirm('重設吃過紀錄？'))return;eaten={{}};try{{localStorage.setItem(foodKey,JSON.stringify(eaten))}}catch(e){{}}applyFoodFilters()}});applyFoodFilters();
 {cards_fetch}
   const mount=document.getElementById('cardsMount');
   const active=cards.filter(c=>c.status==='ACTIVE');
@@ -726,13 +745,40 @@ foodCards.forEach(card=>{{const btn=card.querySelector('.eaten-btn');if(!btn)ret
 </script>
 </body>
 </html>"""
+    if ITINERARY_MODE != 'legacy':
+        title = '<div class="section-head" style="margin-top:16px"><h2 style="font-size:18px">暫排行程</h2>'
+        if ITINERARY_MODE == 'readonly':
+            start = page.index(title)
+            end = page.index('</section>', start)
+            page = page[:start] + page[end:]
+        else:
+            page = page.replace(title, title.replace('暫排行程', '舊本機暫排'), 1)
+        page = page.replace('</body>', f'''<script type="module">
+import {{mountItinerary}} from './assets/itinerary-reader.mjs';
+mountItinerary({{root:document.querySelector('[data-itinerary]'),todayRoot:document,
+  refreshButton:document.getElementById('refreshItinerary'),
+  apiUrl:{json.dumps(_API_BASE + '/api/itinerary')},fallbackUrl:'./data/itinerary.json'}});
+</script></body>''')
+    def card_with_build(**kwargs):
+        return build_card_page(**kwargs).replace('<html lang="zh-Hant">',
+            f'<html lang="zh-Hant" data-site-build="{build_id}">', 1)
+    out = _OUT_DIR if CANDIDATE else ROOT
+    (out / 'site-version.json').parent.mkdir(parents=True, exist_ok=True)
+    (out / 'site-version.json').write_text(
+        json.dumps({'schema_version': 1, 'build_id': build_id}) + '\n', encoding='utf-8')
+    if ITINERARY_MODE != 'legacy':
+        (out / 'assets').mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(ROOT / 'tools/itinerary-reader.mjs', out / 'assets/itinerary-reader.mjs')
+        if CANDIDATE and (DATA / 'itinerary.json').is_file():
+            (out / 'data').mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(DATA / 'itinerary.json', out / 'data/itinerary.json')
     if CANDIDATE:
         out = _OUT_DIR
         (out / "data").mkdir(parents=True, exist_ok=True)
         (out / "data-candidate.html").write_text(
             page.replace("PLACEHOLDER_API_BASE", _API_BASE), encoding="utf-8")
         (out / "card-candidate.html").write_text(
-            build_card_page(candidate_api=_API_BASE), encoding="utf-8")
+            card_with_build(candidate_api=_API_BASE), encoding="utf-8")
         print("wrote candidate:", out / "data-candidate.html",
               "+", out / "card-candidate.html")
     elif PROD:
@@ -741,12 +787,12 @@ foodCards.forEach(card=>{{const btn=card.querySelector('.eaten-btn');if(!btn)ret
         (ROOT / "index.html").write_text(
             page.replace("PLACEHOLDER_API_BASE", _API_BASE), encoding="utf-8")
         (ROOT / "card.html").write_text(
-            build_card_page(candidate_api=_API_BASE, prod=True, snapshot_src=snapshot_src), encoding="utf-8")
+            card_with_build(candidate_api=_API_BASE, prod=True, snapshot_src=snapshot_src), encoding="utf-8")
         print("wrote PROD index.html+data.html", len(page), "bytes;", n_food,
               "food cards;", len(cards), "active cards client-side")
     else:
         (ROOT / "data.html").write_text(page, encoding="utf-8")
-        (ROOT / "card.html").write_text(build_card_page(), encoding="utf-8")
+        (ROOT / "card.html").write_text(card_with_build(), encoding="utf-8")
         print("wrote data.html", len(page), "bytes;", n_food, "food cards;",
               len(cards), "active cards rendered client-side")
 
