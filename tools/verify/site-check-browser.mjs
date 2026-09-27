@@ -241,9 +241,10 @@ export async function verifySite({request,page,siteUrl=SITE_URL,apiOrigin=API_OR
            ]);
            if(response?.status()===200)
              await page.locator('#cardMount h1').waitFor({timeout:Math.min(3000,remaining())}).catch(()=>{});
-           const heading=await page.locator('#cardMount h1').allInnerTexts();
-           const cardOk=response?.status()===200 && page.url()===destination.href &&
-             heading.length===1 && heading[0].trim().length>0;
+            const heading=await page.locator('#cardMount h1').allInnerTexts();
+            const cardOk=response?.status()===200 && page.url()===destination.href &&
+              heading.length===1 && heading[0].trim().length>0 &&
+              await page.locator('#cardMount h1').isVisible();
            if(!cardOk){checks.card_navigation=false;
              checks.card_error=`${slug}: status ${response?.status()} url ${page.url()} expected ${destination.href} heading ${heading}`;}
            await page.goBack({waitUntil:'domcontentloaded',timeout:Math.min(10000,remaining())});

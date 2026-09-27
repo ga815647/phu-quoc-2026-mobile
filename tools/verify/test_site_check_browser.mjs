@@ -43,7 +43,7 @@ async function withPage(options,run) {
       if(url.pathname==='/assets/itinerary-reader.mjs')return route.fulfill({contentType:'text/javascript; charset=utf-8',body:actualReader});
       if(url.pathname==='/card.html'){cardVisits.push(url.searchParams.get('slug'));
         return route.fulfill({status:options.card404||options.card404Slug===url.searchParams.get('slug')?404:200,contentType:'text/html; charset=utf-8',
-        body:`<!doctype html><title>Card</title><div id="cardMount"><h1>${envelope.data.refs.cards.find(c=>c.slug===url.searchParams.get('slug'))?.name||url.searchParams.get('slug')||''}</h1></div>`});}
+        body:`<!doctype html><title>Card</title><div id="cardMount"><h1 ${options.hiddenCardHeadingSlug===url.searchParams.get('slug')?'hidden':''}>${envelope.data.refs.cards.find(c=>c.slug===url.searchParams.get('slug'))?.name||url.searchParams.get('slug')||''}</h1></div>`});}
       if(url.pathname==='/' && options.realReader)return route.fulfill({contentType:'text/html; charset=utf-8',body:`<!doctype html><html data-site-build="${build}"><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{overflow-wrap:anywhere} nav:not(.nav){display:grid;grid-template-columns:repeat(2,minmax(0,1fr))} .step{overflow-wrap:anywhere}</style></head><body>
         <nav class="nav">${['today','itinerary','food','journey'].map(s=>`<button data-jump="${s}" style="width:60px;height:44px">${s}</button>`).join('')}</nav>
         <div id="today"></div><div id="itinerary"><nav>${cardSlugs.map(s=>`<a class="link-card" href="./card.html?slug=${s}" style="display:inline-block;min-height:44px;padding:10px">${s}</a>`).join('')}</nav>
@@ -121,6 +121,10 @@ test('a 404 card target cannot pass with correct link hrefs',()=>withPage({card4
   assert.equal(r.status,'CONTENT_MISMATCH');assert.equal(r.checks.card_navigation,false);
 }));
 test('a non-first 404 card target cannot pass',()=>withPage({card404Slug:'cable'},(r,_page,{cardVisits})=>{
+  assert.equal(r.status,'CONTENT_MISMATCH');assert.equal(r.checks.card_navigation,false);
+  assert.deepEqual(cardVisits,cardSlugs);
+}));
+test('a hidden heading on a non-first card cannot pass',()=>withPage({hiddenCardHeadingSlug:'cable'},(r,_page,{cardVisits})=>{
   assert.equal(r.status,'CONTENT_MISMATCH');assert.equal(r.checks.card_navigation,false);
   assert.deepEqual(cardVisits,cardSlugs);
 }));

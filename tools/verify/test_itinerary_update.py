@@ -51,6 +51,26 @@ class UpdateTests(ItineraryDBCase):
                 meal['ref']={'type':'card','id':'onbird'}
                 self.failure('22023', [day], message='INVALID_PLAN')
 
+    def test_every_day_kind_rejects_main_card_without_operative_activity_atomically(self):
+        self.execute("INSERT INTO cards(slug,name) VALUES ('starfish','Synthetic Starfish')")
+        before=self.snapshot()
+        for kind in ('arrival','activity','light','departure'):
+            for slug in ('cable','starfish'):
+                with self.subTest(kind=kind,slug=slug):
+                    day=self.candidate('2026-10-12')
+                    day['day_kind']=kind
+                    day['main_card_slug']=slug
+                    self.assertEqual(day['plan']['segments'],[])
+                    self.failure('22023',[day],message='INVALID_PLAN')
+        self.assertEqual(before,self.snapshot())  # public revision, private version, audit and receipt counts
+
+    def test_populated_light_day_with_main_card_is_valid(self):
+        day=self.candidate('2026-10-12','cable')
+        day['day_kind']='light'
+        receipt=self.update(self.new_request_id(),[day])
+        self.assertEqual(receipt['content_revision'],self.snapshot()['revision'])
+        self.assert_projection_readable()
+
     def test_onbird_core_is_protected_but_meals_are_not(self):
         for mutation in ('night', 'demote', 'rename', 'remove'):
             day=self.candidate('2026-10-11')

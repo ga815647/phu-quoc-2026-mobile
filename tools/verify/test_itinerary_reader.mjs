@@ -45,6 +45,16 @@ test('main card must be active and mapped condition keys must match card gate te
   card.gates=JSON.stringify(['Changed source text']);invalid(mapped);
 });
 
+test('every day kind requires an operative activity when a main card is named',()=>{
+  for(const day_kind of ['arrival','activity','light','departure']){
+    const missing=clone(),day=missing.data.days[2];
+    day.day_kind=day_kind;day.plan.segments=[];
+    invalid(missing);
+  }
+  const populated=clone();populated.data.days[2].day_kind='light';
+  validateEnvelope(populated);
+});
+
 test('mapped card keys cannot be borrowed by a segment without that card',()=>{
   const mapped=clone(),card=mapped.data.refs.cards.find(c=>c.slug==='onbird');
   card.gates=JSON.stringify(['Existing public gate']);card.condition_labels={check:'Existing public gate'};

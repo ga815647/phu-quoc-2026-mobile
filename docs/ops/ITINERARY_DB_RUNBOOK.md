@@ -16,7 +16,7 @@ Maintain one record per target application (private release record, no credentia
 | Approver / approved scope | Explicit authorization for this branch, migration, ACL and, separately, approved six-day content |
 | Operator / role | Verify `session_user`, `current_user`, function owner and existing maintenance identity; no guessed GRANT |
 | `applied_at` (UTC) | DB `clock_timestamp()` observed **after commit**, with commit/result noted |
-| Test result | Current local itinerary suite (49 tests at this corrective pass), isolated branch ACL/update/projection/schema rerun outcomes, counts/hash and date |
+| Test result | Current local itinerary suite (51 tests at this follow-up), isolated branch ACL/update/projection/schema rerun outcomes, counts/hash and date |
 | Release and rollback | API/UI revision, public revision, six-day validation and separately authorized publication evidence |
 
 Never record DSNs, tokens, private Notion details, or sample credentials in this
@@ -103,6 +103,11 @@ Only after isolated results, review and **explicit production authorization**:
    migration approval alone.
     The initialization review must fill these **exact private lock keys** from
     the accepted timeline, not from this runbook or a sample fixture:
+
+    For every day kind, a non-null `main_card_slug` must have a matching
+    operative main-route `activity` segment referencing that card. This does
+    not forbid `light` days: they may remain without a main card or contain
+    an actual main activity. `activity` days still require a main card.
 
     - `locked_constraints.onbird_core` is an object with exactly
       `date:"2026-10-11"`, `segment_id` (the reviewed main-route activity ID),

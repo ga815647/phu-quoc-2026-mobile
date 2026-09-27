@@ -385,6 +385,8 @@ request hash、receipt／冪等）；既有 `content_revisions` 加私有 `reque
 PUBLIC 的新表／view／函式權限被收回；owner 操作屬具寫入能力身分，
 文字約束不等於硬權限隔離。候選 Function 僅 GET/OPTIONS `/api/itinerary`，
 不存在公開 POST／稽核／request／私有 version API。
+任一 `day_kind` 如指定非空 `main_card_slug`，主線必須有對應 `activity` 段落；
+`light` 不因此一律禁止主卡（也可不指定主卡），`activity` 日仍須指定主卡。
 
 **新公開 JSON／API 精確外形**：`{data:{schema_version:1,itinerary:{id,start_date,end_date,timezone},
 days:[{id,date,day_kind,main_card_slug,plan}],refs:{cards,foods,pool,points,bases,bookings,transport}},

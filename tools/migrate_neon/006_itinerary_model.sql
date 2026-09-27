@@ -124,7 +124,7 @@ BEGIN
     OR jsonb_typeof(p->'segments')<>'array' OR jsonb_typeof(p->'alternatives')<>'array'
     OR jsonb_array_length(p->'segments')>32 OR jsonb_array_length(p->'alternatives')>8
     OR (p ? 'public_note' AND jsonb_typeof(p->'public_note')<>'string') THEN RAISE EXCEPTION 'invalid'; END IF;
- IF main_slug IS NOT NULL AND p_day->>'day_kind'='activity' AND NOT EXISTS (
+  IF main_slug IS NOT NULL AND NOT EXISTS (
    SELECT 1 FROM jsonb_array_elements(p->'segments') v
    WHERE v->>'kind'='activity' AND v->'ref'=jsonb_build_object('type','card','id',main_slug))
    THEN RAISE EXCEPTION 'invalid'; END IF;

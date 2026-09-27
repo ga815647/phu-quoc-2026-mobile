@@ -77,9 +77,12 @@ export function validateEnvelope(value) {
     if(!keys(d,['id','date','day_kind','main_card_slug','plan']) || d.date !== date ||
         d.id !== `${trip.id}:${date}` || dayIds.has(d.id) || !string(d.day_kind) ||
          (d.main_card_slug !== null && (!CARD_SLUGS.has(d.main_card_slug) || !refs.cards.some(c=>c.slug===d.main_card_slug && c.status==='ACTIVE'))) ||
-        !keys(d.plan,['schema_version','segments','alternatives'],['public_note']) || d.plan.schema_version !== 1 ||
-        !Array.isArray(d.plan.segments) || d.plan.segments.length>32 ||
-        !Array.isArray(d.plan.alternatives) || d.plan.alternatives.length>8) fail();
+         !keys(d.plan,['schema_version','segments','alternatives'],['public_note']) || d.plan.schema_version !== 1 ||
+         !Array.isArray(d.plan.segments) || d.plan.segments.length>32 ||
+         !Array.isArray(d.plan.alternatives) || d.plan.alternatives.length>8 ||
+         (d.day_kind==='activity' && d.main_card_slug===null) ||
+         (d.main_card_slug!==null && !d.plan.segments.some(s=>s?.kind==='activity' &&
+           s.ref?.type==='card' && s.ref.id===d.main_card_slug))) fail();
     dayIds.add(d.id);
     const ids=new Set(); d.plan.segments.forEach(s=>segment(s,ids));
     const altIds=new Set();

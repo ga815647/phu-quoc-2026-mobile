@@ -86,3 +86,45 @@ LOCAL FIXTURE PASS: PG18 rollback update/audit -> public view/export -> generate
 ```
 
 The original outstanding release/authorization gates above are unchanged. No production or remote/network write, published site change, real schedule or gate mapping was attempted.
+
+## Follow-up after `final-corrective-review.md` (base `bf85133`)
+
+The ledger's narrow ruling is now enforced in both SQL `itinerary_validate_day` and JS `validateEnvelope`: **every non-null main card, regardless of `day_kind`, needs a matching operative main-route `activity` segment**. The existing rule that an `activity` day needs a card remains; `light` days may still have no card or a populated card route. This closes the empty light-day Starfish bypass without inventing itinerary content or altering the Starfish route helper. The browser verifier additionally requires `#cardMount h1` to be **visible**, not just present with text, for each of the five followed cards.
+
+Focused red evidence before implementation, with `/tmp/opencode/phq-pg18-test-env` sourced:
+
+- `python3 -m unittest discover -s tools/verify -p 'test_itinerary_update.py' -k 'test_every_day_kind_rejects_main_card_without_operative_activity_atomically' -v` → **FAIL**: 6 subtests accepted empty main-card routes (`arrival/light/departure` × `cable/starfish`); `activity` subtests already rejected. Each rejection uses the full before/after snapshot (revision, private version, audit and request counts), and the test now compares the baseline again after all eight cases.
+- `node --test --test-name-pattern='every day kind requires' tools/verify/test_itinerary_reader.mjs` → **FAIL**, missing expected `INVALID_ITINERARY` exception.
+- `node --test --test-name-pattern='hidden heading' tools/verify/test_site_check_browser.mjs` → **FAIL**, actual `PASS` rather than `CONTENT_MISMATCH` for a hidden cable heading. The fixture follows all five card destinations.
+
+Focused green after reapplying 006 **only to the guarded local PG18 socket**: the same DB rejection test → **OK (1 test, eight day-kind/card cases)**; `-k 'test_populated_light_day_with_main_card_is_valid'` → **OK**, accepted cable light-day route and JS projection validation; the two targeted Node tests → **2/2 pass**. No remote DB connection or production seed was used.
+
+Full affected suites, each run once after the focused green tests:
+
+```text
+$ python3 -m unittest discover -s tools/verify -p 'test_itinerary_*.py'
+...................................................
+----------------------------------------------------------------------
+Ran 51 tests in 35.530s
+
+OK
+```
+
+The Python exporter tests also printed only synthetic temporary-file paths and zero-row counts. The detailed Node test reporter returned **40 tests / 40 pass / 0 fail** for:
+
+```text
+$ node --test tools/verify/test_itinerary_reader.mjs tools/verify/test_site_check_browser.mjs tools/verify/test_site_check_contract.mjs tools/verify/test_site_check_publish.mjs
+ℹ tests 40
+ℹ suites 0
+ℹ pass 40
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+```
+
+```text
+$ node tools/verify/itinerary_e2e_candidate.mjs
+LOCAL FIXTURE PASS: PG18 rollback update/audit -> public view/export -> generated candidate -> Chromium verifier -> fake GitHub immutable result
+```
+
+All prior production initialization, release, real Chat/CI and phone acceptance gates remain unchanged; this is not a deployment claim.
