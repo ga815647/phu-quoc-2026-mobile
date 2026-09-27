@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f5fafc">
+  <title>六日路線比較｜富國島設計預覽</title>
+  <link rel="stylesheet" href="./preview.css">
+  <script type="module" src="./preview.mjs"></script>
+</head>
+<body>
+  <div class="app">
+    <header class="masthead">
+      <div class="masthead-top"><span class="preview-label">設計預覽／行程草案</span><span class="island-mark" aria-hidden="true">◌</span></div>
+      <h1>帶著路線，<br>慢慢去富國島。</h1>
+      <p>兩種看法，同一份六日草案。僅供比較，並非正式行程。</p>
+      <details class="source-fold"><summary>資料來源與使用說明</summary><div class="fold-body"><p id="source-text"></p><p>此頁是靜態公開資料快照，不連接正式 API、不會更新行程。所有未標「已確認」的時段都是草案；交通車程、叫車等待、營業與班次須出發前重查。超過 30 天的餐廳查證均標出發前重查。</p></div></details>
+    </header>
+
+    <main id="main">
+      <nav aria-label="日期" class="date-nav"><div id="dates" class="date-track"></div></nav>
+      <div class="view-bar"><span>比較閱讀方式</span><div class="view-switch" role="group" aria-label="比較版型"><button id="view-a" type="button">A 海岸路線簿</button><button id="view-b" type="button">B 下一站旅程牌</button></div></div>
+      <div id="day-content" aria-live="polite"></div>
+      <section class="bottom-note"><h2>行程怎麼改？</h2><p>這是可分享的視覺比較，不會儲存選取或改動任何安排。需要更動正式每日內容時，待受控 Chat 流程驗收後再由 Chat 處理；此處不提供編輯。</p></section>
+    </main>
+    <footer><span>富國島 2026・手機設計比較稿</span><a href="./README.md">預覽範圍說明</a></footer>
+  </div>
+</body>
+</html>
