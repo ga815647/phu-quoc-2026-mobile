@@ -14,7 +14,9 @@ class ProjectionTests(ItineraryDBCase):
         self.assertEqual(len(s['payload']['days']), 6)
         self.assertRegex(s['revision'], r'^phq1:[0-9a-f]{64}$')
         self.assertEqual(s['payload']['schema_version'], 1)
-        self.assertEqual(s['payload']['itinerary_id'], 'phuquoc-2026')
+        self.assertEqual(s['payload']['itinerary'], {
+            'id': 'phuquoc-2026', 'start_date': '2026-10-10',
+            'end_date': '2026-10-15', 'timezone': 'Asia/Ho_Chi_Minh'})
         self.assertEqual(s['payload']['days'][0]['id'], 'phuquoc-2026:2026-10-10')
         forbidden = {'version', 'locked_constraints', 'request_id', 'old_value', 'new_value'}
 
@@ -38,6 +40,7 @@ class ProjectionTests(ItineraryDBCase):
         self.assertEqual([x['slug'] for x in refs['bookings']], ['fixture-booking'])
         self.assertEqual([x['slug'] for x in refs['transport']], ['fixture-transport'])
         self.assertEqual([x['slug'] for x in refs['points']], ['fixture-point'])
+        self.assertEqual(refs['bases'], [{'id': 'hotel', 'ref': {'type': 'booking', 'id': 'fixture-booking'}}])
         self.assertNotIn('detail', refs['bookings'][0])
         self.assertNotIn('evidence', refs['bookings'][0])
         self.assertNotIn('condition_note', refs['points'][0])
@@ -216,8 +219,32 @@ class ProjectionTests(ItineraryDBCase):
         self.assertNotEqual(used['revision'], before['revision'])
         self.assertEqual({b['slug'] for b in used['payload']['refs']['bookings']},
                          {'fixture-booking', 'fixture-spare-booking'})
+        self.assertEqual(used['payload']['refs']['bases'], [
+            {'id': 'spare_booking', 'ref': {'type': 'booking', 'id': 'fixture-spare-booking'}}])
         self.assertNotIn('fixture-spare-point',
-                         {p['slug'] for p in used['payload']['refs']['points']})
+                          {p['slug'] for p in used['payload']['refs']['points']})
+
+    def test_used_base_mappings_sorted_and_public_hash_tracks_mapping(self):
+        self.execute("INSERT INTO points(slug,name,area) VALUES ('fixture-second-point','Second','Test')")
+        self.execute("""UPDATE itineraries SET locked_constraints=jsonb_set(
+            locked_constraints, '{bases}', (locked_constraints->'bases') ||
+            '{"z_home":{"type":"point","id":"fixture-second-point"},
+              "a_home":{"type":"booking","id":"fixture-booking"}}'::jsonb)
+            WHERE id='phuquoc-2026'""")
+        self.execute("""UPDATE itinerary_days SET plan=jsonb_set(plan,'{segments,2,transfer,to_ref}',
+            '{"type":"base","id":"z_home"}'::jsonb) WHERE date='2026-10-10'""")
+        self.execute("""UPDATE itinerary_days SET plan=jsonb_set(plan,'{segments,2,transfer,from_ref}',
+            '{"type":"base","id":"a_home"}'::jsonb) WHERE date='2026-10-10'""")
+        before = self.snapshot()
+        self.assertEqual(before['payload']['refs']['bases'], [
+            {'id': 'a_home', 'ref': {'type': 'booking', 'id': 'fixture-booking'}},
+            {'id': 'z_home', 'ref': {'type': 'point', 'id': 'fixture-second-point'}}])
+        self.execute("""UPDATE itineraries SET locked_constraints=jsonb_set(
+            locked_constraints, '{bases,z_home}', '{"type":"point","id":"fixture-point"}'::jsonb)
+            WHERE id='phuquoc-2026'""")
+        after = self.snapshot()
+        self.assertNotEqual(before['revision'], after['revision'])
+        self.assertEqual(after['payload']['refs']['bases'][1]['ref']['id'], 'fixture-point')
 
     def test_replacement_conditions_cannot_activate_self_or_other_alternative(self):
         original = self.scalar("SELECT jsonb_build_object('day_kind',day_kind,'main_card_slug',main_card_slug,'plan',plan) FROM itinerary_days WHERE date='2026-10-10'")

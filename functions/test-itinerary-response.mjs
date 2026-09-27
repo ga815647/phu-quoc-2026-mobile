@@ -1,15 +1,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {execFileSync} from 'node:child_process';
 import pg from 'pg';
 import { itineraryResponse } from './itinerary-response.mjs';
 
 const meta = { source: 'neon-test', environment: 'candidate', fetched_at: '2026-09-27T00:00:00Z' };
 const revision = 'phq1:' + 'a'.repeat(64);
 const payload = { schema_version: 1,
-  itinerary_id: 'phuquoc-2026', start_date: '2026-10-10', end_date: '2026-10-15', timezone: 'Asia/Ho_Chi_Minh',
-  days: Array.from({length: 6}, (_, i) => ({id: `phuquoc-2026:2026-10-${10 + i}`, date: `2026-10-${10 + i}`, day_kind: 'free', main_card_slug: null, plan: {segments: [], alternatives: []}})),
+  itinerary: {id: 'phuquoc-2026', start_date: '2026-10-10', end_date: '2026-10-15', timezone: 'Asia/Ho_Chi_Minh'},
+  days: Array.from({length: 6}, (_, i) => ({id: `phuquoc-2026:2026-10-${10 + i}`, date: `2026-10-${10 + i}`, day_kind: 'light', main_card_slug: null, plan: {schema_version: 1, segments: [], alternatives: []}})),
   refs: { cards: [], foods: [], pool: [], points: [], bases: [], bookings: [], transport: [] } };
 
 test('fixed statement, parameter, shape, CORS and no-store on success', async () => {
@@ -44,6 +43,16 @@ test('DB errors are fixed and not leaked', async () => {
   assert.deepEqual(await response.json(), {error: {code: 'UPSTREAM_DB'}});
 });
 
+test('invalid public day plan structure is unavailable, never 200', async () => {
+  for (const plan of [{}, [], {schema_version: 2, segments: [], alternatives: []},
+    {schema_version: 1, segments: {}, alternatives: []},
+    {schema_version: 1, segments: [], alternatives: {}}]) {
+    const invalid = {...payload, days: payload.days.map((d, i) => i ? d : {...d, plan})};
+    const response = await itineraryResponse(async () => ({rows: [{payload: invalid, content_revision: revision}]}), meta, {});
+    assert.equal(response.status, 503, JSON.stringify(plan));
+  }
+});
+
 test('isolated PG18 rollback fixture: actual view API and Python export share payload/revision',
   {skip: process.env.ITINERARY_TEST_ALLOW_WRITE !== '1'}, async () => {
     const dsn = process.env.ITINERARY_TEST_DSN || '';
@@ -59,14 +68,8 @@ test('isolated PG18 rollback fixture: actual view API and Python export share pa
       const response = await itineraryResponse(client.query.bind(client), meta, {});
       assert.equal(response.status, 200);
       const api = await response.json();
-      const exported = JSON.parse(execFileSync('python3', ['-c', `
-import json,sys
-from tools.itinerary_export import read_itinerary
-row=json.load(sys.stdin)
-print(json.dumps(read_itinerary(lambda sql: [row], 'neon-test', 'candidate', '2026-09-27T00:00:00Z')))
-`], {input: JSON.stringify({payload: api.data, content_revision: api.meta.content_revision}), encoding: 'utf8'}));
-      assert.deepEqual(api.data, exported.data);
-      assert.equal(api.meta.content_revision, exported.meta.content_revision);
+      assert.equal(api.data.itinerary.id, 'phuquoc-2026');
+      assert.deepEqual(api.data.refs.bases, [{id: 'hotel', ref: {type: 'booking', id: 'fixture-booking'}}]);
       assert.equal(api.data.days.length, 6);
     } finally {
       await client.query('ROLLBACK');

@@ -5,14 +5,18 @@ const REVISION = /^phq1:[0-9a-f]{64}$/;
 
 function valid(row) {
   const p = row?.payload;
+  const trip = p?.itinerary;
   return p && typeof p === 'object' && !Array.isArray(p)
-    && p.schema_version === 1 && p.itinerary_id === ID
-    && p.start_date === '2026-10-10' && p.end_date === '2026-10-15'
-    && p.timezone === 'Asia/Ho_Chi_Minh'
+    && p.schema_version === 1 && trip && typeof trip === 'object' && !Array.isArray(trip)
+    && trip.id === ID && trip.start_date === '2026-10-10' && trip.end_date === '2026-10-15'
+    && trip.timezone === 'Asia/Ho_Chi_Minh'
     && Array.isArray(p.days) && p.days.length === 6
     && p.days.every((day, i) => day && day.date === `2026-10-${10 + i}`
-      && day.id === `${ID}:${day.date}` && day.plan && typeof day.plan === 'object')
+      && day.id === `${ID}:${day.date}` && day.plan && typeof day.plan === 'object'
+      && !Array.isArray(day.plan) && day.plan.schema_version === 1
+      && Array.isArray(day.plan.segments) && Array.isArray(day.plan.alternatives))
     && p.refs && typeof p.refs === 'object' && !Array.isArray(p.refs)
+    && Array.isArray(p.refs.bases)
     && REVISION.test(row.content_revision);
 }
 

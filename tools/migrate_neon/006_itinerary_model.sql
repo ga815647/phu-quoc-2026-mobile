@@ -243,12 +243,17 @@ BEGIN
   END LOOP;
  END LOOP;
  IF jsonb_array_length(result_days)<>6 THEN RAISE EXCEPTION 'invalid'; END IF;
- FOR k IN SELECT DISTINCT unnest(base_ids) LOOP
-  base := trip.locked_constraints->'bases'->k;
-  IF base->>'type'='booking' THEN booking_ids:=array_append(booking_ids,base->>'id');
-  ELSIF base->>'type'='point' THEN point_ids:=array_append(point_ids,base->>'id');
-  ELSE RAISE EXCEPTION 'invalid'; END IF;
- END LOOP;
+  FOR k IN SELECT DISTINCT unnest(base_ids) LOOP
+   base := trip.locked_constraints->'bases'->k;
+   IF base->>'type'='booking' THEN booking_ids:=array_append(booking_ids,base->>'id');
+   ELSIF base->>'type'='point' THEN point_ids:=array_append(point_ids,base->>'id');
+   ELSE RAISE EXCEPTION 'invalid'; END IF;
+  END LOOP;
+  -- Publish only reachable base mappings; never expose all locked constraints.
+  SELECT coalesce(jsonb_agg(jsonb_build_object('id',b.id,'ref',trip.locked_constraints->'bases'->b.id)
+      ORDER BY b.id),'[]'::jsonb) INTO vals
+    FROM (SELECT DISTINCT unnest(base_ids) AS id) b;
+  out_refs := jsonb_build_object('bases',vals);
  FOR k IN SELECT value #>> '{}' FROM jsonb_array_elements(COALESCE(trip.locked_constraints->'bookings','[]'::jsonb)) LOOP
   booking_ids:=array_append(booking_ids,k);
  END LOOP;
@@ -283,8 +288,10 @@ BEGIN
   IF jsonb_array_length(vals)<>n THEN RAISE EXCEPTION 'invalid'; END IF;
   out_refs := out_refs || jsonb_build_object(k,vals);
  END LOOP;
- RETURN jsonb_build_object('schema_version',1,'itinerary_id',p_id,'start_date',trip.start_date,
-   'end_date',trip.end_date,'timezone',trip.timezone,'days',result_days,'refs',out_refs);
+  RETURN jsonb_build_object('schema_version',1,
+    'itinerary',jsonb_build_object('id',p_id,'start_date',trip.start_date,
+      'end_date',trip.end_date,'timezone',trip.timezone),
+    'days',result_days,'refs',out_refs);
 EXCEPTION WHEN OTHERS THEN
  RAISE EXCEPTION USING ERRCODE='22023', MESSAGE='itinerary: invalid projection';
 END $$;

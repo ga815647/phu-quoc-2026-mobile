@@ -111,25 +111,29 @@ def main():
     else:
         snap["meta"]["projection"] = "internal-full"
     os.makedirs(OUT, exist_ok=True)
-    for name, data in [("foods", foods), ("points", points), ("cards", cards),
-                        ("bookings", bookings), ("pool", pool), ("snapshot", snap)]:
-        p = os.path.join(OUT, f"{name}.json")
-        with open(p, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=1)
-        print(name, len(json.dumps(data, ensure_ascii=False)), "bytes ->", p)
-    if itinerary is not None:
-        path = os.path.join(OUT, 'itinerary.json')
-        temp_path = None
-        try:
+    temp_path = None
+    try:
+        if itinerary is not None:
+            # Prepare the complete six-day file before legacy outputs; publish it
+            # only after the full export succeeds. Legacy files are not a set-atomic
+            # release; deployment must require a successful full export run.
             with tempfile.NamedTemporaryFile('w', encoding='utf-8', dir=OUT,
                                              prefix='.itinerary-', suffix='.tmp', delete=False) as f:
                 temp_path = f.name
                 json.dump(itinerary, f, ensure_ascii=False, indent=1)
+        for name, data in [("foods", foods), ("points", points), ("cards", cards),
+                           ("bookings", bookings), ("pool", pool), ("snapshot", snap)]:
+            p = os.path.join(OUT, f"{name}.json")
+            with open(p, "w", encoding="utf-8") as f:
+                json.dump(data, f, ensure_ascii=False, indent=1)
+            print(name, len(json.dumps(data, ensure_ascii=False)), "bytes ->", p)
+        if itinerary is not None:
+            path = os.path.join(OUT, 'itinerary.json')
             os.replace(temp_path, path)
-        finally:
-            if temp_path is not None and os.path.exists(temp_path):
-                os.unlink(temp_path)
-        print('itinerary', len(json.dumps(itinerary, ensure_ascii=False)), 'bytes ->', path)
+            print('itinerary', len(json.dumps(itinerary, ensure_ascii=False)), 'bytes ->', path)
+    finally:
+        if temp_path is not None and os.path.exists(temp_path):
+            os.unlink(temp_path)
     print("counts:", {k: len(v) for k, v in snap.items() if isinstance(v, list)})
     try:
         db.close()
