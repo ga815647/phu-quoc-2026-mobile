@@ -93,6 +93,8 @@ Chat／OpenCode 是責任分工，不是資料庫的技術角色名稱。工具�
 
 ## 7. 維護方式
 
+2026-09-27 使用者看過公開比較稿後選擇「A吧 混合沒有想法」：正式視覺方向採A「海岸路線簿」，不混合B；這是視覺方向接受，非草案餐廳／時刻或正式部署接受。隨後授權 explore 上網查核，餐飲／景點／交通各自研究，主代理整合有來源的六日草案；研究結果不自動寫入Neon。
+
 2026-09-27 使用者明確核准A/B手機比較稿及 `preview/redesign/` 公開發布。已獨立發布main `fba6379`（僅preview五檔），Pages成功，公開URL與320／390／430px六日A/B驗證通過；詳 `ITINERARY_CONTENT_PREVIEW_BRIEF.md`。工程PR12仍為候選，這次發布未套Neon／Function，也不代表草案內容或視覺已接受為正式版本。
 
 2026-09-27 工程候選完成狀態與最終 51 Python／45 Node、本機整合／手機瀏覽測試結果見 `ITINERARY_ENGINEERING_ACCEPT.md`。這是隔離 worktree 的本機驗收；正式內容、視覺、Neon／Actions／手機正式站發布鏈仍按該文件所列前置推進。
