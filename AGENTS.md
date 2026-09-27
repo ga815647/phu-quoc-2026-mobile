@@ -26,6 +26,21 @@
 - Chat handles research and explicitly requested content updates in the appropriate destination; OpenCode handles engineering and fallback publication. Transient questions stay in chat. `Confirmed` is not paid; public `bookings.amount` is not a private expense ledger. Neon trip-time freeze does not freeze private Notion checklists.
 - Keep the five cards, food shortlist and device-only state. Do not build packing, private accounting, login or cross-device sync to duplicate Notion; the old `user_state` proposal is deferred.
 
+## Experience redesign scope (2026-09-26)
+- Before redesign work or subagent dispatch, read `docs/ops/REDESIGN_SCOPE.md` for agreed product decisions, allowed paths, content ownership, and stage status. Maintain it with changes affecting those boundaries.
+- UI/design approval does not itself apply content decisions to Neon or change confirmed bookings. Six-day defaults and meal/transport-following behavior still need an approved data design; don't introduce an independently maintained hardcoded travel-data copy.
+- Give every subagent explicit writable paths, data-write scope, and acceptance criteria. Keep live data updates, fallback publication, preview deployment, and Chat capability verification as separate outcomes.
+- Chat's selected read route is GitHub for rules/code/published evidence and Neon for current travel content. Direct Chat HTTP access to the production site is not a required capability; OpenCode/CI and the user's phone validate runtime behavior. GitHub JSON remains a dated fallback, not live Neon data.
+- Approved future scope: Chat may update the new daily itinerary and meal/transport assignments during the trip via its validated controlled entry point; existing research tables and confirmed bookings keep current freeze/authorization rules. This is not permission to run a migration or use an unimplemented entry point. See CONTENT_CONTRACT.md §9.
+
+## Agent skills
+
+### Issue tracker
+GitHub Issues is the user-selected decision tracker. Read `docs/agents/issue-tracker.md` for the current Wayfinder map, native dependencies, claiming and resolution procedures.
+
+### Domain docs
+Single-context glossary in `CONTEXT.md`; see `docs/agents/domain.md`. Keep terminology separate from permission contracts and implementation specs.
+
 ## Commands (Windows PowerShell 5.1, Python 3.14; VPS: python3 + PYTHONUTF8=1)
 - `$env:PYTHONUTF8=1; $env:DATABASE_URL='<prod-owner-DSN-from-Neon-Console>'; python tools/export_json.py` — required; default source is now Neon. Without `PYTHONUTF8=1` it crashes on `cp950`.
 - `python tools/build_site.py --prod` — regenerates `index.html` + `data.html` + `card.html` with the production Function API base + formal labels. Never run bare `build_site.py` for formal output; candidate builds always use `--api-base/--out-dir` into an isolated dir. UI-only changes need no DB write or JSON re-export.
@@ -35,7 +50,7 @@
 ## Gotchas
 - 2026-09-24 查證狀態：Neon 正式庫唯讀重查（各表筆數、ACL、ro 欄級 78／整表 0、
   Function deployment 5 行為）與契約一致；正式庫零寫入，寫入驗證走測試分支。
-  舊 `connectors.md` 不存在；Chat 實測待驗（見 `docs/ops/CHAT_ACCEPT.md`）；
+  2026-09-27 Chat 實測依使用者回報：GitHub／Notion 與正式 Neon row-returning 讀取通過，指定測試分支受控更新／還原／衝突通過；Chat HTTP／畫面仍未驗，六天模型尚未實作（見 `docs/ops/CHAT_ACCEPT.md`）；
   舊站未退役（見 `docs/ops/RETIREMENT.md`）；搬遷對照見 `docs/ops/MIGRATION_MAP.md`。
 - Workdir `E:\CS\projects\富國島` contains CJK; `glob` may return nothing — use `read` on directories and `bash` with `workdir` instead of `cd`.
 - Console is `cp950`: printing `↔`/CJK from sqlite crashes; set `PYTHONUTF8=1` and avoid bare `print(row)` with wide chars.
