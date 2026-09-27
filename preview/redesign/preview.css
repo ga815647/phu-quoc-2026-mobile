@@ -85,6 +85,8 @@ footer { padding: 30px 20px max(30px, env(safe-area-inset-bottom)); font-size: 1
 
 /* B is a different reading mode: one selected destination, then compact grouped stops. */
 body[data-view="b"] { --sea: #164bcd; --ink: #202c3e; --mist: #fff; --tide: #eaf0ff; --sun: #f3ca40; --line: #cbd5ed; --muted: #4f5b72; }
+body[data-view="b"] :focus-visible { outline-color: #164bcd; }
+body[data-view="b"] .focus-panel .map-link:focus-visible { outline-color: #f3ca40; }
 body[data-view="b"] .masthead h1 { font-size: clamp(24px,7vw,30px); }
 body[data-view="b"] .date-tab.active { background: #164bcd; }
 .focus-intro { padding: 14px 20px 17px; }

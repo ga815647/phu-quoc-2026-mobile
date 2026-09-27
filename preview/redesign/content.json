@@ -14,7 +14,7 @@
     "safari": "Vinpearl Safari Phu Quoc",
     "dinh": "Dinh Cau Temple Phu Quoc",
     "banhmi": "ANH THU - Banh Mi Xiu Mai, Đ. 30 Tháng 4, Dương Đông, Phú Quốc",
-    "bun": "Bún Kèn Út Lượm, 42 Đ. 30 Tháng 4, Phú Quốc",
+    "comtam": "Cơm tấm Nhị, 1 Nguyễn Trung Trực, Dương Đông, Phú Quốc",
     "wow": "WOW QUÊ TÔI, An Thới, Phú Quốc",
     "bup": "BUP Seafood, 33 Đại Lộ Trung Tâm, Khu đô thị Meyhomes Capital, An Thới, Phú Quốc",
     "bep": "Bếp Nhà Restaurant - Grand World Phú Quốc (sông Venice), TM04C-05/06, Bãi Dài, Grand World, Phú Quốc"
@@ -40,7 +40,7 @@
         {"id":"onbird-return","phase":"下午","type":"transit","time":"業者返送後","certainty":"已確認往返・到達時間未知","title":"業者送回 Cosy","detail":"回程不另叫車；先洗澡與休息。","map":"cosy"},
         {"id":"onbird-rest","phase":"下午","type":"anchor","time":"回住宿後","certainty":"草案","title":"洗澡、午餐與長休息","detail":"午餐就近解決，不硬接下一個景點。"},
         {"id":"onbird-evening","phase":"晚間","type":"anchor","time":"精神好才去","certainty":"條件式草案","title":"Dinh Cậu 短散步","detail":"只有回程不晚、孩子有精神才去；不然留在住宿周邊。","map":"dinh"},
-        {"id":"onbird-dinner","phase":"晚間","type":"meal","time":"散步後／就近","certainty":"草案・未鎖定店家","title":"市區或住宿附近晚餐","detail":"若真的到了 Dương Đông，可考慮 Bún Kèn Út Lượm（last_verified 2026-09-01；出發前重查）；疲累就留 Cosy 附近。","map":"bun"}
+        {"id":"onbird-dinner","phase":"晚間","type":"meal","time":"散步後／就近","certainty":"草案・未鎖定店家","title":"市區或住宿附近晚餐","detail":"若到了 Dương Đông 老城且趕上 17:00–20:00，可考慮 Cơm tấm Nhị（常提早賣完；last_verified 2026-08-26，出發前重查）；疲累就留 Cosy 附近吃。","map":"comtam"}
       ],
       "backup": [{"trigger":"海況不佳或業者取消","action":"先與業者核對可改期日；10/12–14 才是候選緩衝，不自行變更已確認安排。"},{"trigger":"回來太晚／孩子累","action":"取消 Dinh Cậu，晚餐留住宿附近。"}]
     },
@@ -63,12 +63,12 @@
         {"id":"cable-breakfast","phase":"上午","type":"meal","time":"出門前","certainty":"草案・出發前重查店家","title":"Bánh mì Anh Thư 順路早餐","detail":"僅順路且不耽誤南下時採用；last_verified 2026-09-01。否則房內簡單吃，不繞 Dinh Cậu。","map":"banhmi"},
         {"id":"cable-ride","phase":"上午","type":"transit","time":"早餐後出發","certainty":"草案・車程／等車待核實","title":"叫車到 Ga Ánh Dương","detail":"直達纜車站；留 QR、廁所、候車與排隊緩衝。舊卡片的站點時間不是實測門到門車程。","map":"cable"},
         {"id":"cable","phase":"上午","type":"anchor","time":"站點開放時段","certainty":"草案・班次出發前重查","title":"搭纜車跨海去 Hòn Thơm","detail":"先核對當日班次、停駛與票券，再過海；不把示意順序當保證發車時間。","map":"cable"},
-        {"id":"hon","phase":"下午","type":"anchor","time":"上島後","certainty":"草案・停留長度依孩子狀態","title":"Hòn Thơm 玩與休息","detail":"島上先吃飯、補水與休息，再挑適齡活動。","map":"hon"},
+        {"id":"hon","phase":"下午","type":"anchor","time":"上島後","certainty":"草案・停留長度依孩子狀態","title":"Hòn Thơm 玩與休息","detail":"抵島後找午餐、補水與休息，再挑適齡活動。","map":"hon"},
         {"id":"hon-lunch","phase":"下午","type":"meal","time":"餓了就吃","certainty":"草案・未鎖定店家","title":"Hòn Thơm 就近午餐","detail":"現場找孩子能吃的餐點；沒有查證的固定店名不寫成預訂。"},
         {"id":"return-cable","phase":"下午","type":"transit","time":"依末班安排回島","certainty":"草案・末班待核實","title":"纜車返本島","detail":"先確認回程班次，再決定是否停 An Thới；不可把回程押在加點之後。","map":"cable"},
         {"id":"sunset","phase":"傍晚","type":"anchor","time":"回本島後","certainty":"草案・日落與開放待重查","title":"Sunset Town 慢走看海","detail":"Kiss Bridge 可視體力與營業狀態決定；表演只算加分，不是必做。","map":"sunset"},
         {"id":"sunset-dinner","phase":"晚間","type":"meal","time":"就近晚餐","certainty":"草案・店家出發前重查","title":"WOW QUÊ TÔI 簡單吃","detail":"An Thới／Sunset Town 低摩擦備選；last_verified 2026-08-26。若位置不順，選附近現做熱食，不為吃飯折返。","map":"wow"},
-        {"id":"sunset-home","phase":"晚間","type":"transit","time":"活動結束目標 21:00 前","certainty":"草案・回程車與車程待核實","title":"安排回 Cosy 的車","detail":"21:00 是活動結束目標，不是到住宿時間；叫車與回程另列緩衝。","map":"cosy"}
+        {"id":"sunset-home","phase":"晚間","type":"transit","time":"21:00 前收尾","certainty":"草案・回程車與車程待核實","title":"安排回 Cosy 的車","detail":"21:00 是活動結束目標，不是到住宿時間；叫車與回程另列緩衝。","map":"cosy"}
       ],
       "backup": [{"trigger":"回島還早、孩子精神好、回程交通有把握","action":"可短停 An Thới 市場／港口；這是可跳過加點，不是獨立一日。","map":"anthoi"},{"trigger":"想改吃 BUP Seafood","action":"僅回島後往 An Thới／Meyhomes 方向順路，先核實店址、營業與當日有貨；last_verified 2026-09-01，出發前重查。","map":"bup"},{"trigger":"纜車停駛／末班變動","action":"不強行去 Hòn Thơm；查當日營運與可換日方案，保留 Sunset Town 或住宿周邊的輕行程。"}]
     },
@@ -81,7 +81,7 @@
         {"id":"safari-lunch","phase":"下午","type":"meal","time":"園內用餐時段","certainty":"草案・未查實固定店家","title":"Safari 園內或附近午餐","detail":"這不是 VinWonders 的餐飲 ID；當日看營業與孩子需要，未鎖定餐廳。"},
         {"id":"safari-return","phase":"下午","type":"transit","time":"園區出來後","certainty":"草案・回程車與車程待核實","title":"叫車回 Cosy／市區","detail":"在園區就先確認回程可得性，候車與返程緩衝不省略。","map":"cosy"},
         {"id":"safari-rest","phase":"傍晚","type":"anchor","time":"回住宿後","certainty":"草案","title":"休息、整理隔天行李","detail":"隔天是早班機；不預設 Grand World 長尾。"},
-        {"id":"safari-dinner","phase":"晚間","type":"meal","time":"提早晚餐","certainty":"草案・未鎖定店家","title":"住宿周邊晚餐","detail":"若人已在 Dương Đông，可考慮 Bún Kèn Út Lượm（last_verified 2026-09-01；出發前重查）；否則就近吃。","map":"bun"}
+        {"id":"safari-dinner","phase":"晚間","type":"meal","time":"提早晚餐","certainty":"草案・未鎖定店家","title":"住宿周邊晚餐","detail":"若回程順路經 Dương Đông 老城且趕上 17:00–20:00，可考慮 Cơm tấm Nhị（常提早賣完；last_verified 2026-08-26，出發前重查）；否則留 Cosy 附近吃、早點休息。","map":"comtam"}
       ],
       "backup": [{"trigger":"天候／園方營運不適合 Safari","action":"先查官方營運並評估與其他彈性日換日；不自行改動已確認 OnBird。"},{"trigger":"考慮海星替換候選","action":"只在海況與 48 小時內實況可行，且先談好上船點、兒童救生衣、原船返與原車往返／取消條件才考慮；不能先 Grab 去看。"},{"trigger":"孩子累或隔天需要早睡","action":"直接回 Cosy，晚餐就近、縮短晚間安排。"}]
     },
