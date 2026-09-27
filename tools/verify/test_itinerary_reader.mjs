@@ -64,6 +64,14 @@ test('rejects fallback export dates that are not timestamps', async () => {
     ? new Response('{}',{status:503}) : new Response(JSON.stringify(backup))}),{message:'ITINERARY_UNAVAILABLE'});
 });
 
+test('rejects impossible calendar dates in fallback export timestamps', async () => {
+  for (const exported_at of ['2026-02-30T00:00:00Z','2026-04-31T23:59:59+07:00']) {
+    const backup=clone();backup.meta.exported_at=exported_at;
+    await assert.rejects(loadItinerary({apiUrl:'live',fallbackUrl:'backup',fetchImpl:async url => url==='live'
+      ? new Response('{}',{status:503}) : new Response(JSON.stringify(backup))}),{message:'ITINERARY_UNAVAILABLE'});
+  }
+});
+
 test('times out a stalled source before trying backup', async () => {
   const seen=[];
   const loaded=await loadItinerary({apiUrl:'live',fallbackUrl:'backup',timeoutMs:15,fetchImpl:(url,{signal}) => {

@@ -8,7 +8,15 @@ const fail = () => { throw Error('INVALID_ITINERARY'); };
 const interval = x => x === null || (keys(x,['min','max']) && Number.isInteger(x.min) && Number.isInteger(x.max) && x.min >= 0 && x.min <= x.max);
 const hhmm = x => /^([01]\d|2[0-3]):[0-5]\d$/.test(x);
 const timezoneValid = x => {try {new Intl.DateTimeFormat('en',{timeZone:x});return true;} catch {return false;}};
-const timestamp = x => typeof x === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(x) && Number.isFinite(Date.parse(x));
+const timestamp = x => {
+  if(typeof x !== 'string')return false;
+  const match=/^(\d{4})-(\d{2})-(\d{2})T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.exec(x);
+  if(!match || !Number.isFinite(Date.parse(x)))return false;
+  const year=Number(match[1]),month=Number(match[2]),day=Number(match[3]);
+  const leap=year%4===0 && (year%100!==0 || year%400===0);
+  const days=[31,leap?29:28,31,30,31,30,31,31,30,31,30,31];
+  return month>=1 && month<=12 && day>=1 && day<=days[month-1];
+};
 const windowValid = x => x === null || (keys(x,['min','max']) && hhmm(x.min) && hhmm(x.max) && x.min <= x.max);
 
 export function validateEnvelope(value) {

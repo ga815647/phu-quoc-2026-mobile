@@ -84,6 +84,25 @@
                 "condition_refs": []
               },
               "condition_refs": []
+            },
+            {
+              "id": "optional-stop",
+              "ref": {
+                "id": "fixture-point",
+                "type": "point"
+              },
+              "kind": "optional",
+              "time": {
+                "kind": "unknown",
+                "timezone": "Asia/Ho_Chi_Minh",
+                "day_offset": 0,
+                "source_refs": [],
+                "start_window": null,
+                "evidence_as_of": null,
+                "duration_minutes": null
+              },
+              "label": "順路加點",
+              "condition_refs": []
             }
           ],
           "alternatives": [
@@ -120,7 +139,7 @@
               "trigger_kind": "fatigue",
               "trigger_text": "孩子累了",
               "target_segment_ids": [
-                "start"
+                "optional-stop"
               ],
               "replacement_segments": []
             },
@@ -392,7 +411,7 @@
   },
   "meta": {
     "schema_version": 1,
-    "content_revision": "phq1:0a5ed61b8dcebe1af3a37bf4fb59f1bb54b69cdbcc31c58e9fe99568ce420d04",
+    "content_revision": "phq1:7701e9b2992229756126fa5cb9a434b968b5da895ef8400b715d204762587533",
     "source": "neon-test",
     "environment": "candidate",
     "fetched_at": "2026-09-27T00:00:00Z",

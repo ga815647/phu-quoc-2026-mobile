@@ -67,6 +67,7 @@ try {
   assert.match(estimate,/核實 2026-08-01/);
   assert.match(estimate,/出發前重查/);
   assert.match(estimate,/條件：Rain/);
+  assert.match(await page.locator('.day-panel.active [data-segment-id="optional-stop"]').innerText(),/順路加點.*可選，非必做/s);
   const meal=page.locator('.day-panel.active [data-segment-id="meal"]');
   assert.match(await meal.innerText(),/測試店家.*核實 2026-08-01.*出發前重查/s);
   const mealMap=meal.getByRole('link',{name:'地圖'});
@@ -80,7 +81,7 @@ try {
   await page.locator('.itinerary-alternatives summary').click();
   const alternatives=await page.locator('.itinerary-alternatives').innerText();
   assert.match(alternatives,/Rain.*改用備案.*Start.*Rest/s);
-  assert.match(alternatives,/孩子累了.*略過可選.*Start/s);
+  assert.match(alternatives,/孩子累了.*略過可選.*順路加點/s);
   assert.match(alternatives,/太晚出發.*返回或休息.*Go/s);
   const minHeight=await page.locator('#refreshItinerary,.date-tab,.itinerary-alternatives summary').evaluateAll(ns=>Math.min(...ns.map(n=>n.getBoundingClientRect().height)));
   assert.ok(minHeight>=41,`touch target ${minHeight}`);
