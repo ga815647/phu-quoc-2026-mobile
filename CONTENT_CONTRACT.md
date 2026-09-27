@@ -394,6 +394,11 @@ meta:{schema_version:1,content_revision,source,environment,fetched_at,...}}`；
 公開 revision 是 view 對完整 payload 的 `phq1:`＋SHA-256，不是私有行版本，
 export 時間不參與 hash；保護的 booking detail/evidence、研究內部欄、
 `locked_constraints`、`version`、`content_revisions`、`itinerary_requests` 不在公開 envelope。
+其中 `onbird_core` 的 10/11 主線活動 ID／角色／卡片與已核時窗由另外批准的初始化建立，
+缺失時受控更新全面拒絕；`starfish` 的條件鍵對照原卡片公開 `gates` 文字及核准回程 base
+同樣須在初始化審核，缺失時不能新選海星。唯一公開衍生值是 Starfish 卡片的
+`condition_labels`（鍵→原 `cards.gates` 公開文字），不是 private lock 或第二份旅遊事實；
+操作細節見 `docs/ops/ITINERARY_DB_RUNBOOK.md` §3。正式資料尚未初始化。
 公開 refs 的逐欄 SQL 白名單以 006 的 `itinerary_payload()` 與
 `tools/verify/test_itinerary_projection.py` 為準，不得以整表 SELECT 或 JSON 混入私人欄。
 

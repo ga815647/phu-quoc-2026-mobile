@@ -1,6 +1,7 @@
 """Atomic update contract on the isolated PG18 socket database."""
 import copy
 import json
+import subprocess
 import threading
 import time
 import unittest
@@ -31,6 +32,99 @@ class UpdateTests(ItineraryDBCase):
             self.execute('ROLLBACK TO SAVEPOINT attempted_update')
             self.execute('RELEASE SAVEPOINT attempted_update')
         self.assertEqual(before, self.snapshot())
+
+    def test_main_card_and_meals_must_be_renderable_without_receipt(self):
+        self.execute("INSERT INTO cards(slug,name,status) VALUES ('khem','Retired','RETIRED'),('safari','Inactive','RETIRED')")
+        for slug in ('khem','safari'):
+            with self.subTest(slug=slug):
+                self.failure('22023', [self.candidate('2026-10-12', slug)], message='INVALID_PLAN')
+        self.execute("UPDATE cards SET status='OPTIONAL' WHERE slug='safari'")
+        self.failure('22023', [self.candidate('2026-10-12', 'safari')], message='INVALID_PLAN')
+        for target in ('main','replacement'):
+            with self.subTest(target=target):
+                day=self.candidate('2026-10-10')
+                meal=day['plan']['segments'][1]
+                if target=='replacement':
+                    meal=copy.deepcopy(meal)
+                    meal['id']='bad-meal'
+                    day['plan']['alternatives'][0]['replacement_segments'].append(meal)
+                meal['ref']={'type':'card','id':'onbird'}
+                self.failure('22023', [day], message='INVALID_PLAN')
+
+    def test_onbird_core_is_protected_but_meals_are_not(self):
+        for mutation in ('night', 'demote', 'rename', 'remove'):
+            day=self.candidate('2026-10-11')
+            segment=day['plan']['segments'][0]
+            if mutation=='night':segment['time']['start_window']={'min':'22:00','max':'23:00'}
+            if mutation=='demote':segment['kind']='optional'
+            if mutation=='rename':segment['id']='other'
+            if mutation=='remove':day['plan']['segments']=[]
+            self.failure('22023',[day],message='LOCKED_ARRANGEMENT' if mutation=='night' or mutation=='rename' else 'INVALID_PLAN')
+        day=self.candidate('2026-10-11')
+        day['plan']['segments'].append(copy.deepcopy(self.candidate('2026-10-10')['plan']['segments'][1]))
+        self.update(self.new_request_id(),[day])
+        self.assertEqual(len(self.snapshot()['payload']['days'][1]['plan']['segments']),2)
+
+    def test_missing_or_malformed_onbird_core_blocks_edits(self):
+        for core in (None,{}, {'segment_id':'main'}):
+            self.execute('SAVEPOINT core_case')
+            try:
+                if core is None:
+                    self.execute("UPDATE itineraries SET locked_constraints=locked_constraints-'onbird_core'")
+                else:
+                    self.execute("UPDATE itineraries SET locked_constraints=jsonb_set(locked_constraints,'{onbird_core}',%s::jsonb)",(json.dumps(core),))
+                self.failure('22023',[self.candidate('2026-10-12')],message='LOCKED_ARRANGEMENT')
+            finally:
+                self.execute('ROLLBACK TO SAVEPOINT core_case')
+
+    def test_starfish_requires_reviewed_gate_and_real_return(self):
+        self.execute('INSERT INTO cards(slug,name,gates) VALUES (%s,%s,%s)',('starfish','Starfish',json.dumps(['Weather and boat checked','Return charter arranged'])))
+        day=self.candidate('2026-10-12','starfish')
+        self.failure('22023',[day],message='LOCKED_ARRANGEMENT')
+        self.execute('''UPDATE itineraries SET locked_constraints=jsonb_set(locked_constraints,'{starfish}',%s::jsonb)''',
+          (json.dumps({'conditions':{'weather':'Weather and boat checked','return':'Return charter arranged'},
+                       'return_base':'hotel'}),))
+        self.execute('SAVEPOINT malformed_starfish')
+        self.execute('''UPDATE itineraries SET locked_constraints=jsonb_set(locked_constraints,'{starfish,conditions,return}','42'::jsonb)''')
+        self.failure('22023',[day],message='LOCKED_ARRANGEMENT')
+        self.execute('ROLLBACK TO SAVEPOINT malformed_starfish')
+        self.failure('22023',[day],message='LOCKED_ARRANGEMENT')
+        activity=day['plan']['segments'][0]
+        activity['condition_refs']=['weather','return']
+        self.failure('22023',[day],message='LOCKED_ARRANGEMENT')
+        tr=copy.deepcopy(self.candidate('2026-10-10')['plan']['segments'][2]);tr['id']='return'
+        tr['transfer'].update(from_ref={'type':'card','id':'starfish'},mode='grab',condition_refs=['return'])
+        day['plan']['segments'].append(tr)
+        self.failure('22023',[day],message='LOCKED_ARRANGEMENT')
+        tr['transfer']['mode']='charter'
+        tr['transfer']['from_ref']={'type':'point','id':'fixture-point'}
+        self.failure('22023',[day],message='LOCKED_ARRANGEMENT')
+        tr['transfer']['from_ref']={'type':'card','id':'starfish'}
+        receipt=self.update(self.new_request_id(),[day])
+        self.assertEqual(receipt['content_revision'],self.snapshot()['revision'])
+        self.assert_projection_readable()
+        removed=copy.deepcopy(day);removed['plan']['segments'][0]['condition_refs'].remove('return')
+        self.failure('22023',[removed],message='LOCKED_ARRANGEMENT')
+        disguised=copy.deepcopy(day)
+        outbound=copy.deepcopy(tr);outbound['id']='grab-first';outbound['transfer']['mode']='grab'
+        disguised['plan']['segments'].insert(1,outbound)
+        self.failure('22023',[disguised],message='LOCKED_ARRANGEMENT')
+        self.execute("UPDATE cards SET gates='[\"Weather and boat checked\"]' WHERE slug='starfish'")
+        self.failure('22023',[day],message='LOCKED_ARRANGEMENT')
+
+    def assert_projection_readable(self):
+        state=self.snapshot()
+        envelope={'data':state['payload'],'meta':{'schema_version':1,'content_revision':state['revision'],
+           'source':'neon-prod','environment':'production','fetched_at':'2026-09-27T00:00:00Z'}}
+        result=subprocess.run(['node','--input-type=module','-e',
+          "import {validateEnvelope} from './tools/itinerary-reader.mjs'; let text=''; for await (const chunk of process.stdin) text+=chunk; validateEnvelope(JSON.parse(text));"],
+          input=json.dumps(envelope),text=True,capture_output=True)
+        self.assertEqual(result.returncode,0,result.stderr)
+
+    def test_accepted_projection_passes_public_reader(self):
+        self.assert_projection_readable()
+        self.update(self.new_request_id(),[self.candidate('2026-10-12','cable')])
+        self.assert_projection_readable()
 
     def test_retry_returns_receipt_without_extra_audit(self):
         before = self.snapshot()

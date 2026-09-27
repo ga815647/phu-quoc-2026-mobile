@@ -1,0 +1,28 @@
+# Consolidated final-review fix wave — base `ee97af3`
+
+Status: local engineering candidate corrected; **not** a release/production acceptance. No remote DB, production content, schedule seed, workflow push, preview or formal site write in this wave.
+
+## Decisions and changes
+
+1. `006_itinerary_model.sql` now admits a main card only from `onbird/vinwonders/cable/starfish/safari` when its source row is `ACTIVE`, and meal references only `food/pool` in both main and replacement segments. The public JS validator also rejects non-active main cards. Rejected requests leave day/version, audit count and request count unchanged; accepted PostgreSQL projections are passed through the actual Node `validateEnvelope`.
+2. Initialization, not a Chat edit or the migration, must provide `locked_constraints.onbird_core` with **exactly** `date,segment_id,kind,ref,time_kind,start_window,day_offset,timezone,duration_minutes`. The main OnBird 10/11 activity must match operative ID/kind/card and reviewed scheduled local window/timezone/duration. Absence/malformed core blocks all ordinary edits; 10/11 unrelated breakfast/evening edits remain allowed. Only synthetic fixtures contain `08:00–09:00`; **no real morning time was chosen here**.
+3. Separately reviewed initialization must provide `locked_constraints.starfish` with `conditions` (at least two machine keys including `return`, each value the exact existing public Starfish `cards.gates` text) and `return_base` (approved `bases` key). The projection exposes only public `condition_labels` on that card; the reader displays mapped source gate text, not private lock fields. Missing/malformed configuration prevents Starfish selection. Its main activity must carry every condition; the first actual Starfish-origin main-route return transfer must occur after the activity, lead to the approved base, use `charter` or `operator_pickup`, and carry the `return` condition. Grab-first plus an unrelated or later charter cannot satisfy this. Other default cards need no Starfish config. The DB/Chat runbooks and `CONTENT_CONTRACT.md` document initialization/protection precisely; no independent long-term travel-fact copy was added.
+4. The production browser verifier opens each day’s backups and checks count, visible trigger/action/targets and replacement labels/stable refs/transfers. It clicks an actual five-card href, requires a 200 HTML card with visible heading, returns to the page within the existing bounded watchdog and requires the live revision on return. The original page-consumed response is drained/validated **before** navigation, never replaced by a verifier fetch. Local browser fixtures include omitted backups and a 404 card; the local e2e helper now serves the real card-one API shape when a slug is specified.
+
+## Red → green evidence
+
+Environment: `source /tmp/opencode/phq-pg18-test-env`, local PG18.6 private socket; `006` was re-applied **only** to this guarded local test database, never remote. Rollback fixtures clean up synthetic rows. No source/prod schedule seed.
+
+| Phase | Command / result |
+| --- | --- |
+| Red, after new DB regression tests and before SQL correction | `python3 -m unittest discover -s tools/verify -p 'test_itinerary_update.py' -v` → 17 tests, **6 failures**: retired/optional main cards, card-valued meal, missing core, altered OnBird core, and unconfigured Starfish were accepted. The test helper compared full before/after snapshots including audit and request counts. |
+| Green DB / ACL / projection / export / update | `python3 -m unittest discover -s tools/verify -p 'test_itinerary_*.py'` → **47/47 passed** on final SQL (including migration rerun and private web-role denials). Rejected attempts are savepoint-rolled back and compare receipt/audit/version snapshots; valid cable/Starfish projections pass actual JS `validateEnvelope`. |
+| Green Node reader/contract/publish/browser | `node --test tools/verify/test_itinerary_reader.mjs tools/verify/test_site_check_browser.mjs tools/verify/test_site_check_contract.mjs tools/verify/test_site_check_publish.mjs` → **36/36 passed**. Negative omitted-backup and 404-card cases return `CONTENT_MISMATCH`, not `PASS`; bounded pending navigation/body and real reader cases pass. Browser negatives were not separately executed against the pre-fix verifier; the whole-branch review supplied that counterexample. |
+| Green integrated local chain | `node tools/verify/itinerary_e2e_candidate.mjs` → **LOCAL FIXTURE PASS**, rollback PG18 edit/audit → public export → generated candidate → Chromium verifier → fake immutable GitHub result. Local helper’s card-one route was corrected while exercising the real navigation. |
+| Diff hygiene | `git diff --check` → clean. |
+
+## Remaining risks / release gates
+
+- The actual approved OnBird timing/operative segment and Starfish key-to-source-gate/return-base mapping **do not exist in this commit**; a separately authorized, reviewed initialization is necessary. If content cannot be verified, fail closed; do not use the synthetic times, gate strings or base.
+- The invoker update never changes `locked_constraints`, and the web role cannot access private rows. A privileged DB owner can still bypass procedure/ACL controls; an exceptional lock correction needs separate review. SQL cannot prove geographic route feasibility or actual operator availability merely from stable refs, modes and order; content/operator review remains essential.
+- Isolated Neon role ownership/ACL, real Function/Pages deployment, genuine Chat readback, formal browser CI and phone acceptance remain distinct release gates. No production migration, writes, fallback publication, preview or release was attempted.

@@ -76,7 +76,7 @@ export function validateEnvelope(value) {
     const d=data.days[i], date=`2026-10-${String(i+10).padStart(2,'0')}`;
     if(!keys(d,['id','date','day_kind','main_card_slug','plan']) || d.date !== date ||
         d.id !== `${trip.id}:${date}` || dayIds.has(d.id) || !string(d.day_kind) ||
-        (d.main_card_slug !== null && (!CARD_SLUGS.has(d.main_card_slug) || !refs.cards.some(c=>c.slug===d.main_card_slug))) ||
+         (d.main_card_slug !== null && (!CARD_SLUGS.has(d.main_card_slug) || !refs.cards.some(c=>c.slug===d.main_card_slug && c.status==='ACTIVE'))) ||
         !keys(d.plan,['schema_version','segments','alternatives'],['public_note']) || d.plan.schema_version !== 1 ||
         !Array.isArray(d.plan.segments) || d.plan.segments.length>32 ||
         !Array.isArray(d.plan.alternatives) || d.plan.alternatives.length>8) fail();
@@ -95,8 +95,10 @@ export function validateEnvelope(value) {
     }
     const checkConditions=(s,replacement)=>{
       const cardIds=[s.ref,s.transfer?.from_ref,s.transfer?.to_ref].filter(r=>r?.type==='card').map(r=>r.id);
-      const gates=cardIds.flatMap(id=>{
-        try {const parsed=JSON.parse(refs.cards.find(c=>c.slug===id)?.gates || '[]');return Array.isArray(parsed)?parsed:[];}
+       const gates=cardIds.flatMap(id=>{
+         try {const card=refs.cards.find(c=>c.slug===id);const parsed=JSON.parse(card?.gates || '[]');
+           const mapped=card?.condition_labels || {};
+           return Array.isArray(parsed)?[...parsed,...Object.entries(mapped).filter(([,label])=>parsed.includes(label)).map(([key])=>key)]:[];}
         catch {return [];}
       });
       for(const id of [...s.condition_refs,...(s.transfer?.condition_refs || [])]) {
@@ -161,7 +163,8 @@ function appendSegment(list,s,refs,alternatives) {
   const time=el('div','time',timeText(s.time));const body=el('div');
   body.append(el('b','',s.label));
   evidence(body,[s.time.evidence_as_of],s.time.source_refs.join('、'));
-  const conditionLabel=id=>alternatives.find(a=>a.id===id)?.trigger_text || id;
+  const conditionLabel=id=>alternatives.find(a=>a.id===id)?.trigger_text ||
+    refs.cards.find(c=>c.slug==='starfish')?.condition_labels?.[id] || id;
   if(s.kind==='optional')body.append(el('p','tiny','可選，非必做'));
   if(s.condition_refs.length)body.append(el('p','tiny',`條件：${s.condition_refs.map(conditionLabel).join('、')}`));
   if(s.ref) {

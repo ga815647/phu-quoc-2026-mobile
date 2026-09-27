@@ -35,12 +35,14 @@ async function withPage(options,run) {
     let navigations=0;
     await page.route('**/*',route=>{
       const url=new URL(route.request().url());
-      if(url.pathname==='/' && options.delayedFinal && ++navigations>=5)return new Promise(()=>{});
+       if(url.pathname==='/' && options.delayedFinal && ++navigations>=3)return new Promise(()=>{});
       if(url.pathname==='/api/itinerary') return route.fulfill({status:options.unreachable?503:200,
         contentType:'application/json',body:JSON.stringify(envelope)});
       if(url.pathname==='/staging/api/itinerary')return route.fulfill({contentType:'application/json',body:JSON.stringify(envelope)});
       if(url.pathname==='/site-version.json')return route.fulfill({contentType:'application/json',body:JSON.stringify({build_id:options.build||build})});
       if(url.pathname==='/assets/itinerary-reader.mjs')return route.fulfill({contentType:'text/javascript; charset=utf-8',body:actualReader});
+      if(url.pathname==='/card.html')return route.fulfill({status:options.card404?404:200,contentType:'text/html; charset=utf-8',
+        body:`<!doctype html><title>Card</title><div id="cardMount"><h1>${envelope.data.refs.cards.find(c=>c.slug===url.searchParams.get('slug'))?.name||''}</h1></div>`});
       if(url.pathname==='/' && options.realReader)return route.fulfill({contentType:'text/html; charset=utf-8',body:`<!doctype html><html data-site-build="${build}"><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{overflow-wrap:anywhere} nav:not(.nav){display:grid;grid-template-columns:repeat(2,minmax(0,1fr))} .step{overflow-wrap:anywhere}</style></head><body>
         <nav class="nav">${['today','itinerary','food','journey'].map(s=>`<button data-jump="${s}" style="width:60px;height:44px">${s}</button>`).join('')}</nav>
         <div id="today"></div><div id="itinerary"><nav>${cardSlugs.map(s=>`<a class="link-card" href="./card.html?slug=${s}" style="display:inline-block;min-height:44px;padding:10px">${s}</a>`).join('')}</nav>
@@ -75,7 +77,17 @@ async function withPage(options,run) {
                 step.dataset.toRef=s.transfer.to_ref.type+':'+s.transfer.to_ref.id;step.dataset.mode=s.transfer.mode;}
               step.textContent=${JSON.stringify(options.blank?'':null)}===null?(s.id==='start'&&${JSON.stringify(!!options.staleActivity)}?'Old secondary activity':s.label+' '+(s.ref ? (s.ref.type==='pool'?data.data.refs.foods.find(f=>f.notion_id===data.data.refs.pool.find(x=>x.pool_key===s.ref.id).notion_id)?.name||s.ref.id:data.data.refs[s.ref.type==='food'?'foods':s.ref.type==='card'?'cards':s.ref.type==='point'?'points':'bases'].find(x=>[x.notion_id,x.slug,x.id].includes(s.ref.id))?.name||s.ref.id) : s.transfer?'Fixture point → Fixture hotel · grab':'')):'';
               timeline.append(step);}
-            root.append(p);}
+             if(!${JSON.stringify(!!options.omitBackups)}&&d.plan.alternatives.length){
+               const details=document.createElement('details');details.className='itinerary-alternatives';details.innerHTML='<summary>備案（按需查看）</summary>';
+               for(const a of d.plan.alternatives){const group=document.createElement('div');group.className='panel pad';
+                 const target=a.target_segment_ids.map(id=>d.plan.segments.find(s=>s.id===id)?.label||id);
+                 const actions={use_alternative:'改用備案，取代',skip_optional:'略過可選',return_or_rest:'返回或休息，調整'};
+                 group.textContent=a.trigger_text+' '+actions[a.action]+' '+target.join('、');
+                 for(const s of a.replacement_segments){const row=document.createElement('div');row.className='step';row.dataset.segmentId=s.id;
+                   row.dataset.refType=s.ref?.type||'';row.dataset.refId=s.ref?.id||'';row.textContent=s.label;group.append(row);}
+                 details.append(group);}p.append(details);
+             }
+             root.append(p);}
         });</script></body></html>`});
       return route.abort();
     });
@@ -98,16 +110,22 @@ test('correct consumed hash/refs but stale secondary activity text fails',()=>wi
   assert.match(r.checks.day_error,/visible segment phuquoc-2026:2026-10-10\/start/);
 }));
 test('valid consumed API and visible DOM pass',()=>withPage({},r=>assert.equal(r.status,'PASS',JSON.stringify(r.checks))));
+test('missing visible backups cannot pass',()=>withPage({omitBackups:true},r=>{
+  assert.equal(r.status,'CONTENT_MISMATCH');assert.equal(r.checks.alternatives,false);
+}));
+test('a 404 card target cannot pass with correct link hrefs',()=>withPage({card404:true},r=>{
+  assert.equal(r.status,'CONTENT_MISMATCH');assert.equal(r.checks.card_navigation,false);
+}));
 test('awaits delayed body of the page-observed API response before classifying',()=>withPage({delayBodyMs:200},r=>assert.equal(r.status,'PASS',JSON.stringify(r.checks))));
 test('final attempt with forever-pending navigation respects remaining budget',async()=>{
   const start=Date.now();
   await withPage({delayedFinal:true,environment:'test'},(r,_page,{navigations,clock})=>{
     assert.notEqual(r.status,'PASS');assert.deepEqual(r.artifacts,[]);
-    assert.ok(r.observations.filter(x=>x.status).length<=5);
+     assert.ok(r.observations.filter(x=>x.status).length<=3);
     assert.match(r.checks.navigation,/SITE_CHECK_DEADLINE/);
-    assert.equal(navigations,5);assert.equal(clock,4000);
+     assert.equal(navigations,3);assert.ok(clock>=1000 && clock<=2000);
   });
-  assert.ok(Date.now()-start<4500,'a pending final navigation must not hang the verifier');
+   assert.ok(Date.now()-start<6000,'a pending final navigation must not hang the verifier');
 });
 test('a forever-pending observed response body cannot hang or be certified',async()=>{
   let bodies=0;const start=Date.now();

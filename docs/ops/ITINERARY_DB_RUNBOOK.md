@@ -16,7 +16,7 @@ Maintain one record per target application (private release record, no credentia
 | Approver / approved scope | Explicit authorization for this branch, migration, ACL and, separately, approved six-day content |
 | Operator / role | Verify `session_user`, `current_user`, function owner and existing maintenance identity; no guessed GRANT |
 | `applied_at` (UTC) | DB `clock_timestamp()` observed **after commit**, with commit/result noted |
-| Test result | Local 33-test suite, isolated branch ACL/update/projection/schema rerun outcomes, counts/hash and date |
+| Test result | Current local itinerary suite (47 tests at this fix wave), isolated branch ACL/update/projection/schema rerun outcomes, counts/hash and date |
 | Release and rollback | API/UI revision, public revision, six-day validation and separately authorized publication evidence |
 
 Never record DSNs, tokens, private Notion details, or sample credentials in this
@@ -101,7 +101,44 @@ Only after isolated results, review and **explicit production authorization**:
    ROLLBACK. Store the approved script and validation results in the private
    release evidence, not the migration. Initialization is not authorized by
    migration approval alone.
-4. After separate API/export/frontend approvals, verify live production
+    The initialization review must fill these **exact private lock keys** from
+    the accepted timeline, not from this runbook or a sample fixture:
+
+    - `locked_constraints.onbird_core` is an object with exactly
+      `date:"2026-10-11"`, `segment_id` (the reviewed main-route activity ID),
+      `kind:"activity"`, `ref:{"type":"card","id":"onbird"}`,
+      `time_kind:"scheduled"`, `start_window:{"min":"HH:mm","max":"HH:mm"}`
+      (non-null reviewed local morning window), `day_offset:0`,
+      `timezone:"Asia/Ho_Chi_Minh"` and `duration_minutes` (the reviewed
+      interval or null). The initial 10/11 segment must match all fields.
+      Missing/malformed core blocks *every* ordinary itinerary edit; moving,
+      renaming or demoting that segment blocks the 10/11 edit, whereas unrelated
+      breakfast/evening changes are allowed. Do not copy the synthetic test
+      window into the actual initialization.
+    - `locked_constraints.starfish` is an object with exactly `conditions`
+      (at least two reviewed machine keys including `return`, each mapped to
+      the **exact visible public text already in** `cards.gates` for Starfish)
+      and `return_base` (an existing approved `bases` key, booking/point).
+      Review the actual card's gates and returnability before assigning keys;
+      if its prose is insufficient, seek content approval rather than invent
+      facts or put private lock data into the public site. This mapping is
+      projected only as `refs.cards[].condition_labels` for Starfish so the
+      reader can display the existing card text for each key. A card-gate
+      text change that breaks the mapping blocks a Starfish edit. The
+      Starfish main activity must carry **all** condition keys; its first
+      outbound transfer from Starfish must follow the activity, point directly
+      to `return_base`, use `charter` or `operator_pickup`, and carry `return`
+      as a transfer condition. An unrelated segment cannot satisfy the return.
+      Missing/malformed settings forbid selecting Starfish; default Vin/cable/
+      Safari days do not require Starfish configuration.
+
+    These private keys are created in the separately approved initialization
+    INSERT, not in 006 or `itinerary_update`. The update function never writes
+    them; the web role cannot edit or read the raw lock. A DB owner can still
+    bypass invoker/ACL protections, so any later exceptional lock correction
+    requires separate review, not an ordinary Chat edit. Verify before commit
+    that the public projection/reader accepts the complete six days.
+ 4. After separate API/export/frontend approvals, verify live production
    projection, offline JSON publication and phone/UI/CI results individually.
    Do not point formal Pages at the test branch. Chat's runtime capability
    validation is another outcome, not implied by local or DB tests.

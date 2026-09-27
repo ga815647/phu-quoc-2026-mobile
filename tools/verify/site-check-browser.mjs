@@ -100,7 +100,7 @@ export async function verifySite({request,page,siteUrl=SITE_URL,apiOrigin=API_OR
       }).catch(()=>null);
       buildId=await page.locator('html').getAttribute('data-site-build');
       checks.build=!!version && /^sha256:[0-9a-f]{64}$/.test(buildId||'') && version.build_id===buildId;
-      checks.days=false;
+       checks.days=false;checks.alternatives=false;
       if(checks.envelope){
         const refs=envelope.data.refs;
         checks.all_days=true;
@@ -136,8 +136,46 @@ export async function verifySite({request,page,siteUrl=SITE_URL,apiOrigin=API_OR
               checks.all_days=false;checks.day_error=`visible segment ${day.id}/${segment.id}`;break;
             }
           }
-          if(!checks.all_days)break;
-        }
+           if(!checks.all_days)break;
+           const alternatives=panel.locator('details.itinerary-alternatives');
+           if(day.plan.alternatives.length===0){
+             if(await alternatives.count()!==0){checks.all_days=false;checks.day_error='unexpected backups';break;}
+           }else{
+             if(await alternatives.count()!==1){checks.all_days=false;checks.day_error='missing backups';break;}
+             await alternatives.locator('summary').click();
+             if(!await alternatives.isVisible()){checks.all_days=false;checks.day_error='hidden backups';break;}
+             const groups=alternatives.locator(':scope > .panel');
+             if(await groups.count()!==day.plan.alternatives.length){checks.all_days=false;checks.day_error='backup count';break;}
+             const actions={use_alternative:'改用備案，取代',skip_optional:'略過可選',return_or_rest:'返回或休息，調整'};
+             for(const [i,alternative] of day.plan.alternatives.entries()){
+               const group=groups.nth(i),text=await group.innerText();
+               const targets=alternative.target_segment_ids.map(id=>day.plan.segments.find(s=>s.id===id)?.label||id);
+               if(!await group.isVisible() || !text.includes(alternative.trigger_text) ||
+                 !text.includes(actions[alternative.action]+' '+targets.join('、'))){checks.all_days=false;checks.day_error='backup trigger/action';break;}
+               const rows=group.locator(':scope > .step');
+               if(await rows.count()!==alternative.replacement_segments.length){checks.all_days=false;checks.day_error='backup replacement count';break;}
+               for(const [j,segment] of alternative.replacement_segments.entries()){
+                 const row=rows.nth(j),copy=await row.innerText(),refName=segment.ref&&name(refs,segment.ref);
+                 if(!await row.isVisible() || await row.getAttribute('data-segment-id')!==segment.id ||
+                   !copy.includes(segment.label) || await row.getAttribute('data-ref-type')!==(segment.ref?.type||'') ||
+                   await row.getAttribute('data-ref-id')!==(segment.ref?.id||'') ||
+                   (segment.ref&&(!refName||!copy.includes(refName))) ||
+                   (segment.kind==='transfer'&&(
+                     await row.getAttribute('data-from-ref')!==key(segment.transfer.from_ref) ||
+                     await row.getAttribute('data-to-ref')!==key(segment.transfer.to_ref) ||
+                     await row.getAttribute('data-mode')!==segment.transfer.mode ||
+                     !copy.includes(name(refs,segment.transfer.from_ref)) ||
+                     !copy.includes(name(refs,segment.transfer.to_ref)) ||
+                     !copy.includes(segment.transfer.mode)))){
+                   checks.all_days=false;checks.day_error='backup replacement ref';break;
+                 }
+               }
+               if(!checks.all_days)break;
+             }
+             if(!checks.all_days)break;
+           }
+         }
+         checks.alternatives=checks.all_days;
         checks.days=true;
         for(const expected of request.expected){
           const day=envelope.data.days.find(x=>x.id===expected.day_id);
@@ -185,10 +223,34 @@ export async function verifySite({request,page,siteUrl=SITE_URL,apiOrigin=API_OR
       }
       const links=page.locator('a.link-card');
       const slugs=await links.evaluateAll(nodes=>nodes.map(n=>new URL(n.href).searchParams.get('slug')));
-      checks.cards=slugs.length===5 && same([...slugs].sort(),[...cards].sort()) &&
+       checks.cards=slugs.length===5 && same([...slugs].sort(),[...cards].sort()) &&
         await links.evaluateAll(nodes=>nodes.every(n=>n.getBoundingClientRect().height>=41 &&
           n.getBoundingClientRect().width>=41 && n.href &&
-          new URL(n.href).pathname===new URL('./card.html',location.href).pathname));
+           new URL(n.href).pathname===new URL('./card.html',location.href).pathname));
+       checks.card_navigation=false;
+       if(checks.cards){
+         // The consumed envelope above is already resolved and validated. Do not
+         // overwrite that evidence with an independent fetch after navigation.
+         const observed=consumed[0],href=await links.first().getAttribute('href');
+         const destination=new URL(href,siteUrl);
+         const [response]=await Promise.all([
+           page.waitForNavigation({waitUntil:'domcontentloaded',timeout:Math.min(10000,remaining())}),
+           links.first().click({timeout:Math.min(10000,remaining())})
+         ]);
+         await page.locator('#cardMount h1').waitFor({timeout:Math.min(8000,remaining())}).catch(()=>{});
+         checks.card_navigation=!!observed && response?.status()===200 &&
+           page.url()===destination.href && await page.locator('#cardMount h1').isVisible() &&
+           (await page.locator('#cardMount h1').innerText()).trim().length>0;
+         if(!checks.card_navigation)checks.card_error=`status ${response?.status()} url ${page.url()} expected ${destination.href} heading ${await page.locator('#cardMount h1').allInnerTexts()}`;
+         if(checks.card_navigation){
+           await page.goBack({waitUntil:'domcontentloaded',timeout:Math.min(10000,remaining())});
+           await page.locator('[data-itinerary][data-source]').waitFor({timeout:Math.min(10000,remaining())});
+           checks.card_navigation=page.url()===siteUrl &&
+             await page.locator('[data-itinerary]').getAttribute('data-source')==='live' &&
+             await page.locator('[data-itinerary]').getAttribute('data-content-revision')===revision;
+           if(!checks.card_navigation)checks.card_error=`return ${page.url()} revision ${await page.locator('[data-itinerary]').getAttribute('data-content-revision')}`;
+         }
+       }
       checks.navigation=await page.locator('.nav [data-jump]').evaluateAll(nodes=>
         ['today','itinerary','food','journey'].every(id=>nodes.some(node=>node.dataset.jump===id &&
           node.getBoundingClientRect().width>=41 && node.getBoundingClientRect().height>=41 &&
@@ -200,7 +262,7 @@ export async function verifySite({request,page,siteUrl=SITE_URL,apiOrigin=API_OR
       }
       checks.overflow=await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1);
       checks.errors=errors.length===0;
-      status=Object.entries(checks).filter(([key])=>key!=='day_error').every(([,value])=>value===true)
+       status=Object.entries(checks).filter(([key])=>!['day_error','card_error'].includes(key)).every(([,value])=>value===true)
         ?'PASS':source==='fallback'?'FALLBACK':!checks.api?'UNREACHABLE':'CONTENT_MISMATCH';
     });} catch(e){checks.navigation=String(e);status='UNREACHABLE';}
     finally {page.off('pageerror',onError);page.off('response',onResponse);}

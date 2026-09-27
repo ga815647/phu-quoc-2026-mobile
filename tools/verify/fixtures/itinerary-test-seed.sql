@@ -58,7 +58,7 @@ INSERT INTO bookings(slug,kind,title,detail,status,evidence)
 INSERT INTO transport_options(slug,plan) VALUES ('fixture-transport','Fixture transfer');
 INSERT INTO itineraries(id,start_date,end_date,timezone,locked_constraints)
  VALUES ('phuquoc-2026','2026-10-10','2026-10-15','Asia/Ho_Chi_Minh',
- '{"bases":{"hotel":{"type":"booking","id":"fixture-booking"}},"bookings":["fixture-booking"],"transport":["fixture-transport"]}');
+  '{"bases":{"hotel":{"type":"booking","id":"fixture-booking"}},"bookings":["fixture-booking"],"transport":["fixture-transport"],"onbird_core":{"date":"2026-10-11","segment_id":"main","kind":"activity","ref":{"type":"card","id":"onbird"},"time_kind":"scheduled","start_window":{"min":"08:00","max":"09:00"},"day_offset":0,"timezone":"Asia/Ho_Chi_Minh","duration_minutes":null}}');
 INSERT INTO itinerary_days(id,itinerary_id,date,day_kind,main_card_slug,plan)
 SELECT 'phuquoc-2026:' || d::date::text,'phuquoc-2026',d::date,
  CASE WHEN d='2026-10-11'::date THEN 'activity' ELSE 'light' END,
@@ -70,6 +70,6 @@ SELECT 'phuquoc-2026:' || d::date::text,'phuquoc-2026',d::date,
   {"id":"go","kind":"transfer","label":"Go","time":{"start_window":null,"day_offset":0,"timezone":"Asia/Ho_Chi_Minh","duration_minutes":null,"kind":"unknown","source_refs":[],"evidence_as_of":null},"ref":null,"transfer":{"from_ref":{"type":"point","id":"fixture-point"},"to_ref":{"type":"base","id":"hotel"},"mode":"grab","wait_minutes":null,"buffer_minutes":5,"condition_refs":[]},"condition_refs":[]}
  ],"alternatives":[{"id":"rain","trigger_kind":"weather","trigger_text":"Rain","action":"use_alternative","target_segment_ids":["start"],"replacement_segments":[{"id":"rain-rest","kind":"rest","label":"Rest","time":{"start_window":null,"day_offset":0,"timezone":"Asia/Ho_Chi_Minh","duration_minutes":null,"kind":"unknown","source_refs":[],"evidence_as_of":null},"ref":null,"condition_refs":[]}]}]}'::jsonb
  WHEN d='2026-10-11'::date THEN
- '{"schema_version":1,"segments":[{"id":"main","kind":"activity","label":"Activity","time":{"start_window":null,"day_offset":0,"timezone":"Asia/Ho_Chi_Minh","duration_minutes":null,"kind":"unknown","source_refs":[],"evidence_as_of":null},"ref":{"type":"card","id":"onbird"},"condition_refs":[]}],"alternatives":[]}'::jsonb
+  '{"schema_version":1,"segments":[{"id":"main","kind":"activity","label":"Activity","time":{"start_window":{"min":"08:00","max":"09:00"},"day_offset":0,"timezone":"Asia/Ho_Chi_Minh","duration_minutes":null,"kind":"scheduled","source_refs":[],"evidence_as_of":null},"ref":{"type":"card","id":"onbird"},"condition_refs":[]}],"alternatives":[]}'::jsonb
  ELSE '{"schema_version":1,"segments":[],"alternatives":[]}'::jsonb END
 FROM generate_series('2026-10-10'::date,'2026-10-15'::date,'1 day'::interval) AS d;

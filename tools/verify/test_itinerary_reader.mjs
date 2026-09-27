@@ -36,6 +36,15 @@ test('rejects missing referenced rows, malformed base and malicious or unsupport
   ]) { const x = clone(); change(x); invalid(x); }
 });
 
+test('main card must be active and mapped condition keys must match card gate text',()=>{
+  const retired=clone();retired.data.refs.cards.find(c=>c.slug==='onbird').status='RETIRED';invalid(retired);
+  const mapped=clone(),card=mapped.data.refs.cards.find(c=>c.slug==='onbird');
+  card.gates=JSON.stringify(['Existing public gate']);card.condition_labels={check:'Existing public gate'};
+  mapped.data.days[1].plan.segments[0].condition_refs=['check'];
+  validateEnvelope(mapped);
+  card.gates=JSON.stringify(['Changed source text']);invalid(mapped);
+});
+
 test('uses entire dated fallback after invalid live response', async () => {
   const bad = clone(); bad.data.days.pop();
   const seen = [];

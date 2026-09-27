@@ -111,7 +111,8 @@ BEGIN
  IF main_slug IS NOT NULL THEN card_condition_slugs := array_append(card_condition_slugs,main_slug); END IF;
  IF p_day->'main_card_slug' IS NULL OR jsonb_typeof(p_day->'main_card_slug') NOT IN ('null','string')
     OR (p_day->>'day_kind'='activity' AND main_slug IS NULL)
-    OR (main_slug IS NOT NULL AND NOT EXISTS (SELECT 1 FROM public.cards WHERE slug=main_slug))
+     OR (main_slug IS NOT NULL AND (main_slug NOT IN ('onbird','vinwonders','cable','starfish','safari')
+       OR NOT EXISTS (SELECT 1 FROM public.cards WHERE slug=main_slug AND status='ACTIVE')))
     THEN RAISE EXCEPTION 'invalid'; END IF;
  IF p_day ? 'id' AND (jsonb_typeof(p_day->'id')<>'string' OR p_day->>'id' !~ '^phuquoc-2026:2026-10-(1[0-5])$') THEN RAISE EXCEPTION 'invalid'; END IF;
  IF p_day ? 'date' AND (jsonb_typeof(p_day->'date')<>'string' OR p_day->>'date' !~ '^2026-10-1[0-5]$') THEN RAISE EXCEPTION 'invalid'; END IF;
@@ -151,7 +152,8 @@ BEGIN
       OR jsonb_typeof(s->'label')<>'string'
       OR (s ? 'note' AND jsonb_typeof(s->'note')<>'string')
       OR (s ? 'selection' AND s->>'selection' NOT IN ('derived','explicit'))
-      OR (s->>'kind'='meal' AND (NOT s ? 'selection' OR s->'ref'='null'::jsonb))
+       OR (s->>'kind'='meal' AND (NOT s ? 'selection' OR s->'ref'->>'type' NOT IN ('food','pool')
+         OR s->'ref'->>'type' IS NULL))
       OR jsonb_typeof(s->'condition_refs')<>'array' THEN RAISE EXCEPTION 'invalid'; END IF;
   IF EXISTS(SELECT 1 FROM jsonb_array_elements(s->'condition_refs') v WHERE jsonb_typeof(v)<>'string') THEN RAISE EXCEPTION 'invalid'; END IF;
   ids := array_append(ids,s->>'id');
@@ -199,9 +201,13 @@ BEGIN
   FOR cond IN SELECT v #>> '{}' FROM jsonb_array_elements(condition_segment.segment->'condition_refs') v
       UNION ALL SELECT v #>> '{}' FROM jsonb_array_elements(COALESCE(condition_segment.segment->'transfer'->'condition_refs','[]'::jsonb)) v LOOP
    IF (condition_segment.replacement AND cond=ANY(alt_ids)) OR
-      (NOT cond=ANY(alt_ids) AND NOT EXISTS (SELECT 1 FROM public.cards
-       WHERE slug=ANY(card_condition_slugs) AND gates IS NOT NULL AND CASE WHEN gates ~ '^\s*\[' THEN
-        (gates::jsonb) ? cond ELSE false END)) THEN RAISE EXCEPTION 'invalid'; END IF;
+       (NOT cond=ANY(alt_ids) AND NOT EXISTS (SELECT 1 FROM public.cards
+        WHERE slug=ANY(card_condition_slugs) AND gates IS NOT NULL AND CASE WHEN gates ~ '^\s*\[' THEN
+         (gates::jsonb) ? cond ELSE false END)
+        AND NOT (cond=ANY(ARRAY(SELECT jsonb_object_keys(CASE
+          WHEN jsonb_typeof(constraints->'starfish'->'conditions')='object'
+          THEN constraints->'starfish'->'conditions' ELSE '{}'::jsonb END)))
+          AND 'starfish'=ANY(card_condition_slugs))) THEN RAISE EXCEPTION 'invalid'; END IF;
   END LOOP;
  END LOOP;
 EXCEPTION WHEN OTHERS THEN
@@ -272,7 +278,9 @@ BEGIN
    WHEN 'bookings' THEN ids:=booking_ids; ELSE ids:=transport_ids; END CASE;
   SELECT count(*) INTO n FROM (SELECT DISTINCT unnest(ids) AS id) i;
   CASE k
-   WHEN 'cards' THEN SELECT coalesce(jsonb_agg(to_jsonb(x) ORDER BY x.slug),'[]'::jsonb) INTO vals FROM
+    WHEN 'cards' THEN SELECT coalesce(jsonb_agg(to_jsonb(x) || jsonb_build_object('condition_labels',
+       CASE WHEN x.slug='starfish' THEN coalesce(trip.locked_constraints->'starfish'->'conditions','{}'::jsonb)
+       ELSE '{}'::jsonb END) ORDER BY x.slug),'[]'::jsonb) INTO vals FROM
     (SELECT slug,name,status,route,gates,transport,notes,summary,key_times,badges,stops,transport_out,transport_back,kid_note,dining,cut_order,callout,evidence_as_of FROM public.cards WHERE slug=ANY(ids)) x;
    WHEN 'foods' THEN SELECT coalesce(jsonb_agg(to_jsonb(x) ORDER BY x.notion_id),'[]'::jsonb) INTO vals FROM
     (SELECT notion_id,name,region,housing,cluster,time_slots,hours_text,maps_query,price_text,cuisine,worth,convenience,local_idx,pq_feature,kid_fit,grade,op_status,op_conf,atlas_state,data_conf,research_date,last_verified,evidence,neg_warn,summary,dish_ids,evidence_as_of FROM public.food_places WHERE notion_id=ANY(ids)) x;
@@ -412,7 +420,8 @@ DECLARE v_version integer; v_constraints jsonb; v_hash text; v_receipt jsonb;
  v_table text; v_column text; v_category text; v_id text; v_row_id text;
  v_day jsonb; v_old record; v_new_version integer; v_changed jsonb := '[]'::jsonb;
  v_old_segment jsonb; v_decision jsonb; v_required text;
- v_protected jsonb; v_base text; v_locked integer; v_booking_ref jsonb;
+  v_protected jsonb; v_base text; v_locked integer; v_booking_ref jsonb;
+  v_core jsonb; v_core_segment jsonb; v_starfish jsonb; v_star_segment jsonb; v_gate text;
 BEGIN
  IF p_itinerary_id IS DISTINCT FROM 'phuquoc-2026' OR p_request_id IS NULL
     OR p_base_version IS NULL OR p_expected_content_revision IS NULL
@@ -445,7 +454,35 @@ BEGIN
   IF v_row_id<>v_hash THEN RAISE EXCEPTION USING ERRCODE='22023', MESSAGE='REQUEST_ID_REUSED'; END IF;
   RETURN v_receipt;
  END IF;
- IF v_version<>p_base_version THEN RAISE EXCEPTION USING ERRCODE='40001', MESSAGE='VERSION_CONFLICT'; END IF;
+  IF v_version<>p_base_version THEN RAISE EXCEPTION USING ERRCODE='40001', MESSAGE='VERSION_CONFLICT'; END IF;
+
+  -- Initialized by a separately reviewed insert, never inferred from the day
+  -- being edited. Missing/malformed core blocks ALL edits, not just 10/11.
+  v_core:=v_constraints->'onbird_core';
+  IF NOT public.itinerary_keys(v_core,
+       ARRAY['date','segment_id','kind','ref','time_kind','start_window','day_offset','timezone','duration_minutes'],
+       ARRAY['date','segment_id','kind','ref','time_kind','start_window','day_offset','timezone','duration_minutes'])
+    OR v_core->>'date'<>'2026-10-11' OR v_core->>'kind'<>'activity'
+    OR v_core->'ref'<>'{"type":"card","id":"onbird"}'::jsonb
+    OR v_core->>'segment_id' !~ '^[a-z0-9][a-z0-9-]{0,39}$'
+    OR v_core->>'time_kind'<>'scheduled'
+    OR v_core->>'timezone'<>'Asia/Ho_Chi_Minh'
+    OR v_core->'day_offset'<>'0'::jsonb
+    OR v_core->'start_window'='null'::jsonb
+    OR NOT public.itinerary_interval(v_core->'start_window',true)
+    OR NOT public.itinerary_interval(v_core->'duration_minutes',false)
+    OR NOT EXISTS (SELECT 1 FROM public.itinerary_days d,
+         LATERAL jsonb_array_elements(d.plan->'segments') s
+       WHERE d.date=DATE '2026-10-11' AND d.main_card_slug='onbird'
+         AND d.day_kind='activity' AND s->>'id'=v_core->>'segment_id'
+         AND s->>'kind'=v_core->>'kind' AND s->'ref'=v_core->'ref'
+         AND s->'time'->>'kind'=v_core->>'time_kind'
+         AND s->'time'->'start_window'=v_core->'start_window'
+         AND s->'time'->'day_offset'=v_core->'day_offset'
+         AND s->'time'->>'timezone'=v_core->>'timezone'
+         AND s->'time'->'duration_minutes'=v_core->'duration_minutes') THEN
+   RAISE EXCEPTION USING ERRCODE='22023', MESSAGE='LOCKED_ARRANGEMENT';
+  END IF;
 
  -- Reject duplicate/missing dates and malformed candidates before touching rows.
  IF EXISTS(SELECT 1 FROM jsonb_array_elements(p_changes) d WHERE
@@ -516,13 +553,61 @@ BEGIN
   END;
   IF v_day->>'date'<>v_old.date::text THEN RAISE EXCEPTION USING ERRCODE='22023', MESSAGE='INVALID_PLAN'; END IF;
   v_protected := v_constraints->'days'->v_old.date::text;
-  IF (v_day->>'main_card_slug'='onbird' AND v_old.date<>DATE '2026-10-11')
+   IF (v_day->>'main_card_slug'='onbird' AND v_old.date<>DATE '2026-10-11')
     OR (v_old.date=DATE '2026-10-11' AND v_old.main_card_slug='onbird'
       AND (v_day->>'main_card_slug'<>'onbird' OR v_day->>'day_kind'<>'activity'))
     OR (v_protected ? 'main_card_slug' AND v_day->'main_card_slug'<>v_protected->'main_card_slug')
     OR (v_protected ? 'day_kind' AND v_day->>'day_kind'<>v_protected->>'day_kind') THEN
-   RAISE EXCEPTION USING ERRCODE='22023', MESSAGE='LOCKED_ARRANGEMENT';
-  END IF;
+    RAISE EXCEPTION USING ERRCODE='22023', MESSAGE='LOCKED_ARRANGEMENT';
+   END IF;
+   IF v_old.date=DATE '2026-10-11' THEN
+    IF NOT EXISTS (SELECT 1 FROM jsonb_array_elements(v_day->'plan'->'segments') s
+      WHERE s->>'id'=v_core->>'segment_id' AND s->>'kind'=v_core->>'kind'
+        AND s->'ref'=v_core->'ref' AND s->'time'->>'kind'=v_core->>'time_kind'
+        AND s->'time'->'start_window'=v_core->'start_window'
+        AND s->'time'->'day_offset'=v_core->'day_offset'
+        AND s->'time'->>'timezone'=v_core->>'timezone'
+        AND s->'time'->'duration_minutes'=v_core->'duration_minutes') THEN
+     RAISE EXCEPTION USING ERRCODE='22023', MESSAGE='LOCKED_ARRANGEMENT';
+    END IF;
+   END IF;
+   IF v_day->>'main_card_slug'='starfish' THEN
+    v_starfish:=v_constraints->'starfish';
+    IF NOT public.itinerary_keys(v_starfish,ARRAY['conditions','return_base'],ARRAY['conditions','return_base'])
+      OR jsonb_typeof(v_starfish->'conditions')<>'object'
+      OR NOT (v_starfish->'conditions' ? 'return')
+      OR (SELECT count(*) FROM jsonb_object_keys(CASE WHEN jsonb_typeof(v_starfish->'conditions')='object'
+          THEN v_starfish->'conditions' ELSE '{}'::jsonb END))<2
+      OR EXISTS(SELECT 1 FROM jsonb_each(CASE WHEN jsonb_typeof(v_starfish->'conditions')='object'
+          THEN v_starfish->'conditions' ELSE '{}'::jsonb END) gate
+          WHERE jsonb_typeof(gate.value)<>'string')
+      OR jsonb_typeof(v_starfish->'return_base')<>'string'
+      OR v_starfish->>'return_base' IS NULL
+      OR NOT public.itinerary_ref_ok(jsonb_build_object('type','base','id',v_starfish->>'return_base'),v_constraints)
+      OR EXISTS(SELECT 1 FROM jsonb_each_text(CASE WHEN jsonb_typeof(v_starfish->'conditions')='object'
+          THEN v_starfish->'conditions' ELSE '{}'::jsonb END) gate
+        WHERE gate.key !~ '^[a-z0-9][a-z0-9-]{0,39}$' OR gate.value=''
+          OR NOT EXISTS (SELECT 1 FROM public.cards c WHERE c.slug='starfish'
+            AND c.gates IS NOT NULL AND CASE WHEN c.gates ~ '^\s*\[' THEN (c.gates::jsonb) ? gate.value ELSE false END))
+      THEN RAISE EXCEPTION USING ERRCODE='22023', MESSAGE='LOCKED_ARRANGEMENT'; END IF;
+    SELECT s.value INTO v_star_segment FROM jsonb_array_elements(v_day->'plan'->'segments') s
+      WHERE s.value->>'kind'='activity' AND s.value->'ref'='{"type":"card","id":"starfish"}'::jsonb LIMIT 1;
+    IF v_star_segment IS NULL OR EXISTS(SELECT 1 FROM jsonb_object_keys(v_starfish->'conditions') gate
+        WHERE NOT (v_star_segment->'condition_refs' ? gate))
+      OR EXISTS (SELECT 1 FROM jsonb_array_elements(v_day->'plan'->'segments') WITH ORDINALITY s(value,ordinality)
+        WHERE s.value->>'kind'='transfer' AND s.value->'transfer'->'from_ref'='{"type":"card","id":"starfish"}'::jsonb
+          AND s.ordinality <= (SELECT a.ordinality FROM jsonb_array_elements(v_day->'plan'->'segments') WITH ORDINALITY a(value,ordinality)
+            WHERE a.value->>'id'=v_star_segment->>'id'))
+      OR NOT EXISTS (SELECT 1 FROM (
+        SELECT s.value FROM jsonb_array_elements(v_day->'plan'->'segments') WITH ORDINALITY s(value,ordinality)
+        WHERE s.value->>'kind'='transfer' AND s.value->'transfer'->'from_ref'='{"type":"card","id":"starfish"}'::jsonb
+        ORDER BY s.ordinality LIMIT 1) first_return
+        WHERE first_return.value->'transfer'->'to_ref'=jsonb_build_object('type','base','id',v_starfish->>'return_base')
+          AND first_return.value->'transfer'->>'mode' IN ('charter','operator_pickup')
+          AND first_return.value->'transfer'->'condition_refs' ? 'return') THEN
+      RAISE EXCEPTION USING ERRCODE='22023', MESSAGE='LOCKED_ARRANGEMENT';
+    END IF;
+   END IF;
   -- If a protected booking/base appeared on this date, it must still occur
   -- somewhere on this same date (not necessarily in the original transfer).
   FOR v_base IN SELECT key FROM jsonb_each(COALESCE(v_constraints->'bases','{}'::jsonb))

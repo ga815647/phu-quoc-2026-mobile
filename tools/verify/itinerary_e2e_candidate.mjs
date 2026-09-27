@@ -64,8 +64,11 @@ try {
   server=createServer(async(req,res)=>{
     const pathname=decodeURIComponent(new URL(req.url,'http://localhost').pathname);
     if(pathname==='/api/itinerary'){res.writeHead(200,{'Content-Type':'application/json','Access-Control-Allow-Origin':'*'}).end(JSON.stringify(envelope));return;}
-    if(pathname==='/api/cards'){const cards=JSON.parse(await readFile('data/cards.json','utf8'));
-      res.writeHead(200,{'Content-Type':'application/json','Access-Control-Allow-Origin':'*'}).end(JSON.stringify({data:cards,meta:{fetched_at:'2026-09-27T00:00:00Z'}}));return;}
+     if(pathname==='/api/cards'){const cards=JSON.parse(await readFile('data/cards.json','utf8'));
+       const slug=new URL(req.url,'http://localhost').searchParams.get('slug');
+       const selected=slug?cards.find(card=>card.slug===slug):cards;
+       res.writeHead(selected?200:404,{'Content-Type':'application/json','Access-Control-Allow-Origin':'*'})
+         .end(JSON.stringify({data:selected,meta:{fetched_at:'2026-09-27T00:00:00Z'}}));return;}
     // Candidate filename aliases simulate the production paths the verifier expects.
     const file=resolve(directory,'.'+(pathname==='/'?'/data-candidate.html':pathname==='/card.html'?'/card-candidate.html':pathname));
     if(!file.startsWith(directory+sep)){res.writeHead(403).end();return;}
@@ -82,7 +85,7 @@ try {
   // verifier; it does NOT show an actual production server or deployed content.
   const result=await verifySite({request:trusted.request,page,siteUrl:origin+'/',apiOrigin:origin,
     budgetMs:15000,intervalMs:15000});
-  if(result.status!=='PASS')console.error(JSON.stringify(await page.locator('a.link-card').evaluateAll(ns=>ns.map(n=>({href:n.href,w:n.getBoundingClientRect().width,h:n.getBoundingClientRect().height})))));
+   if(result.status!=='PASS')console.error(JSON.stringify({observations:result.observations,links:await page.locator('a.link-card').evaluateAll(ns=>ns.map(n=>({href:n.href,w:n.getBoundingClientRect().width,h:n.getBoundingClientRect().height})))}));
   assert.equal(result.status,'PASS',JSON.stringify(result.checks));
   assert.equal(result.observed_content_revision,receipt.content_revision);
   result.request_commit=trusted.requestSha;result.test_commit=trusted.testSha;result.run_id=71;
