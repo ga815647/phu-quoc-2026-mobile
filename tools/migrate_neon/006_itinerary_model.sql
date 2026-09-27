@@ -600,14 +600,17 @@ BEGIN
  RETURN v_receipt;
 END $$;
 
-REVOKE ALL ON public.itineraries,public.itinerary_days,public.itinerary_requests FROM PUBLIC;
-REVOKE ALL ON public.itinerary_public FROM PUBLIC;
+-- Explicitly remove private grants surviving CREATE OR REPLACE on rerun.
+-- PostgreSQL requires caller EXECUTE on the projection helper used by the view;
+-- it accepts only the fixed itinerary ID and is read-only.
+REVOKE ALL ON public.itineraries,public.itinerary_days,public.itinerary_requests FROM PUBLIC,phq_web_ro;
+REVOKE ALL ON public.itinerary_public FROM PUBLIC,phq_web_ro;
 REVOKE ALL ON FUNCTION public.itinerary_validate_day(jsonb),public.itinerary_read_for_edit(text),
- public.itinerary_ref_ok(jsonb,jsonb),public.itinerary_interval(jsonb,boolean),
- public.itinerary_keys(jsonb,text[],text[]) FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.itinerary_payload(text) FROM PUBLIC;
+  public.itinerary_ref_ok(jsonb,jsonb),public.itinerary_interval(jsonb,boolean),
+  public.itinerary_keys(jsonb,text[],text[]) FROM PUBLIC,phq_web_ro;
+REVOKE ALL ON FUNCTION public.itinerary_payload(text) FROM PUBLIC,phq_web_ro;
 REVOKE ALL ON FUNCTION public.itinerary_dependency_ids(text,jsonb),
- public.itinerary_explicit_decision(jsonb,jsonb,text),
- public.itinerary_update(text,integer,text,uuid,jsonb,jsonb,text,text,text) FROM PUBLIC;
+  public.itinerary_explicit_decision(jsonb,jsonb,text),
+  public.itinerary_update(text,integer,text,uuid,jsonb,jsonb,text,text,text) FROM PUBLIC,phq_web_ro;
 GRANT SELECT (itinerary_id,payload,content_revision) ON public.itinerary_public TO phq_web_ro;
 GRANT EXECUTE ON FUNCTION public.itinerary_payload(text) TO phq_web_ro;
