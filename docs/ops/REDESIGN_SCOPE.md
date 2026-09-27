@@ -47,6 +47,8 @@ Chat／OpenCode 是責任分工，不是資料庫的技術角色名稱。工具�
 
 2026-09-27 C3 工程候選補記：006 模型／私有更新與公開投影、reader、CI 驗站及假 GitHub 結果鏈在本地整合測試；新操作文件 `CHAT_ITINERARY_RUNBOOK.md`。**未**套 production migration／Function，未推工作流、未發布預覽或正式站，Chat 未實際讀新版規則，手機編輯保留；需先備齊 `../superpowers/plans/2026-09-27-itinerary-implementation.md` 的四項前置，才逐段核准發布。私人 Notion 索引及費用不轉入公開模型。
 
+其後使用者委託建議整合方式，已推送工程分支 `feat/itinerary-chat-ci` 的 `81f8cb9` 並建立 [Draft PR12](https://github.com/ga815647/phu-quoc-2026-mobile/pull/12)。上段「未推工作流」是該時點紀錄；目前程式已在遠端工程分支，但尚未合併main／啟用新驗站鏈／部署網站。新內容與視覺階段查核、排序及預覽範圍草案見 `ITINERARY_CONTENT_PREVIEW_BRIEF.md`，仍待確認。
+
 ### 設計與計畫確認後：工程實作
 
 - 主責原始檔：`tools/build_site.py`、`tools/site.css`；有需要的新互動模組／公開資產，在計畫中列明路徑與責任。
@@ -90,6 +92,8 @@ Chat／OpenCode 是責任分工，不是資料庫的技術角色名稱。工具�
 - 本地規則改動、Git 發布、ChatGPT Project settings 安裝、網站發布與內容維護能力各自記錄。文件尚未發布前，不宣稱 Chat 已取得新規則。
 
 ## 7. 維護方式
+
+2026-09-27 使用者明確核准A/B手機比較稿及 `preview/redesign/` 公開發布。已獨立發布main `fba6379`（僅preview五檔），Pages成功，公開URL與320／390／430px六日A/B驗證通過；詳 `ITINERARY_CONTENT_PREVIEW_BRIEF.md`。工程PR12仍為候選，這次發布未套Neon／Function，也不代表草案內容或視覺已接受為正式版本。
 
 2026-09-27 工程候選完成狀態與最終 51 Python／45 Node、本機整合／手機瀏覽測試結果見 `ITINERARY_ENGINEERING_ACCEPT.md`。這是隔離 worktree 的本機驗收；正式內容、視覺、Neon／Actions／手機正式站發布鏈仍按該文件所列前置推進。
 
