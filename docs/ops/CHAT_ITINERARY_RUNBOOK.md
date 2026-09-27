@@ -86,7 +86,7 @@
     WHERE itinerary_id='phuquoc-2026';
    ```
 
-   不公開 audit 或版本。`VERSION_CONFLICT`／`SOURCE_CHANGED`（SQLSTATE 40001）→ 停止、重讀並說明差異，再按目前版本重組候選；不盲目重試覆寫。`REQUEST_ID_REUSED`（22023）→ 查是否誤用 UUID，不直接覆蓋。其他驗證失敗不當成功；資料已存但驗站 pending／fail **不回滾或改用舊 base**，保留 receipt 並讀回；pending 續查原請求，確需再次驗站時才另發請求。
+   `content_revisions.request_id` **始終使用原 Neon 更新 receipt UUID**，不因後續驗站新 UUID 而改查稽核。不公開 audit 或版本。`VERSION_CONFLICT`／`SOURCE_CHANGED`（SQLSTATE 40001）→ 停止、重讀並說明差異，再按目前版本重組候選；不盲目重試覆寫。`REQUEST_ID_REUSED`（22023）→ 查是否誤用 UUID，不直接覆蓋。其他驗證失敗不當成功；資料已存但驗站 pending／fail **不回滾或改用舊 base**，保留 receipt 並讀回；pending 續查原請求，確需再次驗站時才另發請求。
 6. 真實 GitHub 驗站（**本地測試未做這步**）：Chat 以第 5 步 Neon `itinerary_public` 讀回的 `content_revision` 與公開日內容產生請求，**不必也不得以 Chat HTTP GET 正式網站／API 為前置**；正式 `/api/itinerary` 有快取，其 hash、來源與畫面一致性由 CI 觀察（或 OpenCode 另行標記的檢查），不是 Chat 提交前的能力門檻。**第一次驗站 request ID 必須等於成功更新 receipt 的 `request_id`**；建立 `chat-site-check/<receipt_request_uuid>` branch，以 main 為單一父 commit，該 commit **只新增** `bridge/site-check/requests/<receipt_request_uuid>.json`。JSON 使用契約 v1 的鍵 `schema_version:1,request_id,target:"production",itinerary_id:"phuquoc-2026",expected_content_revision,changed_day_ids,expected`，`expected` 每日包含 `day_id,main_card_slug,meals:[{segment_id,ref}],transfers:[{segment_id,from_ref,to_ref,mode}]`，完整列表由更新後 Neon 公開投影產生。不可寫工具碼、workflow 或私人欄位；不可把請求 commit 當作內容版本。首份請求無 `previous_request_id`；若要**另發後續重新驗站**才使用新的驗站 UUID 與新 branch/file，並填 `previous_request_id` 指向前一次請求 UUID。不要用新 ID 覆蓋／改寫原結果；同一 request commit 可安全讀回既有結果。
 
    以下是**格式樣本，不可照抄 UUID、hash 或旅行內容**（`fixture-*` 僅本地隔離資料；例中 UUID 代表同一筆 fixture 更新 receipt）。GitHub connector 應先由 main 建 branch，再只新增對應 UUID 路徑並讀回 request commit；同一 commit 不可含其他檔案：
@@ -101,7 +101,7 @@
       "transfers":[{"segment_id":"go","from_ref":{"type":"card","id":"cable"},
         "to_ref":{"type":"base","id":"hotel"},"mode":"taxi"}]}]}
    ```
-7. 記下請求 commit SHA，等受信任主線 workflow 實際執行。解析 `site-check-results` ref，在**固定 result commit SHA** 讀 `requests/<receipt_request_uuid>/result.json`（另可讀 `.md`），核對 `request_id` 等於 Neon receipt、`request_commit,expected_content_revision,observed_content_revision,source,observed_build_id,run_id,status,finished_at`。`PASS` 只證明那次 CI 對正式 API／DOM 的觀察；`FALLBACK/CONTENT_MISMATCH/UNREACHABLE/ERROR/INVALID_REQUEST` 不算已上站；pending 無結果不能當 PASS。截圖另在同 run artifact，綠燈、Git JSON 或 screenshot 單獨都不能替代網站/API/DOM 的同版檢查。Chat 讀 GitHub 結果不等於 Chat 自己能 HTTP 看站。
+7. 每次記下**當次驗站請求**的 UUID 與固定 request commit SHA，等受信任主線 workflow 實際執行。解析 `site-check-results` ref，在**固定 result commit SHA** 讀 `requests/<active_site_check_uuid>/result.json`（另可讀 `.md`），核對結果 `request_id`＝當次驗站 UUID、`request_commit`＝當次固定 request commit，並核對 `expected_content_revision`＝該請求的 Neon 公開 hash、`observed_content_revision,source,observed_build_id,run_id,status,finished_at`。首份請求的 UUID 必須等於 Neon 更新 receipt UUID；**後續重新驗站**讀其新 UUID 專屬結果路徑，不要求新結果 `request_id` 等於原 Neon receipt。以每次**固定 request commit** 讀請求 JSON，沿 `previous_request_id` 指到前一份請求、直到首份與原更新 receipt UUID 相同；結果本身不提供可信的 `previous_request_id`，不可單憑新結果推定與原更新的關聯。示例（僅測試 ID，不可原樣提交）：原更新／首份驗站 UUID＝`1f4be2aa-e9b5-4a8a-8f1c-68c6d7eef67a`，第二份 UUID＝`99f2ab99-96c0-48d6-a347-07e4d196fe2f` 且其固定請求 JSON 的 `previous_request_id` 指向首份；第二份結果要讀 `requests/99f2ab99-96c0-48d6-a347-07e4d196fe2f/result.json`，核對結果 `request_id` 為第二份 ID 與 `request_commit` 為第二份固定 SHA；audit 仍以原更新 UUID 查。`PASS` 只證明那次 CI 對正式 API／DOM 的觀察；`FALLBACK/CONTENT_MISMATCH/UNREACHABLE/ERROR/INVALID_REQUEST` 不算已上站；pending 無結果不能當 PASS。截圖另在同 run artifact，綠燈、Git JSON 或 screenshot 單獨都不能替代網站/API/DOM 的同版檢查。Chat 讀 GitHub 結果不等於 Chat 自己能 HTTP 看站。
 
 ## 各層證據與發布邊界
 
