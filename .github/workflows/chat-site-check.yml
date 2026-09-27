@@ -1,0 +1,94 @@
+name: chat site-check
+on:
+  workflow_run:
+    workflows: ['chat site-check request']
+    types: [completed]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      test_sha: ${{ steps.main.outputs.sha }}
+      artifact_ok: ${{ steps.upload.outcome == 'success' }}
+      artifact_id: ${{ steps.upload.outputs.artifact-id }}
+    steps:
+      - id: main
+        name: Resolve trusted main from GitHub
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          sha=$(gh api repos/ga815647/phu-quoc-2026-mobile/git/ref/heads/main --jq '.object.sha')
+          [[ "$sha" =~ ^[0-9a-f]{40}$ ]]
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.main.outputs.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install pinned Chromium runner
+        run: |
+          npm install --no-save playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Verify published page with trusted code
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          TEST_SHA: ${{ steps.main.outputs.sha }}
+        run: node tools/verify/site-check-publish.mjs verify
+      - id: upload
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: site-check-evidence
+          path: site-check-output/
+          if-no-files-found: error
+          retention-days: 30
+  publish:
+    needs: verify
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    concurrency:
+      group: site-check-result-publish
+      cancel-in-progress: false
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - id: main
+        name: Resolve trusted checkout for artifact-failure reporting
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERIFY_SHA: ${{ needs.verify.outputs.test_sha }}
+        run: |
+          set -euo pipefail
+          sha="$VERIFY_SHA"
+          if [[ ! "$sha" =~ ^[0-9a-f]{40}$ ]]; then
+            sha=$(gh api repos/ga815647/phu-quoc-2026-mobile/git/ref/heads/main --jq '.object.sha')
+          fi
+          [[ "$sha" =~ ^[0-9a-f]{40}$ ]]
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.main.outputs.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/download-artifact@v4
+        if: needs.verify.outputs.artifact_ok == 'true'
+        with:
+          name: site-check-evidence
+          path: site-check-output/
+      - name: Publish immutable evidence or artifact failure
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          TEST_SHA: ${{ steps.main.outputs.sha }}
+          ARTIFACT_OK: ${{ needs.verify.outputs.artifact_ok }}
+          ARTIFACT_ID: ${{ needs.verify.outputs.artifact_id }}
+        run: node tools/verify/site-check-publish.mjs publish
