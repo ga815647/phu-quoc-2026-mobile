@@ -19,6 +19,12 @@ matches SQLite's default NULL ordering (SQLite path behavior unchanged).
 """
 import json
 import os
+import tempfile
+
+if __package__:
+    from .itinerary_export import read_itinerary
+else:
+    from itinerary_export import read_itinerary
 
 DB = os.path.join(os.path.dirname(__file__), "..", "data", "phuquoc.db")
 OUT = os.environ.get("PHUQUOC_OUT_DIR",
@@ -59,6 +65,15 @@ def main():
         print("source: sqlite", DB)
     else:
         raise SystemExit("PHUQUOC_DB_SOURCE must be 'sqlite' or 'neon'.")
+    # Fail closed before touching any existing snapshot or itinerary file.
+    from datetime import datetime, timezone
+    itinerary = None
+    if SOURCE == "neon":
+        itinerary = read_itinerary(fetch, os.environ.get('PHQ_META_SOURCE', 'neon-prod'),
+                                   os.environ.get('PHQ_META_ENV', 'production'),
+                                   datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'))
+    else:
+        print('itinerary unsupported for sqlite archive')
     # foods: executable first, then all ACTIVE/VERIFY places with key fields.
     # NULLS FIRST keeps Postgres order identical to SQLite's default NULL placement.
     foods = fetch("""SELECT notion_id,name,region,housing,cluster,time_slots,hours_text,
@@ -102,6 +117,19 @@ def main():
         with open(p, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=1)
         print(name, len(json.dumps(data, ensure_ascii=False)), "bytes ->", p)
+    if itinerary is not None:
+        path = os.path.join(OUT, 'itinerary.json')
+        temp_path = None
+        try:
+            with tempfile.NamedTemporaryFile('w', encoding='utf-8', dir=OUT,
+                                             prefix='.itinerary-', suffix='.tmp', delete=False) as f:
+                temp_path = f.name
+                json.dump(itinerary, f, ensure_ascii=False, indent=1)
+            os.replace(temp_path, path)
+        finally:
+            if temp_path is not None and os.path.exists(temp_path):
+                os.unlink(temp_path)
+        print('itinerary', len(json.dumps(itinerary, ensure_ascii=False)), 'bytes ->', path)
     print("counts:", {k: len(v) for k, v in snap.items() if isinstance(v, list)})
     try:
         db.close()
