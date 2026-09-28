@@ -339,7 +339,7 @@ def build_food_pool(pool, bynotion, byname, candidate=False):
             out.append(f'<div class="pool-divider">{h.escape(divider)}</div>')
         f = bynotion.get(nid) if nid else None
         if f is None:
-            name, region = key, "—"
+            name, region = (order or desc or key), "—"
             badge, mlink = "", ""
             fname = ""
             tslots, atlas = "", ""
@@ -563,6 +563,8 @@ def main():
             "fetchJson('" + api + "/api/pool').then(w=>{var byKey={};w.data.forEach(p=>{byKey[p.pool_key]=p});"
             "document.querySelectorAll('[data-food-id]').forEach(card=>{"
             "var p=byKey[card.getAttribute('data-food-id')];if(!p)return;"
+            "if(!card.hasAttribute('data-notion-id')){var nm=card.querySelector('.food-name');"
+            "if(nm)nm.textContent=p.order_copy||p.desc_copy||p.pool_key}"
             "if(p.pool_rank!=null)card.setAttribute('data-pool-rank',p.pool_rank);"
             "card.setAttribute('data-divider',p.divider||'');"
             "var meta=card.querySelector('.food-meta');"

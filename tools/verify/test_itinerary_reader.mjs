@@ -1,11 +1,36 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {validateEnvelope, loadItinerary} from '../itinerary-reader.mjs';
+import {validateEnvelope, loadItinerary, renderItinerary} from '../itinerary-reader.mjs';
 
 const fixture = JSON.parse(await readFile(new URL('./fixtures/itinerary-envelope.json', import.meta.url)));
 const clone = () => structuredClone(fixture);
 const invalid = value => assert.throws(() => validateEnvelope(value), {message: 'INVALID_ITINERARY'});
+
+test('null-notion generic pool renders readable copy while retaining ref ID and no invented map',()=>{
+  const envelope=clone(),pool=envelope.data.refs.pool[0];
+  pool.notion_id=null;pool.order_copy='Safari 園內用餐';pool.desc_copy='不指定店家';
+  class Node {
+    constructor(tag){this.tag=tag;this.children=[];this.dataset={};this.attributes={};this.className='';this.textContent='';}
+    append(...nodes){this.children.push(...nodes);}
+    replaceChildren(...nodes){this.children=nodes;}
+    querySelector(){return null;}
+    setAttribute(key,value){this.attributes[key]=value;}
+    addEventListener(){}
+  }
+  const previous=globalThis.document;
+  globalThis.document={createElement:tag=>new Node(tag),createDocumentFragment:()=>new Node('fragment'),documentElement:{dataset:{}}};
+  try {
+    const root=new Node('root');renderItinerary(root,{envelope,mode:'live'});
+    const nodes=[];const visit=node=>{nodes.push(node);node.children.forEach(visit)};visit(root);
+    const step=nodes.find(n=>n.dataset.refType==='pool' && n.dataset.refId===pool.pool_key);
+    assert.ok(step,'retains stable pool reference');
+    const text=[];visitText(step);
+    function visitText(node){text.push(node.textContent);node.children.forEach(visitText)}
+    assert.ok(text.join(' ').includes('Safari 園內用餐'));
+    assert.equal(nodes.filter(n=>n.tag==='a' && n.href?.includes('maps/search')).length,0);
+  } finally {globalThis.document=previous;}
+});
 
 test('accepts the six-day public projection from the isolated A view', () => {
   assert.equal(validateEnvelope(clone()).data.itinerary.id, 'phuquoc-2026');

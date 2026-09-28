@@ -143,7 +143,7 @@ const nameFor=(refs,r) => {
     const target=source.find(x=>x.slug===row.ref.id);
     return target.name || target.title || row.id;
   }
-  if(r.type==='pool') return row.notion_id ? (refs.foods.find(x=>x.notion_id===row.notion_id)?.name || row.pool_key) : row.pool_key;
+  if(r.type==='pool') return row.notion_id ? (refs.foods.find(x=>x.notion_id===row.notion_id)?.name || row.pool_key) : (row.order_copy || row.desc_copy || row.pool_key);
   return row.name || row.title || row.slug || row.id;
 };
 function timeText(t) {

@@ -30,6 +30,10 @@ async function withPage(options,run) {
     });
     const envelope=structuredClone(fixture);
     envelope.meta.source='neon-prod';envelope.meta.environment=options.environment||'production';
+    if(options.genericPool){
+      const pool=envelope.data.refs.pool.find(x=>x.pool_key===meal.ref.id);
+      pool.notion_id=null;pool.order_copy='Safari 園內用餐';pool.desc_copy='不指定店家';
+    }
     if(options.cached)envelope.meta.content_revision=`phq1:${'c'.repeat(64)}`;
     const rendered=options.rendered||envelope;
     let navigations=0;const cardVisits=[];
@@ -76,7 +80,7 @@ async function withPage(options,run) {
               step.dataset.refType=s.ref?.type||'';step.dataset.refId=s.ref?.id||'';
               if(s.transfer){step.dataset.fromRef=s.transfer.from_ref.type+':'+s.transfer.from_ref.id;
                 step.dataset.toRef=s.transfer.to_ref.type+':'+s.transfer.to_ref.id;step.dataset.mode=s.transfer.mode;}
-              step.textContent=${JSON.stringify(options.blank?'':null)}===null?(s.id==='start'&&${JSON.stringify(!!options.staleActivity)}?'Old secondary activity':s.label+' '+(s.ref ? (s.ref.type==='pool'?data.data.refs.foods.find(f=>f.notion_id===data.data.refs.pool.find(x=>x.pool_key===s.ref.id).notion_id)?.name||s.ref.id:data.data.refs[s.ref.type==='food'?'foods':s.ref.type==='card'?'cards':s.ref.type==='point'?'points':'bases'].find(x=>[x.notion_id,x.slug,x.id].includes(s.ref.id))?.name||s.ref.id) : s.transfer?'Fixture point → Fixture hotel · grab':'')):'';
+              step.textContent=${JSON.stringify(options.blank?'':null)}===null?(s.id==='start'&&${JSON.stringify(!!options.staleActivity)}?'Old secondary activity':s.label+' '+(s.ref ? (s.ref.type==='pool' ? (()=>{const p=data.data.refs.pool.find(x=>x.pool_key===s.ref.id);return p.notion_id ? data.data.refs.foods.find(f=>f.notion_id===p.notion_id)?.name||p.pool_key : p.order_copy||p.desc_copy||p.pool_key})() : data.data.refs[s.ref.type==='food'?'foods':s.ref.type==='card'?'cards':s.ref.type==='point'?'points':'bases'].find(x=>[x.notion_id,x.slug,x.id].includes(s.ref.id))?.name||s.ref.id) : s.transfer?'Fixture point → Fixture hotel · grab':'')):'';
               timeline.append(step);}
              if(!${JSON.stringify(!!options.omitBackups)}&&d.plan.alternatives.length){
                const details=document.createElement('details');details.className='itinerary-alternatives';details.innerHTML='<summary>備案（按需查看）</summary>';
@@ -149,6 +153,13 @@ test('a forever-pending observed response body cannot hang or be certified',asyn
   assert.ok(Date.now()-start<3500);
 });
 test('real B2 reader renders the consumed fixture and passes visible assertions',()=>withPage({realReader:true},r=>assert.equal(r.status,'PASS',JSON.stringify(r.checks))));
+test('real B2 reader renders generic pool copy, keeps stable ref and invents no map',()=>withPage({realReader:true,genericPool:true},async(r,page)=>{
+  assert.equal(r.status,'PASS',JSON.stringify(r.checks));
+  const segment=page.locator(`[data-segment-id="${meal.id}"]`).first();
+  assert.equal(await segment.getAttribute('data-ref-id'),meal.ref.id);
+  assert.match(await segment.innerText(),/Safari 園內用餐/);
+  assert.equal(await segment.locator('a[href*="maps/search"]').count(),0);
+}));
 test('wrong environment, JS error, unreachable, stale build and overflow classify safely',async()=>{
   for(const [opts,status] of [[{environment:'test'},'CONTENT_MISMATCH'],[{jsError:true},'ERROR'],
     [{unreachable:true},'UNREACHABLE'],[{build:'sha256:bad'},'CONTENT_MISMATCH'],
