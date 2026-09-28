@@ -41,6 +41,9 @@ jobs:
               !expectedPoolKeys.includes('bun-ken-ut-luom')) throw new Error('checkout pool missing shortlist key or contains invalid/duplicate keys');
           const expectedPoolCount = expectedPoolKeys.length;
           const emptyProgress = `已吃 0 / ${expectedPoolCount}`;
+          const buildMatch = readFileSync('index.html', 'utf8').match(/<html[^>]*data-site-build="(sha256:[a-f0-9]{64})"[^>]*data-itinerary-mode="candidate"/);
+          if (!buildMatch) throw new Error('checkout root is not the approved candidate build');
+          const expectedBuild = buildMatch[1];
           (async()=>{
             const browser=await chromium.launch({headless:true});
             const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,deviceScaleFactor:2});
@@ -48,7 +51,19 @@ jobs:
             const errors=[];
             page.on('pageerror',e=>errors.push(String(e)));
             page.on('dialog',d=>d.accept());
-            const base='https://ga815647.github.io/phu-quoc-2026-mobile';
+            const apiRevisions=[];
+            const itineraryApi='https://br-silent-haze-b3xw64tm-phqreadonly.compute.c-4.ap-southeast-1.aws.neon.tech/api/itinerary';
+            page.on('response',r=>{if(r.url()===itineraryApi)
+              apiRevisions.push(r.json().then(w=>w?.meta?.content_revision).catch(()=>null));});
+            const base=process.env.PHQ_SMOKE_BASE || 'https://ga815647.github.io/phu-quoc-2026-mobile';
+            const reader=page.locator('[data-itinerary]');
+            const ready=async()=>{
+              await reader.locator('.date-tab[role="tab"]').first().waitFor({timeout:12000});
+              const revision=await reader.getAttribute('data-content-revision');
+              return await reader.getAttribute('data-source')==='live' &&
+                /^phq1:[a-f0-9]{64}$/.test(revision || '') &&
+                apiRevisions.length>0 && revision===await apiRevisions.at(-1);
+            };
             // Poll for this commit: unified root must contain new 4-entry UI, not old hero.
             // Do not pass on stale deploy by fixed sleep alone.
             let live=null;
@@ -59,7 +74,9 @@ jobs:
                   try{await page.waitForSelector('.nav button[data-jump="today"]',{timeout:10000})}catch(e){}
                   await page.waitForTimeout(800);
                   const t=await page.locator('body').innerText();
-                  if(t.includes('今天')&&t.includes('行程')&&t.includes('美食')&&t.includes('旅程')&&t.includes('越南時間')&&t.includes(emptyProgress)){
+                  if(t.includes('今天')&&t.includes('行程')&&t.includes('美食')&&t.includes('旅程')&&t.includes('越南時間')&&t.includes(emptyProgress)&&
+                    await page.locator('html').getAttribute('data-site-build')===expectedBuild &&
+                    await page.locator('html').getAttribute('data-itinerary-mode')==='candidate' && await ready()){
                     live=u; break;
                   }
                 }catch(e){}
@@ -67,7 +84,7 @@ jobs:
               if(live) break;
               await new Promise(r=>setTimeout(r,15000));
             }
-            if(!live) throw new Error(`live site did not match checkout pool count ${expectedPoolCount} (missing 今天/行程/美食/旅程/越南時間/${emptyProgress})`);
+            if(!live) throw new Error(`live candidate site did not match checkout build ${expectedBuild}, live itinerary or pool count ${expectedPoolCount}`);
             console.log('LIVE='+live);
             await page.goto(live,{waitUntil:'domcontentloaded'});
             try{await page.waitForSelector('.nav button[data-jump="today"]',{timeout:10000})}catch(e){}
@@ -75,6 +92,7 @@ jobs:
             await page.reload({waitUntil:'domcontentloaded'});
             try{await page.waitForSelector('.nav button[data-jump="today"]',{timeout:10000})}catch(e){}
             await page.waitForTimeout(2500);
+            if(!await ready()) throw new Error('six-day reader did not load live API revision');
 
             // unified root: index and data.html both new UI, no old huge cover left at root
             for(const u of [`${base}/`,`${base}/data.html`]){
@@ -101,15 +119,17 @@ jobs:
             if(!vt.includes('越南時間')) throw new Error('vietnam tz missing');
             if(!(await page.locator('#tripPhase').innerText()).length) throw new Error('trip phase missing');
 
-            // itinerary date tabs 10/10-10/15 + day panels
-            for(const d of ['10/10','10/11','10/12','10/13','10/14','10/15']){
-              if(await page.locator(`.date-tab[data-date="${d}"]`).count()!==1) throw new Error('missing date tab '+d);
+            // Six-day reader tabs and panels (not the legacy phone slot editor).
+            if(!await ready()) throw new Error('six-day reader fell back instead of consuming the live API');
+            for(const d of ['10-10','10-11','10-12','10-13','10-14','10-15']){
+              if(await reader.locator(`.date-tab[role="tab"]`,{hasText:d}).count()!==1) throw new Error('missing reader date tab '+d);
+              if(await reader.locator(`[data-itinerary-day="phuquoc-2026:2026-${d}"]`).count()!==1) throw new Error('missing reader day '+d);
             }
             await page.locator('.nav button[data-jump="itinerary"]').click();
             await page.waitForTimeout(300);
-            await page.locator('.date-tab[data-date="10/12"]').click();
+            await reader.locator('.date-tab[role="tab"]',{hasText:'10-12'}).click();
             await page.waitForTimeout(200);
-            if(await page.locator('[data-day-panel].active').getAttribute('data-day-panel')!=='10/12') throw new Error('date tab switch failed');
+            if(await reader.locator('[data-itinerary-day].active').getAttribute('data-itinerary-day')!=='phuquoc-2026:2026-10-12') throw new Error('reader date tab switch failed');
 
             // food pool: checked-out public projection, natural-Chinese badges + DB linkage + verified dates
             const visibleText=await page.locator('body').innerText();
@@ -218,6 +238,8 @@ jobs:
             if(!(await page.locator('#foodProgress').innerText()).includes(`0 / ${expectedPoolCount}`)) throw new Error('confirmed reset failed');
             if(!await page.evaluate(()=>localStorage.getItem('phq-v2-food-eaten'))) throw new Error('reset cleared old backup');
 
+            // Candidate preserves the old phone slot editor until Chat acceptance.
+            if(await page.locator('html').getAttribute('data-itinerary-mode')!=='candidate') throw new Error('unexpected mode: old slot editor must remain until Chat acceptance');
             // slots persistence (v3, temp != order change note present)
             await page.locator('.nav button[data-jump="itinerary"]').click();
             await page.waitForTimeout(300);
