@@ -459,7 +459,76 @@ BEGIN
     AND first_return->'transfer'->'to_ref'=jsonb_build_object('type','base','id',config->>'return_base')
     AND first_return->'transfer'->>'mode' IN ('charter','operator_pickup')
     AND first_return->'transfer'->'condition_refs' ? 'return';
-END $$;
+ END $$;
+
+-- The lock metadata is initialization-only. Compare the serialized, persisted
+-- main-route segment under the itinerary FOR UPDATE lock: a pending activity may
+-- be completed once, but an already completed value is immutable to this entry.
+CREATE OR REPLACE FUNCTION public.itinerary_onbird_core_ok(
+ p_core jsonb, p_old jsonb, p_new jsonb DEFAULT NULL) RETURNS boolean
+ LANGUAGE plpgsql IMMUTABLE SECURITY INVOKER SET search_path=pg_catalog,public AS $$
+ DECLARE pending boolean; old_time jsonb; new_time jsonb; t jsonb; as_of text;
+ BEGIN
+  IF p_old IS NULL OR public.itinerary_keys(p_core,
+      ARRAY['date','segment_id','kind','ref','period','time_kind','start_window','day_offset','timezone','duration_minutes'],
+      ARRAY['date','segment_id','kind','ref','time_kind','start_window','day_offset','timezone','duration_minutes']) IS DISTINCT FROM true
+    OR jsonb_typeof(p_core->'date')<>'string' OR p_core->>'date'<>'2026-10-11'
+    OR jsonb_typeof(p_core->'segment_id')<>'string'
+    OR p_core->>'segment_id' !~ '^[a-z0-9][a-z0-9-]{0,39}$'
+    OR p_core->'kind'<>'"activity"'::jsonb
+    OR p_core->'ref'<>'{"type":"card","id":"onbird"}'::jsonb
+    OR p_core->'day_offset'<>'0'::jsonb
+    OR p_core->'timezone'<>'"Asia/Ho_Chi_Minh"'::jsonb THEN RETURN false; END IF;
+  pending := p_core ? 'period';
+  IF pending THEN
+   IF p_core->'period'<>'"morning"'::jsonb OR p_core->'time_kind'<>'"unknown"'::jsonb
+     OR p_core->'start_window'<>'null'::jsonb OR p_core->'duration_minutes'<>'null'::jsonb
+     THEN RETURN false; END IF;
+  ELSIF p_core->'time_kind'<>'"scheduled"'::jsonb
+     OR p_core->'start_window' IS NULL OR p_core->'start_window'='null'::jsonb
+     OR NOT public.itinerary_interval(p_core->'start_window',true)
+     OR NOT public.itinerary_interval(p_core->'duration_minutes',false) THEN RETURN false; END IF;
+  FOR t IN SELECT p_old UNION ALL SELECT p_new WHERE p_new IS NOT NULL LOOP
+   IF t->'id' IS DISTINCT FROM p_core->'segment_id' OR t->'kind' IS DISTINCT FROM p_core->'kind'
+     OR t->'ref' IS DISTINCT FROM p_core->'ref' OR t->'time'->'day_offset' IS DISTINCT FROM p_core->'day_offset'
+     OR t->'time'->'timezone' IS DISTINCT FROM p_core->'timezone' THEN RETURN false; END IF;
+   IF NOT pending THEN
+    IF t->'time'->'kind' IS DISTINCT FROM p_core->'time_kind'
+       OR t->'time'->'start_window' IS DISTINCT FROM p_core->'start_window'
+       OR t->'time'->'duration_minutes' IS DISTINCT FROM p_core->'duration_minutes' THEN RETURN false; END IF;
+   ELSE
+    IF t->'time'->'kind'='"unknown"'::jsonb THEN
+      IF t->'time'->'start_window' IS DISTINCT FROM 'null'::jsonb
+         OR t->'time'->'duration_minutes' IS DISTINCT FROM 'null'::jsonb THEN RETURN false; END IF;
+    ELSIF t->'time'->'kind'='"scheduled"'::jsonb THEN
+      IF t->'time'->'start_window' IS NULL OR t->'time'->'start_window'='null'::jsonb
+        OR NOT public.itinerary_interval(t->'time'->'start_window',true)
+        OR t->'time'->'start_window'->>'max'>='12:00'
+        OR NOT public.itinerary_interval(t->'time'->'duration_minutes',false)
+        OR jsonb_typeof(t->'time'->'source_refs')<>'array'
+        OR NOT EXISTS (SELECT 1 FROM jsonb_array_elements(t->'time'->'source_refs') s
+             WHERE jsonb_typeof(s.value)='string' AND btrim(s.value #>> '{}')<>'')
+        OR EXISTS (SELECT 1 FROM jsonb_array_elements(t->'time'->'source_refs') s
+             WHERE jsonb_typeof(s.value)<>'string' OR btrim(s.value #>> '{}')='')
+       THEN RETURN false; END IF;
+      as_of:=t->'time'->>'evidence_as_of';
+      IF jsonb_typeof(t->'time'->'evidence_as_of')<>'string'
+         OR as_of !~ '^\d{4}-\d{2}-\d{2}$'
+         OR to_char(to_date(as_of,'YYYY-MM-DD'),'YYYY-MM-DD')<>as_of THEN RETURN false; END IF;
+    ELSE RETURN false; END IF;
+   END IF;
+  END LOOP;
+  IF pending AND p_new IS NOT NULL THEN
+   old_time:=p_old->'time'; new_time:=p_new->'time';
+   IF old_time->'kind'='"scheduled"'::jsonb AND
+     (new_time->'kind' IS DISTINCT FROM '"scheduled"'::jsonb
+      OR new_time->'start_window' IS DISTINCT FROM old_time->'start_window'
+      OR (old_time->'duration_minutes'<>'null'::jsonb
+          AND new_time->'duration_minutes' IS DISTINCT FROM old_time->'duration_minutes')) THEN RETURN false; END IF;
+  END IF;
+  RETURN true;
+ EXCEPTION WHEN OTHERS THEN RETURN false;
+ END $$;
 
 CREATE OR REPLACE FUNCTION public.itinerary_update(
  p_itinerary_id text, p_base_version integer, p_expected_content_revision text,
@@ -472,7 +541,7 @@ DECLARE v_version integer; v_constraints jsonb; v_hash text; v_receipt jsonb;
  v_day jsonb; v_old record; v_new_version integer; v_changed jsonb := '[]'::jsonb;
  v_old_segment jsonb; v_decision jsonb; v_required text;
   v_protected jsonb; v_base text; v_locked integer; v_booking_ref jsonb;
-  v_core jsonb; v_alternative jsonb;
+   v_core jsonb; v_alternative jsonb; v_persisted_core jsonb; v_candidate_core jsonb;
 BEGIN
  IF p_itinerary_id IS DISTINCT FROM 'phuquoc-2026' OR p_request_id IS NULL
     OR p_base_version IS NULL OR p_expected_content_revision IS NULL
@@ -510,28 +579,12 @@ BEGIN
   -- Initialized by a separately reviewed insert, never inferred from the day
   -- being edited. Missing/malformed core blocks ALL edits, not just 10/11.
   v_core:=v_constraints->'onbird_core';
-  IF NOT public.itinerary_keys(v_core,
-       ARRAY['date','segment_id','kind','ref','time_kind','start_window','day_offset','timezone','duration_minutes'],
-       ARRAY['date','segment_id','kind','ref','time_kind','start_window','day_offset','timezone','duration_minutes'])
-    OR v_core->>'date'<>'2026-10-11' OR v_core->>'kind'<>'activity'
-    OR v_core->'ref'<>'{"type":"card","id":"onbird"}'::jsonb
-    OR v_core->>'segment_id' !~ '^[a-z0-9][a-z0-9-]{0,39}$'
-    OR v_core->>'time_kind'<>'scheduled'
-    OR v_core->>'timezone'<>'Asia/Ho_Chi_Minh'
-    OR v_core->'day_offset'<>'0'::jsonb
-    OR v_core->'start_window'='null'::jsonb
-    OR NOT public.itinerary_interval(v_core->'start_window',true)
-    OR NOT public.itinerary_interval(v_core->'duration_minutes',false)
-    OR NOT EXISTS (SELECT 1 FROM public.itinerary_days d,
-         LATERAL jsonb_array_elements(d.plan->'segments') s
-       WHERE d.date=DATE '2026-10-11' AND d.main_card_slug='onbird'
-         AND d.day_kind='activity' AND s->>'id'=v_core->>'segment_id'
-         AND s->>'kind'=v_core->>'kind' AND s->'ref'=v_core->'ref'
-         AND s->'time'->>'kind'=v_core->>'time_kind'
-         AND s->'time'->'start_window'=v_core->'start_window'
-         AND s->'time'->'day_offset'=v_core->'day_offset'
-         AND s->'time'->>'timezone'=v_core->>'timezone'
-         AND s->'time'->'duration_minutes'=v_core->'duration_minutes') THEN
+   SELECT s.value INTO v_persisted_core FROM public.itinerary_days d,
+      LATERAL jsonb_array_elements(d.plan->'segments') s
+     WHERE d.itinerary_id=p_itinerary_id AND d.date=DATE '2026-10-11'
+       AND d.main_card_slug='onbird' AND d.day_kind='activity'
+       AND s.value->>'id'=v_core->>'segment_id';
+   IF NOT public.itinerary_onbird_core_ok(v_core,v_persisted_core) THEN
    RAISE EXCEPTION USING ERRCODE='22023', MESSAGE='LOCKED_ARRANGEMENT';
   END IF;
 
@@ -611,14 +664,10 @@ BEGIN
     OR (v_protected ? 'day_kind' AND v_day->>'day_kind'<>v_protected->>'day_kind') THEN
     RAISE EXCEPTION USING ERRCODE='22023', MESSAGE='LOCKED_ARRANGEMENT';
    END IF;
-   IF v_old.date=DATE '2026-10-11' THEN
-    IF NOT EXISTS (SELECT 1 FROM jsonb_array_elements(v_day->'plan'->'segments') s
-      WHERE s->>'id'=v_core->>'segment_id' AND s->>'kind'=v_core->>'kind'
-        AND s->'ref'=v_core->'ref' AND s->'time'->>'kind'=v_core->>'time_kind'
-        AND s->'time'->'start_window'=v_core->'start_window'
-        AND s->'time'->'day_offset'=v_core->'day_offset'
-        AND s->'time'->>'timezone'=v_core->>'timezone'
-        AND s->'time'->'duration_minutes'=v_core->'duration_minutes') THEN
+    IF v_old.date=DATE '2026-10-11' THEN
+     SELECT s.value INTO v_candidate_core FROM jsonb_array_elements(v_day->'plan'->'segments') s
+       WHERE s.value->>'id'=v_core->>'segment_id';
+     IF v_candidate_core IS NULL OR NOT public.itinerary_onbird_core_ok(v_core,v_persisted_core,v_candidate_core) THEN
      RAISE EXCEPTION USING ERRCODE='22023', MESSAGE='LOCKED_ARRANGEMENT';
     END IF;
    END IF;
@@ -726,7 +775,8 @@ REVOKE ALL ON FUNCTION public.itinerary_validate_day(jsonb),public.itinerary_rea
 REVOKE ALL ON FUNCTION public.itinerary_payload(text) FROM PUBLIC,phq_web_ro;
  REVOKE ALL ON FUNCTION public.itinerary_dependency_ids(text,jsonb),
    public.itinerary_explicit_decision(jsonb,jsonb,text),
-   public.itinerary_starfish_route_ok(jsonb,jsonb),
+    public.itinerary_starfish_route_ok(jsonb,jsonb),
+    public.itinerary_onbird_core_ok(jsonb,jsonb,jsonb),
    public.itinerary_update(text,integer,text,uuid,jsonb,jsonb,text,text,text) FROM PUBLIC,phq_web_ro;
 GRANT SELECT (itinerary_id,payload,content_revision) ON public.itinerary_public TO phq_web_ro;
 GRANT EXECUTE ON FUNCTION public.itinerary_payload(text) TO phq_web_ro;

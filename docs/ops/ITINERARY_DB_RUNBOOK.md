@@ -1,7 +1,10 @@
 # Itinerary 006: database candidate and release runbook
 
-**Status:** local PG18 engineering verification only. Neither production migration nor
-six-day initialization is authorized by this file. `006_itinerary_model.sql` is
+**Status:** local PG18 engineering verification only. The user's 2026-09-28
+scoped approval covers staged isolated-branch qualification, production 006/ACL
+and separately reviewed unknown-value initialization; **none is deployed by this file**.
+The operator must verify target, artifact and stage authorization before execution.
+`006_itinerary_model.sql` is
 additive and contains **no itinerary rows**. Synthetic `fixture-*` content belongs
 only in an isolated test database, never in Neon or published JSON.
 
@@ -32,8 +35,9 @@ content rules still apply to maintenance identities.
 
 1. Get explicit approval for the **specified** isolated branch and the exact
    migration SHA256. Confirm target project `holy-fog-65935796`, actual target
-   branch ID, PG18 and schema baseline 003–005; do not infer target from DSN
-   labels. For production, obtain a **separate** explicit migration/ACL approval.
+    branch ID, PG18 and schema baseline 003–005; do not infer target from DSN
+    labels. Production is a separate gated operation under the scoped approval;
+    record the release-specific target and reviewed artifact before applying it.
 2. Verify role and owner using SQL `SELECT current_database(), current_user,
    session_user, current_setting('server_version');` and `SELECT
    pg_get_userbyid(proowner) FROM pg_proc WHERE oid =
@@ -76,7 +80,7 @@ Failures block promotion; do not repair by broad GRANT.
 
 ## 3. Approved release and separate content initialization
 
-Only after isolated results, review and **explicit production authorization**:
+Only after isolated results, review and confirmation of the **scoped production authorization**:
 
 1. Confirm production branch ID `br-silent-haze-b3xw64tm` in Neon against the
    approved release record, plus current schema/counts/maintainer identity and
@@ -87,8 +91,9 @@ Only after isolated results, review and **explicit production authorization**:
 2. Read back definition/ACL and counts; all three itinerary tables must still
    have zero rows. Log target branch ID, SHA256, UTC `applied_at`, operator,
    before/after schema and ACL result. If identity or ACL mismatches, stop.
-3. **Separate approval gate:** obtain the accepted six-day timeline with
-   evidence-backed meals, transfers, source dates and locked flight/lodging/
+  3. **Separate content review gate:** obtain the accepted six-day timeline with
+    honestly unknown meals, transfers or times where evidence is unavailable,
+    source dates where known, and locked flight/lodging/
    10/11 OnBird constraints. An operator reviews a *separate* initialization
    script; never paste test fixtures or infer itinerary defaults from schema.
    In one transaction insert the fixed trip (`version=1`), six stable day IDs
@@ -109,17 +114,47 @@ Only after isolated results, review and **explicit production authorization**:
     not forbid `light` days: they may remain without a main card or contain
     an actual main activity. `activity` days still require a main card.
 
-    - `locked_constraints.onbird_core` is an object with exactly
-      `date:"2026-10-11"`, `segment_id` (the reviewed main-route activity ID),
-      `kind:"activity"`, `ref:{"type":"card","id":"onbird"}`,
-      `time_kind:"scheduled"`, `start_window:{"min":"HH:mm","max":"HH:mm"}`
-      (non-null reviewed local morning window), `day_offset:0`,
-      `timezone:"Asia/Ho_Chi_Minh"` and `duration_minutes` (the reviewed
-      interval or null). The initial 10/11 segment must match all fields.
-      Missing/malformed core blocks *every* ordinary itinerary edit; moving,
-      renaming or demoting that segment blocks the 10/11 edit, whereas unrelated
-      breakfast/evening changes are allowed. Do not copy the synthetic test
-      window into the actual initialization.
+     - `locked_constraints.onbird_core` has **one of two exact key shapes**.
+       Both contain `date:"2026-10-11"`, `segment_id` (reviewed operative
+       main-route activity ID), `kind:"activity"`,
+       `ref:{"type":"card","id":"onbird"}`, `day_offset:0`,
+       `timezone:"Asia/Ho_Chi_Minh"`, `time_kind`, `start_window`,
+       `duration_minutes`. The legacy fully concrete form has **no** `period`,
+       `time_kind:"scheduled"`, a non-null reviewed local clock interval
+       `start_window:{"min":"HH:mm","max":"HH:mm"}`, and a reviewed numeric
+       duration interval or null. For the approved fixed Morning activity with
+       **unknown exact time**, add `period:"morning"`, set `time_kind:"unknown"`,
+       `start_window:null`, `duration_minutes:null`. Example private lock shape
+       (not an activity time or content seed):
+
+       ```json
+       {"date":"2026-10-11","segment_id":"<reviewed-main-id>","kind":"activity",
+        "ref":{"type":"card","id":"onbird"},"period":"morning",
+        "time_kind":"unknown","start_window":null,"day_offset":0,
+        "timezone":"Asia/Ho_Chi_Minh","duration_minutes":null}
+       ```
+
+       The initial 10/11 main-route segment must match the lock's ID/kind/ref,
+       timezone/day offset and unknown time (with its own valid public time
+       fields). No fabricated start window: Morning is a classification, not
+       a confirmed start value. Missing/malformed core blocks *all* ordinary
+       edits; moving, renaming, demoting or changing the OnBird reference blocks
+       10/11. Breakfast, evening and separately represented operator pickup
+       transfer are not this protected activity; pickup remains editable with
+       its own evidence under normal plan rules.
+
+       A controlled `itinerary_update` may complete the pending activity with
+       `kind:"scheduled"`, a source-backed local interval entirely before 12:00
+       (`max` strictly less than `12:00`), nonempty `source_refs` and a valid
+       `evidence_as_of` calendar date. A null duration may be filled at that time
+       or later with evidence. The serialized persisted segment is compared under
+       the itinerary row lock: once a window or duration is filled, ordinary
+       updates cannot change/clear it; unrelated notes, meals and evening plans
+       remain editable. The private initialization metadata is not rewritten.
+       **First factual completion is not approval to reschedule**: correcting a
+       filled value requires separate authorization and reviewed exceptional
+       procedure outside the ordinary Chat entry. Do not copy synthetic fixture
+       times into initialization or imply a concrete time from booking pickup.
     - `locked_constraints.starfish` is an object with exactly `conditions`
       (at least two reviewed machine keys including `return`, each mapped to
       the **exact visible public text already in** `cards.gates` for Starfish)

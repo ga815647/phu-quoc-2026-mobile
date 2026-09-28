@@ -97,6 +97,114 @@ class UpdateTests(ItineraryDBCase):
             finally:
                 self.execute('ROLLBACK TO SAVEPOINT core_case')
 
+    def pending_core(self):
+        day = self.candidate('2026-10-11')
+        day['plan']['segments'][0]['time'].update(
+            kind='unknown', start_window=None, duration_minutes=None)
+        core = {'date':'2026-10-11','segment_id':'main','kind':'activity',
+                'ref':{'type':'card','id':'onbird'},'period':'morning',
+                'time_kind':'unknown','start_window':None,'day_offset':0,
+                'timezone':'Asia/Ho_Chi_Minh','duration_minutes':None}
+        self.execute('UPDATE itineraries SET locked_constraints=jsonb_set(locked_constraints,\'{onbird_core}\',%s::jsonb)',(json.dumps(core),))
+        self.execute('UPDATE itinerary_days SET plan=%s::jsonb WHERE date=\'2026-10-11\'',(json.dumps(day['plan']),))
+        return day, core
+
+    def test_pending_core_first_completion_and_frozen_refinement(self):
+        pending, _ = self.pending_core()
+        self.assert_projection_readable()
+        breakfast = copy.deepcopy(self.candidate('2026-10-10')['plan']['segments'][1])
+        breakfast['id'] = 'breakfast'
+        pending['plan']['segments'].append(breakfast)
+        other = self.candidate('2026-10-12')
+        other['plan']['public_note'] = 'other day'
+        self.update(self.new_request_id(),[pending,other])
+        self.assert_projection_readable()
+        completed = copy.deepcopy(pending)
+        time = completed['plan']['segments'][0]['time']
+        time.update(kind='scheduled',start_window={'min':'09:00','max':'11:59'},
+                    duration_minutes={'min':60,'max':90},source_refs=['operator-confirmation'],
+                    evidence_as_of='2026-09-28')
+        before = self.snapshot()
+        receipt = self.update(self.new_request_id(),[completed])
+        self.assertEqual(self.snapshot()['audit_count'],before['audit_count']+1)
+        self.assertEqual(receipt['content_revision'],self.snapshot()['revision'])
+        self.assert_projection_readable()
+        for mutation in ('clear','reschedule','duration','demote','rename','ref','afternoon'):
+            bad = copy.deepcopy(completed)
+            segment = bad['plan']['segments'][0]
+            if mutation=='clear': segment['time'].update(kind='unknown',start_window=None,duration_minutes=None)
+            if mutation=='reschedule': segment['time']['start_window']={'min':'08:00','max':'09:00'}
+            if mutation=='duration': segment['time']['duration_minutes']={'min':30,'max':60}
+            if mutation=='demote': segment['kind']='optional'
+            if mutation=='rename': segment['id']='other'
+            if mutation=='ref': segment['ref']={'type':'card','id':'cable'}
+            if mutation=='afternoon': segment['time']['start_window']={'min':'12:00','max':'13:00'}
+            with self.subTest(mutation=mutation):
+                self.failure('22023',[bad],message='INVALID_PLAN' if mutation in ('demote','ref') else 'LOCKED_ARRANGEMENT')
+        later=copy.deepcopy(completed)
+        later['plan']['public_note']='evening revised'
+        later['plan']['segments'][0]['note']='source detail preserved'
+        self.update(self.new_request_id(),[later])
+        self.assert_projection_readable()
+
+    def test_pending_completion_requires_morning_and_evidence_atomically(self):
+        pending, _ = self.pending_core()
+        valid = copy.deepcopy(pending)
+        valid['plan']['segments'][0]['time'].update(kind='scheduled',
+            start_window={'min':'08:00','max':'10:00'},source_refs=['operator'],evidence_as_of='2026-09-28')
+        for mutation in ('no-source','no-date','bad-date','afternoon','cross-noon','date','demote','move','wrong-ref'):
+            bad=copy.deepcopy(valid)
+            segment=bad['plan']['segments'][0]
+            if mutation=='no-source': segment['time']['source_refs']=[]
+            if mutation=='no-date': segment['time']['evidence_as_of']=None
+            if mutation=='bad-date': segment['time']['evidence_as_of']='2026-02-30'
+            if mutation=='afternoon': segment['time']['start_window']={'min':'12:00','max':'13:00'}
+            if mutation=='cross-noon': segment['time']['start_window']={'min':'11:00','max':'12:00'}
+            if mutation=='date': bad['date']='2026-10-12'
+            if mutation=='demote': segment['kind']='optional'
+            if mutation=='move': bad['plan']['segments']=[];bad['plan']['alternatives']=[{
+                'id':'backup','trigger_kind':'manual','trigger_text':'Backup',
+                'action':'use_alternative','target_segment_ids':[],
+                'replacement_segments':[segment]}]
+            if mutation=='wrong-ref': segment['ref']={'type':'card','id':'cable'}
+            self.failure('22023',[bad])
+        self.update(self.new_request_id(),[valid])
+        self.assert_projection_readable()
+
+    def test_pending_duration_can_be_added_later_and_pickup_is_separate(self):
+        pending, _ = self.pending_core()
+        pickup = copy.deepcopy(self.candidate('2026-10-10')['plan']['segments'][2])
+        pickup['id']='pickup'
+        pickup['transfer'].update(mode='operator_pickup',to_ref={'type':'card','id':'onbird'})
+        pending['plan']['segments'].insert(0,pickup)
+        self.update(self.new_request_id(),[pending])
+        first=copy.deepcopy(pending)
+        first['plan']['segments'][1]['time'].update(kind='scheduled',
+            start_window={'min':'09:00','max':'10:30'},source_refs=['operator'],evidence_as_of='2026-09-28')
+        self.update(self.new_request_id(),[first])
+        filled=copy.deepcopy(first)
+        filled['plan']['segments'][1]['time'].update(duration_minutes={'min':60,'max':90},
+            source_refs=['operator-duration'],evidence_as_of='2026-09-29')
+        filled['plan']['segments'][0]['time'].update(kind='estimated',
+            start_window={'min':'07:00','max':'08:00'},source_refs=['pickup-source'],evidence_as_of='2026-09-29')
+        self.update(self.new_request_id(),[filled])
+        self.assert_projection_readable()
+        bad=copy.deepcopy(filled)
+        bad['plan']['segments'][1]['time']['duration_minutes']=None
+        self.failure('22023',[bad],message='LOCKED_ARRANGEMENT')
+
+    def test_pending_malformed_core_blocks_all_days(self):
+        _, core = self.pending_core()
+        for bad in ({**core,'period':'afternoon'}, {**core,'start_window':{'min':'08:00','max':'09:00'}},
+                    {**core,'duration_minutes':{'min':30,'max':60}}, {**core,'time_kind':'scheduled'},
+                    {k:v for k,v in core.items() if k!='period'}, {**core,'unexpected':True}):
+            self.execute('SAVEPOINT bad_core')
+            try:
+                self.execute('UPDATE itineraries SET locked_constraints=jsonb_set(locked_constraints,\'{onbird_core}\',%s::jsonb)',(json.dumps(bad),))
+                self.failure('22023',[self.candidate('2026-10-12')],message='LOCKED_ARRANGEMENT')
+            finally:
+                self.execute('ROLLBACK TO SAVEPOINT bad_core')
+
     def test_starfish_requires_reviewed_gate_and_real_return(self):
         self.execute('INSERT INTO cards(slug,name,gates) VALUES (%s,%s,%s)',('starfish','Starfish',json.dumps(['Weather and boat checked','Return charter arranged'])))
         day=self.candidate('2026-10-12','starfish')
@@ -460,12 +568,16 @@ class ConcurrentUpdateTests(unittest.TestCase):
             cur.execute("SELECT i.version, v.content_revision FROM itineraries i JOIN itinerary_public v ON i.id=v.itinerary_id WHERE i.id=%s", (ID,))
             return cur.fetchone()
 
-    def race(self, same_request):
+    def race(self, same_request, day_date='2026-10-12', complete=False):
         base, revision = self.state()
         with self.db.cursor() as cur:
-            cur.execute("SELECT jsonb_build_object('id',id,'date',date,'day_kind',day_kind,'main_card_slug',main_card_slug,'plan',plan) FROM itinerary_days WHERE date='2026-10-12'")
+            cur.execute("SELECT jsonb_build_object('id',id,'date',date,'day_kind',day_kind,'main_card_slug',main_card_slug,'plan',plan) FROM itinerary_days WHERE date=%s",(day_date,))
             day = cur.fetchone()[0]
-        day['plan']['public_note'] = 'raced'
+        if complete:
+            day['plan']['segments'][0]['time'].update(kind='scheduled',
+              start_window={'min':'09:00','max':'10:00'},source_refs=['operator'],evidence_as_of='2026-09-28')
+        else:
+            day['plan']['public_note'] = 'raced'
         req = str(uuid.uuid4())
         barrier = threading.Barrier(2)
         results = []
@@ -503,6 +615,20 @@ class ConcurrentUpdateTests(unittest.TestCase):
         with self.db.cursor() as cur:
             cur.execute("SELECT count(*) FROM content_revisions WHERE target_table='itinerary_days'")
             self.assertEqual(cur.fetchone()[0],1)
+
+    def test_pending_completion_is_serialized(self):
+        with self.db.cursor() as cur:
+            cur.execute("""UPDATE itineraries SET locked_constraints=jsonb_set(
+              locked_constraints,'{onbird_core}',
+              ((locked_constraints->'onbird_core') - 'start_window'::text - 'time_kind'::text) ||
+               '{"period":"morning","start_window":null,"time_kind":"unknown"}'::jsonb)""")
+            cur.execute("""UPDATE itinerary_days SET plan=jsonb_set(plan,
+              '{segments,0,time}',((plan #> '{segments,0,time}') - 'start_window'::text - 'kind'::text) ||
+              '{"start_window":null,"kind":"unknown"}'::jsonb) WHERE date='2026-10-11'""")
+        self.db.commit()
+        results=self.race(False,'2026-10-11',True)
+        self.assertEqual(sorted(x[0] for x in results),['40001','ok'])
+        self.assertEqual(self.state()[0],2)
 
     def test_pool_reassignment_while_update_waits(self):
         base, revision = self.state()
