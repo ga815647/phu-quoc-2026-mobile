@@ -28,3 +28,13 @@
 - 當前圖像採合成 fixture（含英文占位標籤）；真實六日內容、OnBird 已核定窗口與未核實餐廳／交通研究留給 Chat 和正式資料初始化流程，不以 preview JSON 代入。正式 006／ACL／Function、fallback publication、preview／正式部署、Chat 新鏈讀回與手機實機驗收各自待授權及驗證。
 - sessionStorage 僅保存瀏覽分頁的閱讀日期；它不是旅遊行程編輯，也不改舊 `phq-v3-slots`／吃過資料。日期切換仍是閱讀切換，不會將時間先後推為已完成。
 - 報告與 commit 均只限本任務允許路徑；工作區原有 `docs/ops/REDESIGN_SCOPE.md` 等其他變更未觸碰。
+
+## Task 1 fix 1 — A 視覺與逐寬度操作補證（`b2a9e1c`）
+
+依 `task-1-review.md` 三點審查回饋修正；**仍是本地工程候選，不等於部署或 Chat 驗收**。
+
+1. A 閱讀階層：用 envelope 的 `start_window` 或「時間待定」在左側軌道呈現時鐘；時區、確定性、時長為主文下方三個較低權重的獨立文字，不省略 Asia/Ho_Chi_Minh／已核對／估算／待估語義。主標海藍底，取 `main_card_slug` 的公開卡名或翻譯 `day_kind`（`arrival/activity/light/departure`；不識別時用中性「當日安排」）；餐飲與交通分別是日落邊線與海藍邊線的潮汐底連接段。只動 reader 本身，沒有複製預覽旅遊內容。
+2. 瀏覽腳本在 320／390／430px **各自**切換日期、核對 Today、地圖可見與 ≥44px、打開／關閉備案、按刷新、令 live 失敗並核對備援與 Today 非最新，再復原 live；檢查舊 slots 未改、舊暫排控制存在、無橫向溢出、日期和刷新 ≥44px。各寬度都留下 reader 截圖 `/tmp/opencode/phq-coastal-reader-{320,390,430}.png` 及包含 Today／刷新／舊暫排的整頁截圖 `/tmp/opencode/phq-coastal-context-{320,390,430}.png`。截圖用的本機 CJK 字型仍僅測試注入，缺字型時跳過擷圖但操作斷言繼續執行。
+3. 初次 API 合成內容新增「舊備註測試」；重新 route 同一份有效六日 envelope 後斷言新店名／新備註／新卡名出現，舊店名、舊備註、Today 舊卡名與當日舊卡名消失；未知時間仍是未知。預期 RED：尚無 `.day-header`；分欄細節尚無三個 span 時 `0 !== 3`。GREEN 後重建候選並通過 browser。
+
+修正後驗證：`node tools/verify/itinerary_reader_browser.mjs` PASS；`node --test tools/verify/test_itinerary_reader.mjs tools/verify/test_site_check_browser.mjs` **26/26 PASS**；`node tools/verify/itinerary_e2e_candidate.mjs` **LOCAL FIXTURE PASS**；`git diff --check` PASS。候選輸出仍在 `/tmp/opencode/phq-itinerary-candidate/`。本輪未重跑兩份 Python journey／transport 回歸或完整 Node 40-test 套件；上段原交付結果不冒充本輪重跑。320px 左欄帶「次日」的區間會依可用寬度自然換行，不溢出也不壓縮字義。正式資料／發布／Chat 真讀回仍由 controller 的其他任務處理。
