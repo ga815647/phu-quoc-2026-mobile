@@ -13,4 +13,32 @@
 @media(max-width:380px){.filters{grid-template-columns:1fr}.choice-grid{grid-template-columns:1fr}.nav button{font-size:13px}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 .depart-check{padding:6px 12px}.depart-check summary{cursor:pointer;min-height:44px;display:flex;align-items:center;font-weight:800;font-size:18px;letter-spacing:-.02em}.depart-check .prep-grid{margin-top:10px}
-.itinerary-reader{min-width:0}.itinerary-reader .day-panel{min-width:0;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px}.itinerary-reader .step{grid-template-columns:minmax(0,1fr);gap:2px;overflow-wrap:anywhere}.itinerary-reader .date-tab{min-width:44px}.itinerary-reader .date-tabs{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:4px}.itinerary-reader .tiny{overflow-wrap:anywhere}.itinerary-alternatives{margin-top:12px;border-top:1px solid var(--line)}.itinerary-alternatives summary{min-height:44px;display:flex;align-items:center;font-weight:800;cursor:pointer}.itinerary-alternatives .panel{margin-top:8px}.itinerary-reader button:focus-visible,.itinerary-reader summary:focus-visible,.itinerary-reader a:focus-visible,#refreshItinerary:focus-visible{outline:3px solid var(--brand);outline-offset:2px}
+[data-itinerary]{--coast:#006b83;--deep:#173b4a;--foam:#f5fafc;--tide:#ddf1f5;--sunset:#e8644a;min-width:0;color:var(--deep);font-family:"Noto Sans TC",ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang TC","Microsoft JhengHei",sans-serif}
+[data-itinerary] .itinerary-provenance{color:#365968;overflow-wrap:anywhere;margin:0 0 14px;padding:2px 12px;border-left:3px solid var(--coast);background:var(--foam);line-height:1.55;font-size:13px}
+[data-itinerary] .itinerary-provenance summary{min-height:44px;display:flex;align-items:center;cursor:pointer}
+[data-itinerary] .itinerary-provenance p{margin:0 0 10px}
+[data-itinerary] .date-tabs{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:4px;margin:0 0 14px}
+[data-itinerary] .date-tab{min-width:0;min-height:48px;padding:7px 1px;border-radius:8px;border-color:#b9d8df;color:var(--deep);background:var(--foam);font-size:clamp(11px,3vw,14px);font-variant-numeric:tabular-nums}
+[data-itinerary] .date-tab[aria-pressed="true"]{background:var(--coast);border-color:var(--coast);color:#fff}
+[data-itinerary] .day-panel{min-width:0;padding:20px 14px 18px;border:1px solid #b9d8df;border-radius:16px;background:var(--foam);overflow-wrap:anywhere}
+[data-itinerary] .day-panel>.today-big{font-size:clamp(26px,7vw,30px);line-height:1.25;color:var(--deep);font-weight:850;margin:0 0 8px;letter-spacing:-.025em}
+[data-itinerary] .day-panel>.tiny{color:#365968;font-size:14px;margin-bottom:14px}
+[data-itinerary] .coastal-route{display:block;position:relative;margin-top:18px;padding-left:0;background:linear-gradient(var(--coast),var(--coast)) 14px 18px / 2px calc(100% - 44px) no-repeat}
+[data-itinerary] .coastal-route .step{position:relative;display:block;min-width:0;margin:0 0 8px 30px;padding:7px 6px 20px 12px;border:0;background:transparent;overflow-wrap:anywhere}
+[data-itinerary] .coastal-route .step::before{content:"";position:absolute;left:-23px;top:14px;width:12px;height:12px;border:3px solid var(--coast);border-radius:50%;background:var(--foam);box-sizing:border-box}
+[data-itinerary] .coastal-route .step.route-activity::before{background:var(--coast);box-shadow:0 0 0 4px var(--tide)}
+[data-itinerary] .coastal-route .step.route-meal{background:var(--tide);border-radius:10px;padding:12px;margin-left:34px;margin-right:0}
+[data-itinerary] .coastal-route .step.route-meal::before{left:-27px;background:var(--sunset);border-color:var(--sunset)}
+[data-itinerary] .coastal-route .step.route-transfer{padding-top:3px;padding-bottom:12px;color:#365968}
+[data-itinerary] .coastal-route .step.route-transfer::before{left:-20px;top:10px;width:6px;height:6px;border:0;background:var(--coast)}
+[data-itinerary] .coastal-route .step.route-optional::before{border-color:var(--sunset)}
+[data-itinerary] .coastal-route .time{font-size:13px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--coast);line-height:1.45;margin-bottom:4px}
+[data-itinerary] .coastal-route .step b{font-size:17px;line-height:1.4;color:var(--deep)}
+[data-itinerary] .coastal-route .step p{font-size:16px;line-height:1.5;color:var(--deep);margin:5px 0 0}
+[data-itinerary] .coastal-route .step p.tiny{font-size:13px;color:#365968;line-height:1.5}
+[data-itinerary] .place-link{border-color:#a8cbd4;color:var(--coast);font-size:14px;margin:8px 8px 0 0;min-height:44px}
+[data-itinerary] .itinerary-alternatives{margin-top:14px;border-top:1px solid #b9d8df}
+[data-itinerary] .itinerary-alternatives summary{min-height:48px;display:flex;align-items:center;font-weight:800;cursor:pointer;color:var(--coast)}
+[data-itinerary] .itinerary-alternatives .panel{margin-top:8px;box-shadow:none;border-color:#b9d8df}
+[data-itinerary] .itinerary-alternatives .step{display:block;overflow-wrap:anywhere}
+[data-itinerary] button:focus-visible,[data-itinerary] summary:focus-visible,[data-itinerary] a:focus-visible{outline:3px solid var(--sunset);outline-offset:2px}

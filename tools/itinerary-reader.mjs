@@ -161,7 +161,7 @@ function evidence(body,dates,source) {
   if(source)body.append(el('p','tiny',`依據：${source}`));
 }
 function appendSegment(list,s,refs,alternatives) {
-  const item=el('div','step');item.dataset.segmentId=s.id;
+  const item=el('div',`step route-${s.kind}`);item.dataset.segmentId=s.id;item.dataset.kind=s.kind;
   item.dataset.refType=s.ref?.type || '';item.dataset.refId=s.ref?.id || '';
   const time=el('div','time',timeText(s.time));const body=el('div');
   body.append(el('b','',s.label));
@@ -196,17 +196,21 @@ function appendSegment(list,s,refs,alternatives) {
 export function renderItinerary(root,loaded) {
   const {envelope,mode}=loaded;validateEnvelope(envelope);
   const {data,meta}=envelope;const fragment=document.createDocumentFragment();
-  const info=el('div','tiny',`${mode==='live'?'線上資料':'備援資料（非最新）'} · 版本 ${meta.content_revision} · ${mode==='fallback'?'匯出 '+(meta.exported_at||'日期未知'):'取得 '+meta.fetched_at} · 最後讀取 ${new Date().toISOString()}`);
+  const selected=root.querySelector('.day-panel.active')?.dataset.itineraryDay || (()=>{try{return sessionStorage.getItem('phq-itinerary-selected-day')}catch{return null}})();
+  const activeDay=data.days.some(d=>d.id===selected)?selected:data.days[0].id;
+  const info=el('details','itinerary-provenance');
+  info.append(el('summary','',`${mode==='live'?'線上資料':'備援資料（非最新）'} · ${mode==='fallback'?'匯出 '+(meta.exported_at||'日期未知'):'取得 '+meta.fetched_at} · 版本與讀取資訊`));
+  info.append(el('p','tiny',`版本 ${meta.content_revision} · 最後讀取 ${new Date().toISOString()}`));
   fragment.append(info);
   const tabs=el('div','date-tabs');tabs.setAttribute('role','tablist');tabs.setAttribute('aria-label','日期切換 10/10–10/15');fragment.append(tabs);
   const panels=el('div');fragment.append(panels);
   data.days.forEach((d,index)=>{
-    const button=el('button','date-tab',d.date.slice(5));button.type='button';button.setAttribute('role','tab');button.setAttribute('aria-selected',String(index===0));button.setAttribute('aria-pressed',String(index===0));tabs.append(button);
-    const panel=el('div','day-panel'+(index===0?' active':''));panel.dataset.itineraryDay=d.id;panel.dataset.mainCard=d.main_card_slug||'';
+    const button=el('button','date-tab',d.date.slice(5));button.type='button';button.setAttribute('role','tab');button.setAttribute('aria-selected',String(d.id===activeDay));button.setAttribute('aria-pressed',String(d.id===activeDay));tabs.append(button);
+    const panel=el('div','day-panel'+(d.id===activeDay?' active':''));panel.dataset.itineraryDay=d.id;panel.dataset.mainCard=d.main_card_slug||'';
     panel.append(el('div','today-big',d.date+(d.main_card_slug ? ' · '+nameFor(data.refs,{type:'card',id:d.main_card_slug}) : ' · '+d.day_kind)));
     if(d.plan.public_note)panel.append(el('p','tiny',d.plan.public_note));
     if(!d.plan.segments.length)panel.append(el('p','tiny','當日目前沒有安排段落。'));
-    const list=el('div','timeline');d.plan.segments.forEach(s=>appendSegment(list,s,data.refs,d.plan.alternatives));panel.append(list);
+    const list=el('div','timeline coastal-route');d.plan.segments.forEach(s=>appendSegment(list,s,data.refs,d.plan.alternatives));panel.append(list);
     if(d.plan.alternatives.length){const details=el('details','itinerary-alternatives');details.append(el('summary','','備案（按需查看）'));
       const actions={use_alternative:'改用備案，取代',skip_optional:'略過可選',return_or_rest:'返回或休息，調整'};
       d.plan.alternatives.forEach(a=>{const group=el('div','panel pad');group.append(el('b','',a.trigger_text));
@@ -214,7 +218,7 @@ export function renderItinerary(root,loaded) {
         group.append(el('p','tiny',`${actions[a.action]} ${targets.join('、')}`));
         a.replacement_segments.forEach(s=>appendSegment(group,s,data.refs,d.plan.alternatives));details.append(group);});panel.append(details);}
     panels.append(panel);
-    button.addEventListener('click',()=>{tabs.querySelectorAll('button').forEach(b=>{b.setAttribute('aria-selected',String(b===button));b.setAttribute('aria-pressed',String(b===button));});panels.querySelectorAll('.day-panel').forEach(p=>p.classList.toggle('active',p===panel));});
+    button.addEventListener('click',()=>{tabs.querySelectorAll('button').forEach(b=>{b.setAttribute('aria-selected',String(b===button));b.setAttribute('aria-pressed',String(b===button));});panels.querySelectorAll('.day-panel').forEach(p=>p.classList.toggle('active',p===panel));try{sessionStorage.setItem('phq-itinerary-selected-day',d.id)}catch{}});
   });
   root.replaceChildren(fragment);
   root.dataset.contentRevision=meta.content_revision;root.dataset.source=mode;root.dataset.schemaVersion=String(meta.schema_version);

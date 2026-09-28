@@ -521,7 +521,8 @@ def main():
     foods_js = ""
     transport_js = ""
     itinerary_days = build_itinerary_days_html() if ITINERARY_MODE == 'legacy' else (
-        '<div class="itinerary-reader" data-itinerary><div class="tiny">六日行程載入中…</div></div>'
+        '<div class="itinerary-reader" data-itinerary aria-label="每日海岸路線">'
+        '<div class="tiny">六日路線載入中…</div></div>'
         '<div class="row-actions"><button class="ghost" id="refreshItinerary" type="button">重新整理資料</button></div>')
     if DYNAMIC:
         api = _API_BASE

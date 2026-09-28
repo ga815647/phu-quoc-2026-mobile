@@ -5,7 +5,8 @@ import {createServer} from 'node:http';
 import {execFileSync} from 'node:child_process';
 import {resolve,join,sep,extname} from 'node:path';
 
-const site=resolve(process.argv[process.argv.indexOf('--site')+1]||'/tmp/opencode/phq-itinerary-candidate');
+const siteIndex=process.argv.indexOf('--site');
+const site=resolve(siteIndex<0?'/tmp/opencode/phq-itinerary-candidate':process.argv[siteIndex+1]);
 const fixture=JSON.parse(await readFile(new URL('./fixtures/itinerary-envelope.json',import.meta.url)));
 const staticHandler=directory=>async(req,res)=>{
   const path=resolve(directory,'.'+decodeURIComponent(new URL(req.url,'http://localhost').pathname));
@@ -29,14 +30,18 @@ try {
   await page.clock.install({time:new Date('2026-10-12T05:00:00Z')});
   const slot='{"10/12":"Starfish（需條件全通過）"}';
   await page.addInitScript(slot=>localStorage.setItem('phq-v3-slots',slot),slot);
+  let currentFixture=fixture;
   await page.route('**/mock-api/api/**',async route=>{
     const url=route.request().url();
-    if(url.endsWith('/api/itinerary'))return route.fulfill({json:fixture,headers:{'access-control-allow-origin':'*'}});
+    if(url.endsWith('/api/itinerary'))return route.fulfill({json:currentFixture,headers:{'access-control-allow-origin':'*'}});
     return route.abort();
   });
   await page.route('**/data/itinerary.json',route=>route.fulfill({json:fixture}));
   await page.goto(origin+'/data-candidate.html');
   await page.locator('[data-itinerary][data-source="live"]').waitFor();
+  assert.equal(await page.locator('[data-itinerary] .coastal-route').count(),6);
+  assert.equal(await page.locator('[data-itinerary]').innerText().then(t=>t.includes('NaN')),false);
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
   assert.equal(await page.locator('[data-itinerary-day]').count(),6);
   assert.match(await page.locator('#todayTitle').innerText(),/測試纜車/);
   assert.match(await page.locator('#vietnamDateLine').innerText(),/2026-10-12/);
@@ -69,6 +74,10 @@ try {
   assert.match(estimate,/條件：Rain/);
   assert.match(await page.locator('.day-panel.active [data-segment-id="optional-stop"]').innerText(),/順路加點.*可選，非必做/s);
   const meal=page.locator('.day-panel.active [data-segment-id="meal"]');
+  assert.equal(await meal.getAttribute('data-kind'),'meal');
+  assert.equal(await page.locator('.day-panel.active [data-segment-id="go"]').getAttribute('data-kind'),'transfer');
+  assert.equal(await page.locator('.day-panel.active [data-segment-id="start"]').getAttribute('data-kind'),'activity');
+  assert.equal(await meal.evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(221, 241, 245)');
   assert.match(await meal.innerText(),/測試店家.*核實 2026-08-01.*出發前重查/s);
   const mealMap=meal.getByRole('link',{name:'地圖'});
   assert.equal(new URL(await mealMap.getAttribute('href')).searchParams.get('query'),'測試店家 富國島');
@@ -78,6 +87,9 @@ try {
   assert.equal(await transfer.getAttribute('data-mode'),'grab');
   assert.equal(await page.locator('[data-segment-id="meal"]').getAttribute('data-ref-id'),'fixture-pool');
   assert.equal(await page.locator('[data-itinerary]').getAttribute('data-content-revision'),fixture.meta.content_revision);
+  await page.locator('[data-itinerary] .itinerary-provenance summary').click();
+  assert.match(await page.locator('[data-itinerary] .itinerary-provenance').innerText(),/版本 phq1:/);
+  await page.locator('[data-itinerary] .itinerary-provenance summary').click();
   await page.locator('.itinerary-alternatives summary').click();
   const alternatives=await page.locator('.itinerary-alternatives').innerText();
   assert.match(alternatives,/Rain.*改用備案.*Start.*Rest/s);
@@ -85,6 +97,32 @@ try {
   assert.match(alternatives,/太晚出發.*返回或休息.*Go/s);
   const minHeight=await page.locator('#refreshItinerary,.date-tab,.itinerary-alternatives summary').evaluateAll(ns=>Math.min(...ns.map(n=>n.getBoundingClientRect().height)));
   assert.ok(minHeight>=41,`touch target ${minHeight}`);
+  // Screenshot-only local CJK font; production continues to use the system stack.
+  const screenshotFont=await readFile('/tmp/opencode/NotoSansCJKtc-Regular.otf').catch(()=>null);
+  if(screenshotFont)await page.addStyleTag({content:`@font-face{font-family:ScreenshotCJK;src:url(data:font/otf;base64,${screenshotFont.toString('base64')})} body,[data-itinerary]{font-family:ScreenshotCJK,sans-serif!important}.sticky{position:static!important}`});
+  for(const width of [320,390,430]) {
+    await page.setViewportSize({width,height:844});
+    await page.getByRole('tab',{name:'10-10'}).click();
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,`overflow ${width}`);
+    assert.ok(await mealMap.evaluate(e=>e.getBoundingClientRect().height)>=44,`map target ${width}`);
+    assert.ok(await page.locator('.date-tab').first().evaluate(e=>e.getBoundingClientRect().height)>=44,`date target ${width}`);
+    assert.match(await page.locator('.day-panel.active [data-segment-id="meal"] .time').innerText(),/時間待定.*時間未核實.*待估/);
+    if(screenshotFont)await page.locator('[data-itinerary]').screenshot({path:`/tmp/opencode/phq-coastal-reader-${width}.png`});
+  }
+  currentFixture=structuredClone(fixture);
+  currentFixture.data.refs.foods[0].name='新店家測試';
+  currentFixture.data.refs.cards.find(c=>c.slug==='cable').name='更新後纜車';
+  currentFixture.data.days[0].plan.segments[1].note='新備註測試';
+  await page.locator('#refreshItinerary').click();
+  await page.locator('.day-panel.active [data-segment-id="meal"]').getByText('新店家測試').waitFor();
+  assert.equal(await page.locator('.day-panel.active [data-segment-id="meal"] p').filter({hasText:/^測試店家$/}).count(),0);
+  assert.match(await page.locator('.day-panel.active').innerText(),/新備註測試/);
+  assert.match(await page.locator('#todayTitle').innerText(),/更新後纜車/);
+  assert.equal(await page.locator('.day-panel.active').getAttribute('data-itinerary-day'),'phuquoc-2026:2026-10-10');
+  await page.getByRole('tab',{name:'10-12'}).click();
+  await page.reload();
+  await page.locator('[data-itinerary][data-source="live"]').waitFor();
+  assert.equal(await page.locator('.day-panel.active').getAttribute('data-itinerary-day'),'phuquoc-2026:2026-10-12');
   const build=JSON.parse(await readFile(join(site,'site-version.json'),'utf8')).build_id;
   assert.equal(await page.locator('html').getAttribute('data-site-build'),build);
   assert.ok(!errors.length,errors.join('\n'));
