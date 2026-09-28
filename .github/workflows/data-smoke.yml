@@ -30,6 +30,17 @@ jobs:
           npx playwright install --with-deps chromium >/dev/null 2>&1
           cat > data-smoke.cjs <<'JS'
           const { chromium } = require('playwright');
+          const { readFileSync } = require('node:fs');
+          // The checked-out public projection belongs to this workflow's commit.
+          // Never derive the expectation from the live page being tested.
+          const expectedPool = JSON.parse(readFileSync('data/pool.json', 'utf8'));
+          if (!Array.isArray(expectedPool) || expectedPool.length < 18) throw new Error('checkout pool below 18-item baseline');
+          const expectedPoolKeys = expectedPool.map(row => row && row.pool_key);
+          if (expectedPoolKeys.some(key => typeof key !== 'string' || !key) ||
+              new Set(expectedPoolKeys).size !== expectedPoolKeys.length ||
+              !expectedPoolKeys.includes('bun-ken-ut-luom')) throw new Error('checkout pool missing shortlist key or contains invalid/duplicate keys');
+          const expectedPoolCount = expectedPoolKeys.length;
+          const emptyProgress = `已吃 0 / ${expectedPoolCount}`;
           (async()=>{
             const browser=await chromium.launch({headless:true});
             const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true,deviceScaleFactor:2});
@@ -48,7 +59,7 @@ jobs:
                   try{await page.waitForSelector('.nav button[data-jump="today"]',{timeout:10000})}catch(e){}
                   await page.waitForTimeout(800);
                   const t=await page.locator('body').innerText();
-                  if(t.includes('今天')&&t.includes('行程')&&t.includes('美食')&&t.includes('旅程')&&t.includes('越南時間')&&t.includes('已吃 0 / 18')){
+                  if(t.includes('今天')&&t.includes('行程')&&t.includes('美食')&&t.includes('旅程')&&t.includes('越南時間')&&t.includes(emptyProgress)){
                     live=u; break;
                   }
                 }catch(e){}
@@ -56,7 +67,7 @@ jobs:
               if(live) break;
               await new Promise(r=>setTimeout(r,15000));
             }
-            if(!live) throw new Error('live site did not update to this commit (missing 今天/行程/美食/旅程/越南時間/已吃 0 / 18)');
+            if(!live) throw new Error(`live site did not match checkout pool count ${expectedPoolCount} (missing 今天/行程/美食/旅程/越南時間/${emptyProgress})`);
             console.log('LIVE='+live);
             await page.goto(live,{waitUntil:'domcontentloaded'});
             try{await page.waitForSelector('.nav button[data-jump="today"]',{timeout:10000})}catch(e){}
@@ -100,10 +111,13 @@ jobs:
             await page.waitForTimeout(200);
             if(await page.locator('[data-day-panel].active').getAttribute('data-day-panel')!=='10/12') throw new Error('date tab switch failed');
 
-            // food pool: 18 total, natural-Chinese badges + DB linkage + verified dates
+            // food pool: checked-out public projection, natural-Chinese badges + DB linkage + verified dates
             const visibleText=await page.locator('body').innerText();
-            if(!visibleText.includes('已吃 0 / 18')||!visibleText.includes('Bún Kèn Út Lượm')) throw new Error('pool render missing');
-            if(await page.locator('[data-food-id]').count()!==18) throw new Error('wrong pool count');
+            if(!visibleText.includes(emptyProgress)||!visibleText.includes('Bún Kèn Út Lượm')) throw new Error('pool render missing');
+            const renderedPoolKeys=await page.locator('[data-food-id]').evaluateAll(els=>els.map(el=>el.getAttribute('data-food-id')));
+            if(renderedPoolKeys.length!==expectedPoolCount ||
+                new Set(renderedPoolKeys).size!==expectedPoolCount ||
+                expectedPoolKeys.some(key=>!renderedPoolKeys.includes(key))) throw new Error('pool keys/count do not match checkout projection');
             const domText=await page.locator('body').textContent();
             // natural Chinese in UI, original semantics retained in details/attributes
             if(!domText.includes('已確認')&&!domText.includes('待再確認')) throw new Error('natural status badges missing');
@@ -118,12 +132,12 @@ jobs:
             await page.selectOption('#filterRegion','Dương Đông');
             await page.waitForTimeout(300);
             const visFilt=await page.locator('[data-food-id]:not(.hidden)').count();
-            if(visFilt<1||visFilt>=18) throw new Error('region filter did not focus few '+visFilt);
+            if(visFilt<1||visFilt>=expectedPoolCount) throw new Error('region filter did not focus few '+visFilt);
             await page.selectOption('#filterRegion','');
             await page.waitForTimeout(200);
             await page.locator('#toggleFull').click();
             await page.waitForTimeout(200);
-            if(await page.locator('[data-food-id]:not(.hidden)').count()!==18) throw new Error('full list toggle failed');
+            if(await page.locator('[data-food-id]:not(.hidden)').count()!==expectedPoolCount) throw new Error('full list toggle failed');
             await page.selectOption('#filterRegion','Grand World');
             await page.selectOption('#filterSlot','早餐');
             await page.waitForTimeout(300);
@@ -201,7 +215,7 @@ jobs:
             if((await page.locator('[data-food-id="bun-ken-ut-luom"] .eaten-btn').innerText()).trim()!=='✓ 吃過') throw new Error('eaten migration failed');
             await page.locator('#resetFood').click();
             await page.waitForTimeout(200);
-            if(!(await page.locator('#foodProgress').innerText()).includes('0 / 18')) throw new Error('confirmed reset failed');
+            if(!(await page.locator('#foodProgress').innerText()).includes(`0 / ${expectedPoolCount}`)) throw new Error('confirmed reset failed');
             if(!await page.evaluate(()=>localStorage.getItem('phq-v2-food-eaten'))) throw new Error('reset cleared old backup');
 
             // slots persistence (v3, temp != order change note present)
