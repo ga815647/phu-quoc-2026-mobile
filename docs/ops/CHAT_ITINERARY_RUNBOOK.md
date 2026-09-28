@@ -1,8 +1,8 @@
-# Chat 六日安排操作手冊（工程候選；**未上線**）
+# Chat 六日安排操作手冊
 
-2026-09-27。僅待 `006_itinerary_model.sql`、Function、站點與主線規則均經批准並**實際發布**後使用。現在 production 不存在可據此操作的新能力；勿在正式庫試寫、勿將本地 fixture 當旅行安排。先核對 `CONTENT_CONTRACT.md` §10 與 `CHAT_ACCEPT.md` 的發布狀態。既有研究／訂單凍結、私人 Notion 分工不變。
+2026-09-28：正式006與六日草案、Function deployment6已部署；站點／Actions／Chat首驗狀態依同版`ITINERARY_RELEASE_20260928.md`。先讀`CONTENT_CONTRACT.md` §10與發布紀錄，勿將本地fixture當旅行安排。工程發布通過後，可依使用者具體要求做首次可還原備註驗收；不需要重做先前整套connector能力檢查。既有研究／訂單凍結、私人Notion分工不變。
 
-## 一次實際修改（有使用者具體要求且正式入口已驗收才執行）
+## 一次實際修改（有使用者具體要求、工程入口已發布；首次Chat驗收亦走此流程）
 
 1. 以 GitHub 讀 `main` ref 得到完整 40 碼 commit SHA；以**該 SHA**分別讀 `CONTENT_CONTRACT.md`、`chatgpt-instructions.md`、本檔與 `docs/ops/REDESIGN_SCOPE.md`。若 main 尚無新契約／發布驗收，停止。這個 Git SHA 是規則版本，**不是** Neon 內容 hash。
 2. Neon 工具明確指定 `project_id=holy-fog-65935796`、`branch_id=br-silent-haze-b3xw64tm`、`database_name=neondb`，先唯讀查目標與有效權限。讀私有版本及完整六日候選原文（不從 GitHub 備援推導新版本）：

@@ -31,7 +31,7 @@
 - UI/design approval does not itself apply content decisions to Neon or change confirmed bookings. Six-day defaults and meal/transport-following behavior still need an approved data design; don't introduce an independently maintained hardcoded travel-data copy.
 - Give every subagent explicit writable paths, data-write scope, and acceptance criteria. Keep live data updates, fallback publication, preview deployment, and Chat capability verification as separate outcomes.
 - Chat's selected read route is GitHub for rules/code/published evidence and Neon for current travel content. Direct Chat HTTP access to the production site is not a required capability; OpenCode/CI and the user's phone validate runtime behavior. GitHub JSON remains a dated fallback, not live Neon data.
-- Six-day itinerary C3 is a **local engineering candidate**, not a production or Chat capability. The future controlled itinerary exception applies only after approved 006/Function/site deployment and real Chat readback; see `CONTENT_CONTRACT.md` §10 and `docs/ops/CHAT_ITINERARY_RUNBOOK.md`. Keep legacy phone edits until accepted.
+- Six-day itinerary release was explicitly authorized 2026-09-28. Production 006, six-day draft initialization and Function deployment6 are applied; site/Actions/target-Chat acceptance are individually recorded in `docs/ops/ITINERARY_RELEASE_20260928.md`. Follow `CONTENT_CONTRACT.md` §10 and `docs/ops/CHAT_ITINERARY_RUNBOOK.md`; do not confuse engineering evidence with target-Chat readback. Keep legacy phone edits until accepted.
 - Approved future scope: Chat may update the new daily itinerary and meal/transport assignments during the trip via its validated controlled entry point; existing research tables and confirmed bookings keep current freeze/authorization rules. This is not permission to run a migration or use an unimplemented entry point. See CONTENT_CONTRACT.md §9.
 
 ## Agent skills
@@ -44,7 +44,7 @@ Single-context glossary in `CONTEXT.md`; see `docs/agents/domain.md`. Keep termi
 
 ## Commands (Windows PowerShell 5.1, Python 3.14; VPS: python3 + PYTHONUTF8=1)
 - `$env:PYTHONUTF8=1; $env:DATABASE_URL='<prod-owner-DSN-from-Neon-Console>'; python tools/export_json.py` — required; default source is now Neon. Without `PYTHONUTF8=1` it crashes on `cp950`.
-- `python tools/build_site.py --prod` — regenerates `index.html` + `data.html` + `card.html` with the production Function API base + formal labels. Never run bare `build_site.py` for formal output; candidate builds always use `--api-base/--out-dir` into an isolated dir. UI-only changes need no DB write or JSON re-export.
+- `python tools/build_site.py --prod --itinerary-mode candidate` — current transitional formal build: production Function API + A six-day reader, retaining legacy phone editing until target-Chat acceptance. Regenerates `index.html` + `data.html` + `card.html`, assets and site-version. The internal `candidate` mode is a compatibility mode, not a test-DB target. Do not omit this flag (default legacy drops the reader). Never run bare `build_site.py` for formal output; isolated builds use `--api-base/--out-dir`. UI-only changes need no DB write or JSON re-export.
 - `python tools/etl_points.py` — historical points ETL; do not run against the formal dataset or reactivate Notion food/carrier ETL without separate approval.
 - Verify: `SELECT slug,kind,amount,status FROM bookings` and reload `data/bookings.json` after export.
 

@@ -1,8 +1,8 @@
 # Itinerary 006: database candidate and release runbook
 
-**Status:** local PG18 engineering verification only. The user's 2026-09-28
-scoped approval covers staged isolated-branch qualification, production 006/ACL
-and separately reviewed unknown-value initialization; **none is deployed by this file**.
+**Status (2026-09-28):** authorized isolated Neon qualification and production 006 /
+six-day initialization completed; evidence and subsequent site/Chat gates are in
+`ITINERARY_RELEASE_20260928.md`. This runbook does not authorize later reinitialization.
 The operator must verify target, artifact and stage authorization before execution.
 `006_itinerary_model.sql` is
 additive and contains **no itinerary rows**. Synthetic `fixture-*` content belongs

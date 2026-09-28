@@ -118,3 +118,8 @@ GitHub 固定規則 commit：`53a511d5e3c50523d85fe637b08deb1eb0bcbc4a`。
   最後編輯時間推進。09-25 期間出現的 404（fetch／update 間歇失敗、後自愈）
   無服務端證據，**根因未確認**，不作鑑權定論。ChatGPT 自身讀寫能力仍需獨立實測，
   開發端結果不代表 Chat 可用。
+# 2026-09-28 六日 A 版發布增量
+
+使用者已核准整組發布；production 006／六日草案／Function deployment6與Neon公開JSON已完成，隔離分支實測更新／還原／衝突／idempotency／audit通過。逐段站點、Actions與Chat狀態見 `ITINERARY_RELEASE_20260928.md`。
+
+這不是新的目標Chat證據：保留先前使用者帶回的完整connector驗收，不要求重做。只需在工程發布完成後由目標Chat讀同版Git規則、正式Neon最新安排，依使用者具體授權做一筆可還原備註並透過request branch→Actions→result branch讀回。舊手機編輯與裝置資料在這一步通過前保留。詳細操作見 `CHAT_ITINERARY_RUNBOOK.md`；旅遊內容查核見 `CHAT_RESEARCH_HANDOFF.md`。
