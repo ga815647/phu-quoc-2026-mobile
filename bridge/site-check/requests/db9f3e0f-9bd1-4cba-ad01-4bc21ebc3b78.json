@@ -1,0 +1,77 @@
+{
+  "schema_version": 1,
+  "request_id": "db9f3e0f-9bd1-4cba-ad01-4bc21ebc3b78",
+  "target": "production",
+  "itinerary_id": "phuquoc-2026",
+  "expected_content_revision": "phq1:bedab829a2d4255bee2fe8698098dd56ca3ca831ce96ac8263e50ec30d07db5b",
+  "changed_day_ids": [
+    "phuquoc-2026:2026-10-12"
+  ],
+  "expected": [
+    {
+      "day_id": "phuquoc-2026:2026-10-12",
+      "main_card_slug": "vinwonders",
+      "meals": [
+        {
+          "segment_id": "vin-breakfast",
+          "ref": {
+            "id": "banh-mi-anh-thu",
+            "type": "pool"
+          }
+        },
+        {
+          "segment_id": "vin-lunch",
+          "ref": {
+            "id": "vinwonders-inside",
+            "type": "pool"
+          }
+        },
+        {
+          "segment_id": "vin-dinner",
+          "ref": {
+            "id": "banh-mi-anh-thu",
+            "type": "pool"
+          }
+        }
+      ],
+      "transfers": [
+        {
+          "segment_id": "vin-out",
+          "from_ref": {
+            "id": "cosy",
+            "type": "base"
+          },
+          "to_ref": {
+            "id": "vinwonders",
+            "type": "card"
+          },
+          "mode": "grab"
+        },
+        {
+          "segment_id": "vin-dinner-ride",
+          "from_ref": {
+            "id": "vinwonders",
+            "type": "card"
+          },
+          "to_ref": {
+            "id": "banh-mi-anh-thu",
+            "type": "pool"
+          },
+          "mode": "grab"
+        },
+        {
+          "segment_id": "vin-home",
+          "from_ref": {
+            "id": "banh-mi-anh-thu",
+            "type": "pool"
+          },
+          "to_ref": {
+            "id": "cosy",
+            "type": "base"
+          },
+          "mode": "grab"
+        }
+      ]
+    }
+  ]
+}
