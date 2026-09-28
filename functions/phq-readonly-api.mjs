@@ -19,6 +19,7 @@
 import pkg from 'pg';
 const { Pool } = pkg;
 import { attachDatabasePool } from '@neon/functions';
+import { itineraryResponse } from './itinerary-response.mjs';
 
 const DSN = process.env.PHQ_READONLY_DATABASE_URL;
 if (!DSN) {
@@ -79,6 +80,7 @@ const ROUTES = {
   '/api/bookings': 'bookings',
   '/api/transport': 'transport',
   '/api/pool': 'pool',
+  '/api/itinerary': 'itinerary',
 };
 
 function json(body, status, extra) {
@@ -114,6 +116,9 @@ export default {
       'Cache-Control': 'public, max-age=300',
     };
     try {
+      if (route === 'itinerary') {
+        return itineraryResponse(pool.query.bind(pool), meta(), cors);
+      }
       if (route === 'health') {
         return json({ ok: true, meta: meta() }, 200, okHeaders);
       }

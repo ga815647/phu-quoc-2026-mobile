@@ -1,0 +1,14 @@
+name: chat site-check request
+on:
+  push:
+    branches:
+      - 'chat-site-check/**'
+    paths:
+      - 'bridge/site-check/requests/*.json'
+permissions:
+  contents: read
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - run: 'true'

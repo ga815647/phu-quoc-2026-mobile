@@ -1,5 +1,6 @@
 # Build + runtime artifacts (never commit)
 node_modules/
+/node_modules
 *.db-shm
 *.db-wal
 __pycache__/
@@ -14,3 +15,7 @@ __pycache__/
 .env.*
 *.pem
 *.key
+
+# Isolated engineering workspaces
+/.worktrees/
+/.superpowers/

@@ -1,14 +1,23 @@
 # 舊站退役與資料回復（2026-09-24 現況）
 
+## 2026-09-27 增量
+
+使用者提供的 Chat 重驗已通過 Neon 正式 row-returning 唯讀、指定測試分支受控更新／
+還原／衝突，舊的 Neon 通道阻塞原因已不適用。HTTP／畫面與新六天功能仍未驗收，
+本輪仍不退役舊站或移除舊手機功能。以下 2026-09-24–26 的表格與阻塞描述保留為歷史，
+最新能力見 `CHAT_ACCEPT.md`；本增量不代表網站已重新發布。
+
+## 歷史處置記錄
+
 > 原則：新入口及資料驗收通過前，保留舊站作回復入口。
-> 本輪新入口驗收未全過（Chat 實測待驗），故**不退役**，只記錄處置。
+> 階段收尾：Chat 的 GitHub 讀取與 Notion 讀寫依使用者回報已通過；Neon 即時資料列讀取／更新仍阻塞，故**不退役**。日常改以 Chat＋Notion 使用，舊站保留備援。證據摘要見 `CHAT_ACCEPT.md`。
 
 ## 各入口處置
 
 | 項目 | 現況 | 處置 |
 |---|---|---|
-| GitHub Pages 正式站 | 200 正常（74,015B） | 保留，仍為日常主要入口＋回復入口 |
-| Neon Function `phqreadonly` deployment 5 | 200；POST→405、`content_revisions`→404 | 保留，Chat 日常讀取仍可用；不刪除 |
+| GitHub Pages 正式站 | 歷史驗證 200 正常（74,015B）；本輪未重測 | 保留為過渡介面＋回復入口；日常維護以 Chat／Notion 為主 |
+| Neon Function `phqreadonly` deployment 5 | 歷史驗證 200；POST→405、`content_revisions`→404 | 保留；Chat 本次未能 HTTP 連通，不宣稱 Chat 即時讀取可用 |
 | CI（data-smoke 等） | push 路徑觸發＋手動，無排程 | 保留，不新增 secret／排程 |
 | `v2.html` | 未接受候選（2026-09-20 起未動） | 保留原處，不推廣、不刪除 |
 | `MIGRATION_MANIFEST.json`／`SITE_SYNC_MANIFEST.json`／`PARITY_CHECK.md` | 帶日期證據 | 保留為歷史證據，不作現況依據 |

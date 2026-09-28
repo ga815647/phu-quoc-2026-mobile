@@ -1,0 +1,116 @@
+# Chat 六日安排操作手冊
+
+2026-09-28：正式006與六日草案、Function deployment6已部署；站點／Actions／Chat首驗狀態依同版`ITINERARY_RELEASE_20260928.md`。先讀`CONTENT_CONTRACT.md` §10與發布紀錄，勿將本地fixture當旅行安排。工程發布通過後，可依使用者具體要求做首次可還原備註驗收；不需要重做先前整套connector能力檢查。既有研究／訂單凍結、私人Notion分工不變。
+
+## 一次實際修改（有使用者具體要求、工程入口已發布；首次Chat驗收亦走此流程）
+
+1. 以 GitHub 讀 `main` ref 得到完整 40 碼 commit SHA；以**該 SHA**分別讀 `CONTENT_CONTRACT.md`、`chatgpt-instructions.md`、本檔與 `docs/ops/REDESIGN_SCOPE.md`。若 main 尚無新契約／發布驗收，停止。這個 Git SHA 是規則版本，**不是** Neon 內容 hash。
+2. Neon 工具明確指定 `project_id=holy-fog-65935796`、`branch_id=br-silent-haze-b3xw64tm`、`database_name=neondb`，先唯讀查目標與有效權限。讀私有版本及完整六日候選原文（不從 GitHub 備援推導新版本）：
+
+   ```sql
+   SELECT public.itinerary_read_for_edit('phuquoc-2026') AS edit_state;
+   SELECT itinerary_id,content_revision,payload FROM public.itinerary_public
+    WHERE itinerary_id='phuquoc-2026';
+   ```
+
+   `edit_state` 提供 `version`、`content_revision`、每一天 `id,date,day_kind,main_card_slug,plan,version`；私有 version 只用於寫入，**不可**進公開請求。公開 view 的 revision = `phq1:`＋64 位小寫十六進位，是整份公開投影（含引用的餐飲／交通）的 hash；不是 `fetched_at`、Git SHA 或匯出檔 hash。
+ 3. 先理解受影響的**完整日**及相關已確認預訂，再建立完整候選：保留不變欄位，主活動、餐飲建議與去回交通及備案一起重估；明確指定餐廳衝突先問，OnBird／航班／住宿不以此函式改訂單。主卡只能是五卡且 `ACTIVE`；每個主線／備案 meal 只能指向 food/pool。10/11 OnBird `onbird_core` 有兩種精確私有形狀：舊具體版無 `period`、`time_kind:"scheduled"`、非 null 已審核時窗及時長區間或 null；新待補版 `period:"morning"`、`time_kind:"unknown"`、`start_window:null`、`duration_minutes:null`。兩版共同固定 `date:"2026-10-11"`、已審主線 `segment_id`、`kind:"activity"`、`ref:{"type":"card","id":"onbird"}`、`day_offset:0`、`timezone:"Asia/Ho_Chi_Minh"`；細節見 `ITINERARY_DB_RUNBOOK.md` §3。主活動不可改日期、移入備案、降級或換 ref；缺／壞 lock 時停止。待補版可以在使用者要求且有真實來源時首次填 `kind:"scheduled"`、完整在當地 12:00 前的時窗、非空 `source_refs` 與有效 `evidence_as_of`；null 時長可同次或稍後有據補入。已填時窗／時長不能透過普通更新清除或改值，改已填值屬重新排程，須另獲批准，不可用第一次補齊的授權偷渡。早餐／晚餐及獨立的 `operator_pickup` 交通段可依一般有據規則調整，接送時間未知不等於主活動時間已知。向使用者通報時只說「10/11 上午 OnBird 主活動已固定，確切活動時間待業者確認」，另說接送時間待確認；**不要**把 Morning 當作已知開場時刻、把接送時刻當成活動起點，或宣稱已更動既有訂單。海星沒有經獨立初始化的 `starfish.conditions` 機器鍵→卡片 `gates` 公開文案、`return_base` 時不可新選；已有設定時**主線或備案每一條含海星的可執行路線**都須有帶齊條件的海星活動、同一路線實際第一段海星出發回程須有 `return` 條件並以 charter/operator_pickup 直達核准 base，不以 Grab 或無關包車段冒充。條件鍵只能用於該段落／交通自身引用的卡片，不借當天其他段的海星鍵。資料用穩定 ID，不含私人價格、聯絡方式或訂單碼。例子只是 SQL 形狀（`2026-10-12`、`public_note` 不是預設旅遊安排）：用從 `read_for_edit` 取得的原 `days` 形成候選，且在送出前核對原 plan 與實際使用者決定一致。
+4. 若通道支援 bind，參數型別依序為 `text,integer,text,uuid,jsonb,jsonb,text,text,text`，不要把 JSON 串進 SQL。Neon `run_sql` 只有 `sql` 字串而**沒有 bind** 時，可用下例的**字面值模板**：人工填入剛讀到的整數 version、完整 revision、外部產生且未用過的 UUID；檢查 version 為十進整數、hash 符合 `^phq1:[0-9a-f]{64}$`、UUID 符合 canonical UUID，再執行。動態 JSON／來源文字使用 PostgreSQL **唯一的** dollar-quote delimiter；先確認該 delimiter 在整份字串中不存在。不得以任意 `replace`／單引號拼接不受信輸入；無法安全編碼就停止，請改用支援 bind 的通道。
+
+   ```sql
+   -- 在已部署且有使用者授權的環境，替換所有 <...>；不得原樣執行。
+   -- changes 必須是從最新 read_for_edit 重建之完整受影響日 JSON array，
+   -- 如 [{"id":"phuquoc-2026:2026-10-12","date":"2026-10-12",
+   --     "day_kind":"activity","main_card_slug":"cable","plan":{...}}]。
+   -- decisions 無明確指定餐廳衝突時為 []；有衝突時先問，依契約填
+   -- [{"day_id":"...","segment_id":"...","previous_ref":{...},"decision":"replace"}]。
+   SELECT public.itinerary_update(
+     'phuquoc-2026', <read_version>::integer, '<read_phq1_hash>'::text,
+     '<fresh_canonical_uuid>'::uuid,
+     $phq_changes_1$<complete_changed_days_JSON_array>$phq_changes_1$::jsonb,
+     $phq_decisions_1$[]$phq_decisions_1$::jsonb,
+     NULL::text, $phq_source_1$chat-neon$phq_source_1$::text,
+     $phq_reason_1$<user-request-and-source-date>$phq_reason_1$::text
+   ) AS receipt;
+   ```
+
+   若要避免複製整份 JSON，以下是**隔離庫的完整 SQL 形狀示例**：把讀取時記下的
+   `version`、`content_revision` 兩個常數與新 UUID 代入，保留該日原有整份 `plan`、
+   只把 `public_note` 更新為虛構文字。範例字面值均為測試用途，不可對 production
+   原樣執行；真正換主卡時必須重新安排 meal/transfer 並由使用者決定內容。
+
+   ```sql
+   -- 第一次呼叫只讀，抄下 version/content_revision；不要在 UPDATE 當下
+   -- 再以 SELECT 最新版冒充原讀取的 optimistic base。
+   SELECT public.itinerary_read_for_edit('phuquoc-2026');
+   -- 接下來把 <read_version>/<read_phq1_hash>/<fresh_canonical_uuid>
+   -- 用上一步的原值及新 UUID 置換；不能把尖括號原樣送入 Neon。
+   WITH selected AS (
+     SELECT d.value AS day FROM jsonb_array_elements(
+       public.itinerary_read_for_edit('phuquoc-2026')->'days') d
+     WHERE d.value->>'id'='phuquoc-2026:2026-10-12'
+   ), candidate AS (
+     SELECT jsonb_build_array(jsonb_build_object(
+       'id',day->'id','date',day->'date','day_kind',day->'day_kind',
+       'main_card_slug',day->'main_card_slug',
+       'plan',jsonb_set(day->'plan','{public_note}',
+         to_jsonb($phq_note_1$測試文字（隔離庫）$phq_note_1$::text),true))) AS changes
+     FROM selected
+   )
+   SELECT public.itinerary_update('phuquoc-2026',<read_version>::integer,
+     '<read_phq1_hash>'::text,'<fresh_canonical_uuid>'::uuid,
+     changes,'[]'::jsonb,NULL::text,'chat-neon'::text,
+     '隔離庫測試：使用者要求及來源日期另記'::text) AS receipt FROM candidate;
+   ```
+
+   建議優先使用上方**完整 JSON 候選**流程，並先檢查 day 候選是否與原讀取一致；
+   SQL `selected` 範例的第二次 read 只用來展示類型安全構造，不應拿來繞過
+   原 base/hash 驗證，也不保證跨步驟取得同一快照。
+
+   真正呼叫 bind 的形式（僅當工具實際可傳參數時）：
+
+   ```sql
+   SELECT public.itinerary_update($1::text,$2::integer,$3::text,$4::uuid,
+     $5::jsonb,$6::jsonb,$7::text,$8::text,$9::text);
+   ```
+
+   Receipt 的 `request_id,resulting_version,changed_day_ids,content_revision` 要立即保存；**同 payload** 重送同 UUID 只回原 receipt；不同 payload 不得重用。
+5. 同一請求成功後，立即按 UUID 讀私有 audit 真前值、讀公開 view，對照日／hash：
+
+   ```sql
+   SELECT target_table,target_id,field_name,old_value,new_value,
+          base_version,resulting_version,changed_at,source,reason
+     FROM public.content_revisions
+    WHERE request_id='<receipt_request_uuid>'::uuid ORDER BY target_id;
+   SELECT itinerary_id,content_revision,payload FROM public.itinerary_public
+    WHERE itinerary_id='phuquoc-2026';
+   ```
+
+   `content_revisions.request_id` **始終使用原 Neon 更新 receipt UUID**，不因後續驗站新 UUID 而改查稽核。不公開 audit 或版本。`VERSION_CONFLICT`／`SOURCE_CHANGED`（SQLSTATE 40001）→ 停止、重讀並說明差異，再按目前版本重組候選；不盲目重試覆寫。`REQUEST_ID_REUSED`（22023）→ 查是否誤用 UUID，不直接覆蓋。其他驗證失敗不當成功；資料已存但驗站 pending／fail **不回滾或改用舊 base**，保留 receipt 並讀回；pending 續查原請求，確需再次驗站時才另發請求。
+6. 真實 GitHub 驗站（**本地測試未做這步**）：Chat 以第 5 步 Neon `itinerary_public` 讀回的 `content_revision` 與公開日內容產生請求，**不必也不得以 Chat HTTP GET 正式網站／API 為前置**；正式 `/api/itinerary` 有快取，其 hash、來源與畫面一致性由 CI 觀察（或 OpenCode 另行標記的檢查），不是 Chat 提交前的能力門檻。**第一次驗站 request ID 必須等於成功更新 receipt 的 `request_id`**；建立 `chat-site-check/<receipt_request_uuid>` branch，以 main 為單一父 commit，該 commit **只新增** `bridge/site-check/requests/<receipt_request_uuid>.json`。JSON 使用契約 v1 的鍵 `schema_version:1,request_id,target:"production",itinerary_id:"phuquoc-2026",expected_content_revision,changed_day_ids,expected`，`expected` 每日包含 `day_id,main_card_slug,meals:[{segment_id,ref}],transfers:[{segment_id,from_ref,to_ref,mode}]`，完整列表由更新後 Neon 公開投影產生。不可寫工具碼、workflow 或私人欄位；不可把請求 commit 當作內容版本。首份請求無 `previous_request_id`；若要**另發後續重新驗站**才使用新的驗站 UUID 與新 branch/file，並填 `previous_request_id` 指向前一次請求 UUID。不要用新 ID 覆蓋／改寫原結果；同一 request commit 可安全讀回既有結果。
+
+   以下是**格式樣本，不可照抄 UUID、hash 或旅行內容**（`fixture-*` 僅本地隔離資料；例中 UUID 代表同一筆 fixture 更新 receipt）。GitHub connector 應先由 main 建 branch，再只新增對應 UUID 路徑並讀回 request commit；同一 commit 不可含其他檔案：
+
+   ```json
+   {"schema_version":1,"request_id":"1f4be2aa-e9b5-4a8a-8f1c-68c6d7eef67a",
+    "target":"production","itinerary_id":"phuquoc-2026",
+    "expected_content_revision":"phq1:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "changed_day_ids":["phuquoc-2026:2026-10-12"],
+    "expected":[{"day_id":"phuquoc-2026:2026-10-12","main_card_slug":"cable",
+      "meals":[{"segment_id":"meal","ref":{"type":"food","id":"fixture-unrelated"}}],
+      "transfers":[{"segment_id":"go","from_ref":{"type":"card","id":"cable"},
+        "to_ref":{"type":"base","id":"hotel"},"mode":"taxi"}]}]}
+   ```
+7. 每次記下**當次驗站請求**的 UUID 與固定 request commit SHA，等受信任主線 workflow 實際執行。解析 `site-check-results` ref，在**固定 result commit SHA** 讀 `requests/<active_site_check_uuid>/result.json`（另可讀 `.md`），核對結果 `request_id`＝當次驗站 UUID、`request_commit`＝當次固定 request commit，並核對 `expected_content_revision`＝該請求的 Neon 公開 hash、`observed_content_revision,source,observed_build_id,run_id,status,finished_at`。首份請求的 UUID 必須等於 Neon 更新 receipt UUID；**後續重新驗站**讀其新 UUID 專屬結果路徑，不要求新結果 `request_id` 等於原 Neon receipt。以每次**固定 request commit** 讀請求 JSON，沿 `previous_request_id` 指到前一份請求、直到首份與原更新 receipt UUID 相同；結果本身不提供可信的 `previous_request_id`，不可單憑新結果推定與原更新的關聯。示例（僅測試 ID，不可原樣提交）：原更新／首份驗站 UUID＝`1f4be2aa-e9b5-4a8a-8f1c-68c6d7eef67a`，第二份 UUID＝`99f2ab99-96c0-48d6-a347-07e4d196fe2f` 且其固定請求 JSON 的 `previous_request_id` 指向首份；第二份結果要讀 `requests/99f2ab99-96c0-48d6-a347-07e4d196fe2f/result.json`，核對結果 `request_id` 為第二份 ID 與 `request_commit` 為第二份固定 SHA；audit 仍以原更新 UUID 查。`PASS` 只證明那次 CI 對正式 API／DOM 的觀察；`FALLBACK/CONTENT_MISMATCH/UNREACHABLE/ERROR/INVALID_REQUEST` 不算已上站；pending 無結果不能當 PASS。截圖另在同 run artifact，綠燈、Git JSON 或 screenshot 單獨都不能替代網站/API/DOM 的同版檢查。Chat 讀 GitHub 結果不等於 Chat 自己能 HTTP 看站。
+
+## 各層證據與發布邊界
+
+| 層 | 需持有的證據 | 目前狀態 |
+|---|---|---|
+| 工程驗證 | 本地PG18／Chromium、隔離Neon真實受控更新還原／衝突／稽核 | 已通過；真Actions另列 |
+| 規則已發布 | main commit 並由 Chat **實際固定 SHA 讀取** | 未驗，不能稱 Chat 已知道新契約 |
+| 內容已存 | 正式初始化紀錄與公開view；後續每次更新另存receipt＋audit | 006與六日草案已初始化；目標Chat首筆更新尚未驗 |
+| 網站實際顯示 | 正式 Function API＋正式 DOM 同 hash，CI 結果 branch 固定 SHA＋手機接受 | Function6已部署；Pages／真請求／手機狀態見發布紀錄 |
+| 離線備援 | OpenCode 從 Neon 匯出 `data/itinerary.json`、有日期的 release commit、Pages 發布後斷網讀回 | 正式Neon已匯出；Pages與斷網證據見發布紀錄；Chat之後改資料不自動刷新它 |
+
+使用者2026-09-28已授權整組006／ACL／Function／六日草案／A版／CI／規則發布；逐段執行證據以 `ITINERARY_RELEASE_20260928.md` 為準。本手冊不構成以後重初始化、改已確認訂單或直接切readonly的授權；目標Chat真實讀回與手機接受前保留舊編輯。

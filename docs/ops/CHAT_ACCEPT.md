@@ -1,4 +1,68 @@
-# ChatGPT 端最短實測（待 ChatGPT 驗證，2026-09-25 修訂版）
+# ChatGPT 端實測與階段收尾
+
+## 2026-09-27 六日新功能：本地工程候選（不改寫下方舊 connector 證據）
+
+隔離 PG18 fixture 以 transaction rollback 執行一次六日受控更新（10/12 主卡、餐廳與交通一起改）→核對同 request UUID 的真前值 audit → `itinerary_public` 完整六日 payload/hash → Python public export envelope → `tools/build_site.py --api-base <localhost> --out-dir <tmp> --itinerary-mode candidate` → 390px Chromium 以本地 API 載入實際生成頁並執行 `verifySite()` → **純記憶體假 GitHub**驗證 request commit provenance、發布結果並依固定假 SHA 讀回 JSON。重跑：`source /tmp/opencode/phq-pg18-test-env; node tools/verify/itinerary_e2e_candidate.mjs`（僅允許 socket PG18；測試環境 fixture 隨交易 rollback）。測試的 `meta.source=neon-prod/environment=production` 是驗證嚴格 verifier 所需的**合成標籤**，不代表碰過正式 Neon；假 GitHub 無 token／遠端 branch／Actions，PASS 只指這條本機連鎖。
+
+實際上線待：六天真實內容（彈性日順序／時間線／餐飲交通來源）、視覺稿＋遠端預覽範圍、006 production 套用的具體核准及 ACL／Function／匯出驗證、Chat 本人真正授權更新及 GitHub 讀結果、使用者手機確認後才切 readonly、OpenCode 再獨立發布備援。**main 尚未發布本契約；Chat 尚未固定 SHA 讀新指示**；不能把 2026-09-27 既有 Chat connector 成功挪用為六日行程通過。
+
+## 2026-09-27 最新驗收結論（使用者提供的 Chat 端證據）
+
+使用者已貼回 28 項一次性驗收結果，Project「富國島 2026」、模型 GPT-5.6 Sol。
+Pro 升級為使用者自述；本結論依實際工具回報，不推定方案造成能力改善。
+本輪任務見 [Chat-only 行程維護的一次性能力重驗](https://github.com/ga815647/phu-quoc-2026-mobile/issues/10)。
+
+| 範圍 | 新證據 | 尚未涵蓋 |
+|---|---|---|
+| GitHub | 固定 commit 完整讀規則；專用 probe branch／file 寫入並固定 commit 讀回成功 | 本 repo 無 request JSON bridge；docs probe 不符合 CI trigger，無 run 不是 CI 失敗 |
+| Notion | 既有私人根頁追加→唯一字串精確修改→讀回成功，被觀察根頁內容保留 | connector 不暴露一般 paragraph 原生 block ID；未讀子頁不列入比對 |
+| Neon 正式唯讀 | 精確目標 SELECT 真正回 row；分頁、長欄、JOIN、函式與有效權限查核通過；run_sql 已接受 project_id | 正式寫入本輪未測；不推定其他 session／帳號權限 |
+| Neon 指定測試分支 | 受控更新→真實前值稽核→受控還原→過期版本拒絕全部通過；內容還原，合法 version／稽核保留 | 不等於正式寫入或六天行程功能驗收 |
+| 網站／API | 程式路由與快取查明，DB↔Git 備援部分對照一致 | 該 Chat HTTP 執行環境不可達，無互動瀏覽器；API runtime 與画面未驗，不代表服務全域故障 |
+| 六天整體修改 | 能力缺口已定位 | 伺服器端六天模型、餐飲交通跟隨與網站接線尚未實作 |
+
+**撤銷本案舊的「Chat run_sql 缺 project_id 而阻塞」現況結論。** 本次 schema 明確包含
+`sql, project_id, branch_id, database_name` 且實際成功。下面舊結論僅供歷史追溯。
+Notion 的原生 block-ID 子要求沒有通過，但唯一文字定位的最小修改已達到業務需求，不因此要求重測整套。
+
+GitHub 固定規則 commit：`53a511d5e3c50523d85fe637b08deb1eb0bcbc4a`。
+[Probe 產物](https://github.com/ga815647/phu-quoc-2026-mobile/commit/e735ce48d0ec922c19a40097f26d394d4029ee40)
+已由 OpenCode 另行唯讀核對：該 commit 僅含驗收 JSON，內容與使用者回報一致，main 未因此改動。
+這是產物核對，不是 OpenCode 代跑 Chat／Neon／Notion。
+
+完整結構化證據保留在工作區根目錄、公開 repo 外的
+`docs/hand-offs/2026-09-27-chatgpt-acceptance-evidence.md`；原始回報在使用者對話附件／訊息。
+不在此公開精確私人頁定位、測試 DB 列值或服務 locator。
+
+已量測的驗收區間是 12 分 27 秒，不含開始前工具盤點，不能當日常單次修改延遲。
+300 秒為 API cache 設定，不是實測畫面延遲。
+
+### 收尾與後續驗收
+
+- 能力盤點已交付，沿用成功證據；不再要求整包重測。只有實際工具／連線變更或新失敗才補測受影響部分。
+- 下一步為六天模型、受控更新語義、API／網站讀取與版本辨識；既有欄位可否延伸仍由資料模型設計決定，本報告不授權 migration。
+- Chat 更新與讀回／稽核由 Chat 證明；API／畫面可由 OpenCode／CI 與使用者手機按同一變更版本驗收。保持證據來源分開，不把 Chat 沒瀏覽器變成日常更新的必要阻塞。
+- 使用者已選定 Chat 以 GitHub 讀正式規則／程式與已發布驗收證據，Neon 讀寫即時內容；Chat 直接 GET 正式網站退出日常必要能力。W1–W3 的原始受阻／未驗結果仍保留，不改成通過；GitHub JSON 只作備援，不冒充即時內容。這個來源選擇不取消工程端 API／畫面驗收。
+- 真實業務修改與網站生效尚待功能完成後驗收；舊手機編輯及裝置資料目前保留。
+- main 缺新 scope／tracker 文件是未發布，不是 Chat Git reader 故障。現有 Chat 指示的契約入口仍適用，這次不用重貼 Project settings；本地更新不代表 Chat 已取得新文件。
+
+## 歷史收尾結論（2026-09-27 重驗前）
+
+依使用者貼回的 ChatGPT 實際工具回報與後續連線排查，採「日常使用啟用、Neon 直連阻塞保留」階段收尾。以下為使用者提供的 Chat 端證據摘要，非開發端獨立代跑。
+
+- GitHub：正式內容契約讀取通過。
+- Notion：既有私人頁定位、讀取、最小驗收行更新與讀回通過；既有待辦與勾選保留。日常授權維護可用。
+- Neon：明確指定正式 project／branch／database 的 EXPLAIN（analyze=false）成功，但未取得資料列；不算一般查詢或寫入驗收通過。
+- Chat 暴露的 run_sql 缺 project_id，先前呼叫後端卻要求它；metadata-first 未找到可用的 context 設定證據。限定與未限定專案的新連線嘗試尚未證明工具來源切換及參數傳遞正常，根因未確認。
+- CLI／driver 路徑缺可沿用的授權或連線資訊；該次 Chat 執行環境未能連上既有 Function。不能據此判定 Function 故障。
+- GitHub 公開投影可作備援快照，須標明來源及已知資料日期，不冒充 Neon 即時資料。
+- 依 Chat 回報，排查期間無 Neon 寫入；隔離更新與還原尚未驗證，不稱已還原。
+
+現有 `chatgpt-instructions.md` 已涵蓋能力確認、失敗停止及備援區分，維持原文；使用者已回報貼入，不需重貼。Chat 繼續旅行查證與 Notion 日常維護；必要的 Neon 維護可由 OpenCode 依使用者授權及內容契約暫時承接，不視為 Chat 能力通過。
+
+本輪排查結束；只有 connector／連線環境有變化或官方提供修復方式時，才重跑明確目標的最小唯讀查詢，成功後接續 Neon 更新驗收。GitHub、Notion 不重跑。官方問題尚未在本輪代為提交；舊站保持備援，歷史私人數值清理仍待另行授權。正式候選新增的 ID 生成與新增稽核一致性仍待釐清，不宣稱已完成正式新增驗收。
+
+## 原驗收流程（保留供能力恢復後使用）
 
 > 開發端無法代跑 ChatGPT 實測。以下 prompt 貼給 ChatGPT（含已貼入的 Project instructions），逐項核對。
 > 結果分三態：**通過**（能力可用且行為正確）／**安全停止**（能力不足但如實停止，亦為正確行為）／**未測試**（環境缺失，另約時間）。
@@ -54,3 +118,8 @@
   最後編輯時間推進。09-25 期間出現的 404（fetch／update 間歇失敗、後自愈）
   無服務端證據，**根因未確認**，不作鑑權定論。ChatGPT 自身讀寫能力仍需獨立實測，
   開發端結果不代表 Chat 可用。
+# 2026-09-28 六日 A 版發布增量
+
+使用者已核准整組發布；production 006／六日草案／Function deployment6與Neon公開JSON已完成，隔離分支實測更新／還原／衝突／idempotency／audit通過。逐段站點、Actions與Chat狀態見 `ITINERARY_RELEASE_20260928.md`。
+
+這不是新的目標Chat證據：保留先前使用者帶回的完整connector驗收，不要求重做。只需在工程發布完成後由目標Chat讀同版Git規則、正式Neon最新安排，依使用者具體授權做一筆可還原備註並透過request branch→Actions→result branch讀回。舊手機編輯與裝置資料在這一步通過前保留。詳細操作見 `CHAT_ITINERARY_RUNBOOK.md`；旅遊內容查核見 `CHAT_RESEARCH_HANDOFF.md`。

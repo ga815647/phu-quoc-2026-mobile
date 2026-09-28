@@ -24,6 +24,23 @@ test('health', async () => {
   assert.equal(r.headers.get('cache-control'), 'public, max-age=300');
 });
 
+test('itinerary empty local projection fails closed; POST remains 405',
+  {skip: process.env.PHQ_LOCAL_FIXTURE !== '1'}, async () => {
+  // Local isolated database has schema but no committed travel-content rows.
+  // Historical Neon count assertions below are intentionally NOT run on it.
+  const r = await get('/api/itinerary', { headers: {Origin: 'http://localhost:8000'} });
+  assert.equal(r.status, 503);
+  assert.deepEqual(await r.json(), {error: {code: 'ITINERARY_UNAVAILABLE'}});
+  assert.equal(r.headers.get('cache-control'), 'no-store');
+  assert.equal(r.headers.get('access-control-allow-origin'), 'http://localhost:8000');
+  const post = await handler.fetch(new Request(BASE + '/api/itinerary', {method: 'POST'}));
+  assert.equal(post.status, 405);
+  assert.deepEqual(await post.json(), {error: {code: 'METHOD_NOT_ALLOWED'}});
+  assert.equal(post.headers.get('cache-control'), 'no-store');
+  const options = await handler.fetch(new Request(BASE + '/api/itinerary', {method: 'OPTIONS'}));
+  assert.equal(options.status, 204);
+});
+
 for (const [path, n] of [
   ['/api/cards', 7],
   ['/api/foods', 69],

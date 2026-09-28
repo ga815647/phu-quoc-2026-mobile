@@ -1,7 +1,7 @@
-# 內容維護契約（Chat 資料操作契約 v3，部署後版本）
+# 內容維護契約（Chat 資料操作契約 v3；§10 六日安排發布狀態另列）
 
 > 操作契約，不是新的協作模式或 project instructions。
-> 不修改 `AGENTS.md`、`chatgpt-instructions.md`、部署或權限規則。
+> 既有 v3 `content_update()` 不修改 `AGENTS.md`、`chatgpt-instructions.md`、部署或權限規則；§10 的部署與驗收證據分項記錄。
 > v1 的「UPDATE 後無條件 INSERT 稽核」範例已作廢，改用 §4 `content_update()`。
 > 本文件以正式庫部署後事實為準（004 已套用，見 §7）；測試分支驗證不算正式可用。
 
@@ -334,3 +334,84 @@ Chat 寫入 Neon 後，網站重整經 Function／備援讀到（備援需再匯
 資料僅本人可見，不做多使用者管理、不做完整後台、不進公開投影。
 自動化（匯出／部署／Function 重部署）若需新增 credentials／排程／外部授權，
 先列最小需求，不自行建立、不聲稱已自動化。
+
+## 9. 體驗重整的分工與範圍（2026-09-26）
+
+2026-09-27 設計方向修訂：使用者接受 Chat 作為行程修改入口、網站以閱讀與導航為主。
+先驗 Chat 修改鏈路與網站生效，再取消既有手機換日／換方案；本節不宣稱新六天模型
+已存在、不修改 §6／§8 記載的現行本機能力，也不由 Pro 升級推定 connector 可用。
+
+同日使用者進一步确认新功能的業務範圍：未來新「每日安排」及其餐飲／交通指派，
+允許旅途中經專用受控入口修改；既有店家／研究主表與已確認預訂仍遵守 §3／§7
+限制，不能以改安排之名覆寫來源事實或更動訂單。新結構／受控入口須經規格、
+實作、驗收後才可用；尚未上線前不以此段繞過現行凍結或把新內容塞入舊欄。
+一般餐廳建議隨路線調整，使用者刻意指定的餐廳若衝突則先釐清再更新。
+
+本輪產品決策、Chat／OpenCode／網站責任、subagent 可改範圍及發布階段，統一維護於
+[`docs/ops/REDESIGN_SCOPE.md`](docs/ops/REDESIGN_SCOPE.md)。該文件不擴張本契約白名單、
+公開欄位或旅途中更新權限；新資料結構仍需明列並核准。
+
+- 已確認的改版方向不代表正式 Neon 內容已更新；私人 Notion 索引、公開旅遊內容、
+  網站本機換日狀態分開維護，不建立自動雙向同步。
+- 本契約描述合法內容操作程序與帶日期的部署證據，不代表 Chat connector 目前能執行。
+  Chat 端能力摘要以 `docs/ops/CHAT_ACCEPT.md` 為準；其中 GitHub／Notion 通過來自使用者
+  提供的 Chat 端證據。2026-09-27 使用者帶回的新證據已解除該 Chat session 的 Neon
+  row-returning 阻塞：正式唯讀及指定測試分支受控更新／還原／衝突通過；正式寫入、
+  新六天功能及 Chat HTTP／畫面未驗，不拿 OpenCode 成功代替 Chat 驗收。
+- API 即時鏈、靜態備援發布、預覽及正式網站發布分別驗收；樣式改版不要求每筆內容重建，
+  也不把本機操作宣稱為雲端內容更新。
+- 2026-09-27 已選定後續驗站方向：Chat 更新 Neon 並讀回，提交驗站請求，由 CI
+  檢查正式網站、將 JSON／文字結果放 GitHub 專用分支供 Chat 讀取。設計輸入見
+   `docs/ops/CHAT_CI_DESIGN.md`；§10 定義新增六日API白名單，不變更 §6 的既有 row version 排除規則。
+
+## 10. 六日安排：專用受控入口與發布驗收
+
+2026-09-28 使用者核准整組發布；已通過隔離Neon驗證並套用production 006、
+六日草案初始化與Function deployment6，公開JSON已由正式Neon匯出。
+Pages／Actions及目標Chat首驗的逐項狀態，以同版
+[`docs/ops/ITINERARY_RELEASE_20260928.md`](docs/ops/ITINERARY_RELEASE_20260928.md)為準；
+工程部署成功不代表目標Chat已親自讀回。首次Chat驗收可依使用者具體要求執行一筆
+可還原備註修改，走完整受控入口與GitHub驗站，不需重做已完成的connector能力問卷。
+使用前需依 [`docs/ops/CHAT_ITINERARY_RUNBOOK.md`](docs/ops/CHAT_ITINERARY_RUNBOOK.md)
+查部署與授權，不可拿舊 `content_update()` 改六天安排。§2–§8 的既有內容白名單、
+旅途中研究主表／訂單限制及私人 Notion 分工維持；新每日安排及其餐飲／交通指派
+**僅在新入口正式核准部署並完成驗收後**為旅途中例外。
+
+資料表：`itineraries`（唯一 itinerary ID、區間／timezone、locked_constraints、私有
+`version`）、`itinerary_days`（`id=phuquoc-2026:YYYY-MM-DD`、date、day_kind、
+main_card_slug、`plan` JSONB、私有 `version`）、`itinerary_requests`（UUID、canonical
+request hash、receipt／冪等）；既有 `content_revisions` 加私有 `request_id` 稽核索引。
+`itinerary_read_for_edit(text)` 回私有版本與全部日；`itinerary_update(text,integer,text,uuid,jsonb,jsonb,text,text,text)`
+鎖定依賴、整包驗證並原子變更及稽核；`itinerary_public` view 輸出
+`itinerary_id,payload,content_revision`。`phq_web_ro` 僅獲該 view 三欄 SELECT；
+對三新表沒有授權，亦無 `itinerary_read_for_edit`／`itinerary_update` EXECUTE；
+PUBLIC 的新表／view／函式權限被收回；owner 操作屬具寫入能力身分，
+文字約束不等於硬權限隔離。Function 僅 GET/OPTIONS `/api/itinerary`，
+不存在公開 POST／稽核／request／私有 version API。
+任一 `day_kind` 如指定非空 `main_card_slug`，主線必須有對應 `activity` 段落；
+`light` 不因此一律禁止主卡（也可不指定主卡），`activity` 日仍須指定主卡。
+
+**新公開 JSON／API 精確外形**：`{data:{schema_version:1,itinerary:{id,start_date,end_date,timezone},
+days:[{id,date,day_kind,main_card_slug,plan}],refs:{cards,foods,pool,points,bases,bookings,transport}},
+meta:{schema_version:1,content_revision,source,environment,fetched_at,...}}`；
+`data/itinerary.json` 的 `meta` 另有 `exported_at`（詳見 `tools/itinerary_export.py`）。
+六個 `days` 的 `plan` 是有序 segments/alternatives，refs 只取公開投影所需欄位；
+公開 revision 是 view 對完整 payload 的 `phq1:`＋SHA-256，不是私有行版本，
+export 時間不參與 hash；保護的 booking detail/evidence、研究內部欄、
+`locked_constraints`、`version`、`content_revisions`、`itinerary_requests` 不在公開 envelope。
+其中 `onbird_core` 的 10/11 主線活動 ID／角色／卡片由核准初始化建立。
+已部署Morning待補形式保護上午活動，精確活動時窗與時長保持未知；有使用者要求與真實來源
+時可首次補齊12:00以前的scheduled窗口／時長，須有source_refs與evidence_as_of。
+已填值不能經普通更新清除或改值；重新排程需另授權。接車段與主活動時刻分開。
+具體形狀與舊已核時窗形式见DB runbook §3。保護設定
+缺失時受控更新全面拒絕；`starfish` 的條件鍵對照原卡片公開 `gates` 文字及核准回程 base
+同樣須在初始化審核，缺失時不能新選海星。唯一公開衍生值是 Starfish 卡片的
+`condition_labels`（鍵→原 `cards.gates` 公開文字），不是 private lock 或第二份旅遊事實；
+主線與每個含海星的可執行備案各自保護條件與回程，條件鍵只在該段自身的卡片引用有效；
+操作細節見 `docs/ops/ITINERARY_DB_RUNBOOK.md` §3。正式六日草案已初始化，未知旅遊事實後續交Chat查核；兩個園內通用餐飲池`safari-inside`／`honthom-inside`只表示待查核園內用餐，不等於具名店家或已訂餐。
+公開 refs 的逐欄 SQL 白名單以 006 的 `itinerary_payload()` 與
+`tools/verify/test_itinerary_projection.py` 為準，不得以整表 SELECT 或 JSON 混入私人欄。
+
+本地證據與發布閘門見 `docs/ops/CHAT_ACCEPT.md` 新功能區、
+`docs/superpowers/plans/2026-09-27-itinerary-implementation.md`「發布前置與終點」。
+不得把本地假 GitHub PASS 當真 Actions 結果。
