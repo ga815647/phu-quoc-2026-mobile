@@ -107,10 +107,10 @@
 
 | 層 | 需持有的證據 | 目前狀態 |
 |---|---|---|
-| 本地工程候選 | 隔離 PG18 回滾測試、candidate build、Chromium、**假 GitHub**固定 SHA readback | 可重跑；不是正式資料／Actions |
+| 工程驗證 | 本地PG18／Chromium、隔離Neon真實受控更新還原／衝突／稽核 | 已通過；真Actions另列 |
 | 規則已發布 | main commit 並由 Chat **實際固定 SHA 讀取** | 未驗，不能稱 Chat 已知道新契約 |
-| 內容已存 | 正式受控更新 receipt＋私有 audit 與公開 view 讀回 | 新入口未上線，待授權 |
-| 網站實際顯示 | 正式 Function API＋正式 DOM 同 hash，CI 結果 branch 固定 SHA＋手機接受 | 待部署、真請求與手機驗收 |
-| 離線備援 | OpenCode 從 Neon 匯出 `data/itinerary.json`、有日期的 release commit、Pages 發布後斷網讀回 | **獨立**待發布；Chat 不可聲稱已刷新 |
+| 內容已存 | 正式初始化紀錄與公開view；後續每次更新另存receipt＋audit | 006與六日草案已初始化；目標Chat首筆更新尚未驗 |
+| 網站實際顯示 | 正式 Function API＋正式 DOM 同 hash，CI 結果 branch 固定 SHA＋手機接受 | Function6已部署；Pages／真請求／手機狀態見發布紀錄 |
+| 離線備援 | OpenCode 從 Neon 匯出 `data/itinerary.json`、有日期的 release commit、Pages 發布後斷網讀回 | 正式Neon已匯出；Pages與斷網證據見發布紀錄；Chat之後改資料不自動刷新它 |
 
-正式 `006` 套用、ACL／Function、六天真內容初始化、視覺預覽、手機接受與 readonly 切換均要另行核准和留證；本手冊不是發布授權。
+使用者2026-09-28已授權整組006／ACL／Function／六日草案／A版／CI／規則發布；逐段執行證據以 `ITINERARY_RELEASE_20260928.md` 為準。本手冊不構成以後重初始化、改已確認訂單或直接切readonly的授權；目標Chat真實讀回與手機接受前保留舊編輯。
