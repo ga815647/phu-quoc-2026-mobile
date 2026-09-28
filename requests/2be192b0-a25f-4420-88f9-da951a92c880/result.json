@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "request_id": "2be192b0-a25f-4420-88f9-da951a92c880",
+  "request_commit": "46aabf7ff2bf9a5e1630f1bf48a50dc6f44036cb",
+  "test_commit": "f82a2254898c27bbdcec86cd1784c486d1334834",
+  "run_id": 36369963344,
+  "url": "https://ga815647.github.io/phu-quoc-2026-mobile/",
+  "status": "PASS",
+  "expected_content_revision": "phq1:6806a27908e797aceeb99cb7003ad9d1a05e9ffb07db0ca8d82092c4c4c4a1c3",
+  "observed_content_revision": "phq1:6806a27908e797aceeb99cb7003ad9d1a05e9ffb07db0ca8d82092c4c4c4a1c3",
+  "observed_build_id": "sha256:67e7c5b2bcd264d0ec775e4be6c7c30b058f7c4ef057c8757c7f8ff802f1f48d",
+  "source": "live",
+  "started_at": "2026-09-28T02:29:12.164Z",
+  "finished_at": "2026-09-28T02:29:25.317Z",
+  "checks": {
+    "source": true,
+    "api": true,
+    "exclusive_api": true,
+    "envelope": true,
+    "production": true,
+    "revision": true,
+    "build": true,
+    "days": true,
+    "alternatives": true,
+    "all_days": true,
+    "cards": true,
+    "card_navigation": true,
+    "navigation": true,
+    "overflow": true,
+    "errors": true
+  },
+  "observations": [
+    {
+      "at": "2026-09-28T02:29:24.363Z",
+      "status": "PASS",
+      "source": "live",
+      "revision": "phq1:6806a27908e797aceeb99cb7003ad9d1a05e9ffb07db0ca8d82092c4c4c4a1c3",
+      "build_id": "sha256:67e7c5b2bcd264d0ec775e4be6c7c30b058f7c4ef057c8757c7f8ff802f1f48d",
+      "checks": {
+        "source": true,
+        "api": true,
+        "exclusive_api": true,
+        "envelope": true,
+        "production": true,
+        "revision": true,
+        "build": true,
+        "days": true,
+        "alternatives": true,
+        "all_days": true,
+        "cards": true,
+        "card_navigation": true,
+        "navigation": true,
+        "overflow": true,
+        "errors": true
+      },
+      "errors": []
+    }
+  ],
+  "artifacts": [
+    "screenshot.png"
+  ]
+}
