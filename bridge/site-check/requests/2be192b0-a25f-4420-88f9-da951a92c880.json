@@ -1,0 +1,439 @@
+{
+  "schema_version": 1,
+  "request_id": "2be192b0-a25f-4420-88f9-da951a92c880",
+  "target": "production",
+  "itinerary_id": "phuquoc-2026",
+  "expected_content_revision": "phq1:6806a27908e797aceeb99cb7003ad9d1a05e9ffb07db0ca8d82092c4c4c4a1c3",
+  "changed_day_ids": [
+    "phuquoc-2026:2026-10-10",
+    "phuquoc-2026:2026-10-11",
+    "phuquoc-2026:2026-10-12",
+    "phuquoc-2026:2026-10-13",
+    "phuquoc-2026:2026-10-14",
+    "phuquoc-2026:2026-10-15"
+  ],
+  "expected": [
+    {
+      "day_id": "phuquoc-2026:2026-10-10",
+      "main_card_slug": null,
+      "meals": [
+        {
+          "segment_id": "arrival-dinner",
+          "ref": {
+            "id": "banh-mi-anh-thu",
+            "type": "pool"
+          }
+        }
+      ],
+      "transfers": [
+        {
+          "segment_id": "airport-to-cosy",
+          "from_ref": {
+            "id": "arrival-flight",
+            "type": "base"
+          },
+          "to_ref": {
+            "id": "cosy",
+            "type": "base"
+          },
+          "mode": "grab"
+        },
+        {
+          "segment_id": "arrival-to-dinner",
+          "from_ref": {
+            "id": "cosy",
+            "type": "base"
+          },
+          "to_ref": {
+            "id": "banh-mi-anh-thu",
+            "type": "pool"
+          },
+          "mode": "grab"
+        },
+        {
+          "segment_id": "arrival-dinner-home",
+          "from_ref": {
+            "id": "banh-mi-anh-thu",
+            "type": "pool"
+          },
+          "to_ref": {
+            "id": "cosy",
+            "type": "base"
+          },
+          "mode": "grab"
+        }
+      ]
+    },
+    {
+      "day_id": "phuquoc-2026:2026-10-11",
+      "main_card_slug": "onbird",
+      "meals": [
+        {
+          "segment_id": "onbird-breakfast",
+          "ref": {
+            "id": "banh-mi-anh-thu",
+            "type": "pool"
+          }
+        },
+        {
+          "segment_id": "onbird-lunch",
+          "ref": {
+            "id": "nha-xua-68",
+            "type": "pool"
+          }
+        },
+        {
+          "segment_id": "onbird-dinner",
+          "ref": {
+            "id": "com-tam-nhi",
+            "type": "pool"
+          }
+        }
+      ],
+      "transfers": [
+        {
+          "segment_id": "onbird-pickup",
+          "from_ref": {
+            "id": "cosy",
+            "type": "base"
+          },
+          "to_ref": {
+            "id": "onbird-booking",
+            "type": "base"
+          },
+          "mode": "operator_pickup"
+        },
+        {
+          "segment_id": "onbird-dropoff",
+          "from_ref": {
+            "id": "onbird-booking",
+            "type": "base"
+          },
+          "to_ref": {
+            "id": "cosy",
+            "type": "base"
+          },
+          "mode": "operator_pickup"
+        },
+        {
+          "segment_id": "onbird-lunch-out",
+          "from_ref": {
+            "id": "cosy",
+            "type": "base"
+          },
+          "to_ref": {
+            "id": "nha-xua-68",
+            "type": "pool"
+          },
+          "mode": "grab"
+        },
+        {
+          "segment_id": "onbird-lunch-home",
+          "from_ref": {
+            "id": "nha-xua-68",
+            "type": "pool"
+          },
+          "to_ref": {
+            "id": "cosy",
+            "type": "base"
+          },
+          "mode": "grab"
+        },
+        {
+          "segment_id": "onbird-dinner-out",
+          "from_ref": {
+            "id": "cosy",
+            "type": "base"
+          },
+          "to_ref": {
+            "id": "com-tam-nhi",
+            "type": "pool"
+          },
+          "mode": "grab"
+        },
+        {
+          "segment_id": "onbird-dinner-to-walk",
+          "from_ref": {
+            "id": "com-tam-nhi",
+            "type": "pool"
+          },
+          "to_ref": {
+            "id": "dinh-cau",
+            "type": "point"
+          },
+          "mode": "grab"
+        },
+        {
+          "segment_id": "onbird-evening-home",
+          "from_ref": {
+            "id": "dinh-cau",
+            "type": "point"
+          },
+          "to_ref": {
+            "id": "cosy",
+            "type": "base"
+          },
+          "mode": "grab"
+        }
+      ]
+    },
+    {
+      "day_id": "phuquoc-2026:2026-10-12",
+      "main_card_slug": "vinwonders",
+      "meals": [
+        {
+          "segment_id": "vin-breakfast",
+          "ref": {
+            "id": "banh-mi-anh-thu",
+            "type": "pool"
+          }
+        },
+        {
+          "segment_id": "vin-lunch",
+          "ref": {
+            "id": "vinwonders-inside",
+            "type": "pool"
+          }
+        },
+        {
+          "segment_id": "vin-dinner",
+          "ref": {
+            "id": "banh-mi-anh-thu",
+            "type": "pool"
+          }
+        }
+      ],
+      "transfers": [
+        {
+          "segment_id": "vin-out",
+          "from_ref": {
+            "id": "cosy",
+            "type": "base"
+          },
+          "to_ref": {
+            "id": "vinwonders",
+            "type": "card"
+          },
+          "mode": "grab"
+        },
+        {
+          "segment_id": "vin-dinner-ride",
+          "from_ref": {
+            "id": "vinwonders",
+            "type": "card"
+          },
+          "to_ref": {
+            "id": "banh-mi-anh-thu",
+            "type": "pool"
+          },
+          "mode": "grab"
+        },
+        {
+          "segment_id": "vin-home",
+          "from_ref": {
+            "id": "banh-mi-anh-thu",
+            "type": "pool"
+          },
+          "to_ref": {
+            "id": "cosy",
+            "type": "base"
+          },
+          "mode": "grab"
+        }
+      ]
+    },
+    {
+      "day_id": "phuquoc-2026:2026-10-13",
+      "main_card_slug": "cable",
+      "meals": [
+        {
+          "segment_id": "cable-breakfast",
+          "ref": {
+            "id": "banh-mi-anh-thu",
+            "type": "pool"
+          }
+        },
+        {
+          "segment_id": "hon-lunch",
+          "ref": {
+            "id": "honthom-inside",
+            "type": "pool"
+          }
+        },
+        {
+          "segment_id": "cable-dinner",
+          "ref": {
+            "id": "wow-que-toi",
+            "type": "pool"
+          }
+        }
+      ],
+      "transfers": [
+        {
+          "segment_id": "cable-out",
+          "from_ref": {
+            "id": "cosy",
+            "type": "base"
+          },
+          "to_ref": {
+            "id": "cable",
+            "type": "card"
+          },
+          "mode": "grab"
+        },
+        {
+          "segment_id": "cable-return",
+          "from_ref": {
+            "id": "hon-thom",
+            "type": "point"
+          },
+          "to_ref": {
+            "id": "cable",
+            "type": "card"
+          },
+          "mode": "cable"
+        },
+        {
+          "segment_id": "cable-to-sunset",
+          "from_ref": {
+            "id": "cable",
+            "type": "card"
+          },
+          "to_ref": {
+            "id": "sunset-town",
+            "type": "point"
+          },
+          "mode": "grab"
+        },
+        {
+          "segment_id": "sunset-to-wow",
+          "from_ref": {
+            "id": "sunset-town",
+            "type": "point"
+          },
+          "to_ref": {
+            "id": "wow-que-toi",
+            "type": "pool"
+          },
+          "mode": "grab"
+        },
+        {
+          "segment_id": "cable-home",
+          "from_ref": {
+            "id": "wow-que-toi",
+            "type": "pool"
+          },
+          "to_ref": {
+            "id": "cosy",
+            "type": "base"
+          },
+          "mode": "grab"
+        }
+      ]
+    },
+    {
+      "day_id": "phuquoc-2026:2026-10-14",
+      "main_card_slug": "safari",
+      "meals": [
+        {
+          "segment_id": "safari-breakfast",
+          "ref": {
+            "id": "banh-mi-anh-thu",
+            "type": "pool"
+          }
+        },
+        {
+          "segment_id": "safari-lunch",
+          "ref": {
+            "id": "safari-inside",
+            "type": "pool"
+          }
+        },
+        {
+          "segment_id": "safari-dinner",
+          "ref": {
+            "id": "com-tam-nhi",
+            "type": "pool"
+          }
+        }
+      ],
+      "transfers": [
+        {
+          "segment_id": "safari-out",
+          "from_ref": {
+            "id": "cosy",
+            "type": "base"
+          },
+          "to_ref": {
+            "id": "safari",
+            "type": "card"
+          },
+          "mode": "grab"
+        },
+        {
+          "segment_id": "safari-home",
+          "from_ref": {
+            "id": "safari",
+            "type": "card"
+          },
+          "to_ref": {
+            "id": "cosy",
+            "type": "base"
+          },
+          "mode": "grab"
+        },
+        {
+          "segment_id": "safari-dinner-out",
+          "from_ref": {
+            "id": "cosy",
+            "type": "base"
+          },
+          "to_ref": {
+            "id": "com-tam-nhi",
+            "type": "pool"
+          },
+          "mode": "grab"
+        },
+        {
+          "segment_id": "safari-dinner-home",
+          "from_ref": {
+            "id": "com-tam-nhi",
+            "type": "pool"
+          },
+          "to_ref": {
+            "id": "cosy",
+            "type": "base"
+          },
+          "mode": "grab"
+        }
+      ]
+    },
+    {
+      "day_id": "phuquoc-2026:2026-10-15",
+      "main_card_slug": null,
+      "meals": [
+        {
+          "segment_id": "depart-breakfast",
+          "ref": {
+            "id": "banh-mi-anh-thu",
+            "type": "pool"
+          }
+        }
+      ],
+      "transfers": [
+        {
+          "segment_id": "cosy-to-airport",
+          "from_ref": {
+            "id": "cosy",
+            "type": "base"
+          },
+          "to_ref": {
+            "id": "departure-flight",
+            "type": "base"
+          },
+          "mode": "grab"
+        }
+      ]
+    }
+  ]
+}
