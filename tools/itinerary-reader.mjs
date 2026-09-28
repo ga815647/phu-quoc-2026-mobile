@@ -152,8 +152,10 @@ function timeText(t) {
   const duration=t.duration_minutes ? `${t.duration_minutes.min}${t.duration_minutes.min===t.duration_minutes.max?'':`–${t.duration_minutes.max}`} 分鐘`:'待估';
   const zone=new Intl.DateTimeFormat('zh-Hant',{timeZone:t.timezone,timeZoneName:'short'}).formatToParts(new Date()).find(p=>p.type==='timeZoneName')?.value || t.timezone;
   const kinds={scheduled:'已核對時刻（非完成）',estimated:'估算（非實測）',planned:'預留（非實測）',unknown:'時間未核實'};
-  return `${prefix}${slot}（${t.timezone} ${zone}） · ${kinds[t.kind]} · ${duration}`;
+  return {clock:prefix+slot,zone:`時區 ${t.timezone} ${zone}`,certainty:kinds[t.kind],duration};
 }
+const DAY_KINDS={arrival:'抵達日',activity:'主活動',light:'輕鬆安排',departure:'返程日'};
+const SEGMENT_KINDS={activity:'活動',meal:'用餐',transfer:'交通',rest:'休息',optional:'可選'};
 const recheck=date=>date && (Date.now()-Date.parse(`${date}T00:00:00Z`))/86400000 > 30;
 function evidence(body,dates,source) {
   const unique=[...new Set(dates.filter(Boolean))];
@@ -163,8 +165,13 @@ function evidence(body,dates,source) {
 function appendSegment(list,s,refs,alternatives) {
   const item=el('div',`step route-${s.kind}`);item.dataset.segmentId=s.id;item.dataset.kind=s.kind;
   item.dataset.refType=s.ref?.type || '';item.dataset.refId=s.ref?.id || '';
-  const time=el('div','time',timeText(s.time));const body=el('div');
+  const label=timeText(s.time);
+  const time=el('div','time',label.clock);const body=el('div','route-body');
+  body.append(el('span','route-kind',SEGMENT_KINDS[s.kind]));
   body.append(el('b','',s.label));
+  const detail=el('div','time-detail');
+  detail.append(el('span','',label.zone),el('span','',label.certainty),el('span','',label.duration));
+  body.append(detail);
   evidence(body,[s.time.evidence_as_of],s.time.source_refs.join('、'));
   const conditionLabel=id=>alternatives.find(a=>a.id===id)?.trigger_text ||
     refs.cards.find(c=>c.slug==='starfish')?.condition_labels?.[id] || id;
@@ -207,7 +214,10 @@ export function renderItinerary(root,loaded) {
   data.days.forEach((d,index)=>{
     const button=el('button','date-tab',d.date.slice(5));button.type='button';button.setAttribute('role','tab');button.setAttribute('aria-selected',String(d.id===activeDay));button.setAttribute('aria-pressed',String(d.id===activeDay));tabs.append(button);
     const panel=el('div','day-panel'+(d.id===activeDay?' active':''));panel.dataset.itineraryDay=d.id;panel.dataset.mainCard=d.main_card_slug||'';
-    panel.append(el('div','today-big',d.date+(d.main_card_slug ? ' · '+nameFor(data.refs,{type:'card',id:d.main_card_slug}) : ' · '+d.day_kind)));
+    const header=el('div','day-header');header.append(el('span','day-date',d.date));
+    header.append(el('div','today-big',d.main_card_slug ? nameFor(data.refs,{type:'card',id:d.main_card_slug}) : DAY_KINDS[d.day_kind] || '當日安排'));
+    if(d.main_card_slug)header.append(el('span','day-kind',DAY_KINDS[d.day_kind] || '當日安排'));
+    panel.append(header);
     if(d.plan.public_note)panel.append(el('p','tiny',d.plan.public_note));
     if(!d.plan.segments.length)panel.append(el('p','tiny','當日目前沒有安排段落。'));
     const list=el('div','timeline coastal-route');d.plan.segments.forEach(s=>appendSegment(list,s,data.refs,d.plan.alternatives));panel.append(list);
@@ -234,7 +244,7 @@ export function mountItinerary({root,todayRoot,refreshButton,apiUrl,fallbackUrl,
     const desc=day ? day.plan.segments.map(s=>`${s.label}${s.ref?'：'+nameFor(loaded.envelope.data.refs,s.ref):''}`).join('、') : '請在行程區查看六日安排。';
     const phase=todayRoot.querySelector('#tripPhase'),title=todayRoot.querySelector('#todayTitle'),detail=todayRoot.querySelector('#todayDesc'),next=todayRoot.querySelector('#todayNext');
     if(phase)phase.textContent=date<'2026-10-10'?'出發前':date>'2026-10-15'?'旅行後':'旅途中 · '+date;
-    if(title)title.textContent=day?`今日（${date}）：${day.main_card_slug?nameFor(loaded.envelope.data.refs,{type:'card',id:day.main_card_slug}):day.day_kind}`:`六日行程（${date}）`;
+    if(title)title.textContent=day?`今日（${date}）：${day.main_card_slug?nameFor(loaded.envelope.data.refs,{type:'card',id:day.main_card_slug}):DAY_KINDS[day.day_kind] || '當日安排'}`:`六日行程（${date}）`;
     if(detail)detail.textContent=desc;
     if(next)next.textContent=loaded.mode==='fallback'?'備援資料，非最新安排。':'線上行程已讀取。';
   }
