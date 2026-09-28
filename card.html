@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-Hant">
+<html lang="zh-Hant" data-site-build="sha256:67e7c5b2bcd264d0ec775e4be6c7c30b058f7c4ef057c8757c7f8ff802f1f48d">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -20,6 +20,41 @@
 @media(max-width:380px){.filters{grid-template-columns:1fr}.choice-grid{grid-template-columns:1fr}.nav button{font-size:13px}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 .depart-check{padding:6px 12px}.depart-check summary{cursor:pointer;min-height:44px;display:flex;align-items:center;font-weight:800;font-size:18px;letter-spacing:-.02em}.depart-check .prep-grid{margin-top:10px}
+[data-itinerary]{--coast:#006b83;--deep:#173b4a;--foam:#f5fafc;--tide:#ddf1f5;--sunset:#e8644a;min-width:0;color:var(--deep);font-family:"Noto Sans TC",ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang TC","Microsoft JhengHei",sans-serif}
+[data-itinerary] .itinerary-provenance{color:#365968;overflow-wrap:anywhere;margin:0 0 14px;padding:2px 12px;border-left:3px solid var(--coast);background:var(--foam);line-height:1.55;font-size:13px}
+[data-itinerary] .itinerary-provenance summary{min-height:44px;display:flex;align-items:center;cursor:pointer}
+[data-itinerary] .itinerary-provenance p{margin:0 0 10px}
+[data-itinerary] .date-tabs{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:4px;margin:0 0 14px}
+[data-itinerary] .date-tab{min-width:0;min-height:48px;padding:7px 1px;border-radius:8px;border-color:#b9d8df;color:var(--deep);background:var(--foam);font-size:clamp(11px,3vw,14px);font-variant-numeric:tabular-nums}
+[data-itinerary] .date-tab[aria-pressed="true"]{background:var(--coast);border-color:var(--coast);color:#fff}
+[data-itinerary] .day-panel{min-width:0;padding:0 14px 18px;border:1px solid #b9d8df;border-radius:16px;background:var(--foam);overflow:hidden;overflow-wrap:anywhere}
+[data-itinerary] .day-header{margin:0 -14px;padding:20px 16px 22px;background:var(--coast);color:#fff}
+[data-itinerary] .day-header .day-date,[data-itinerary] .day-header .day-kind{display:block;font-size:13px;font-weight:700;font-variant-numeric:tabular-nums}
+[data-itinerary] .day-header .today-big{font-size:clamp(26px,7vw,30px);line-height:1.25;color:#fff;font-weight:850;margin:5px 0 0;letter-spacing:-.025em}
+[data-itinerary] .day-panel>.tiny{color:#365968;font-size:14px;margin-bottom:14px}
+[data-itinerary] .coastal-route{display:block;position:relative;margin-top:18px;padding:0;background:linear-gradient(var(--coast),var(--coast)) 67px 16px / 2px calc(100% - 38px) no-repeat}
+[data-itinerary] .coastal-route .step{position:relative;display:grid;grid-template-columns:52px 16px minmax(0,1fr);column-gap:8px;align-items:start;min-width:0;margin:0;padding:0 0 20px;border:0;background:transparent;overflow-wrap:anywhere}
+[data-itinerary] .coastal-route .step::before{content:"";position:absolute;left:62px;top:9px;width:12px;height:12px;border:3px solid var(--coast);border-radius:50%;background:var(--foam);box-sizing:border-box}
+[data-itinerary] .coastal-route .step.route-activity::before{background:var(--coast);box-shadow:0 0 0 4px var(--tide)}
+[data-itinerary] .coastal-route .step.route-meal .route-body{background:var(--tide);border-radius:4px 12px 12px 4px;padding:10px;border-left:3px solid var(--sunset)}
+[data-itinerary] .coastal-route .step.route-meal::before{background:var(--sunset);border-color:var(--sunset)}
+[data-itinerary] .coastal-route .step.route-transfer .route-body{background:var(--tide);border-left:3px solid var(--coast);border-radius:4px 12px 12px 4px;padding:10px;color:#365968}
+[data-itinerary] .coastal-route .step.route-transfer::before{left:65px;top:12px;width:6px;height:6px;border:0;background:var(--coast)}
+[data-itinerary] .coastal-route .step.route-optional::before{border-color:var(--sunset)}
+[data-itinerary] .coastal-route .time{grid-column:1;font-size:13px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--coast);line-height:1.35;padding-top:4px;overflow-wrap:anywhere}
+[data-itinerary] .coastal-route .route-body{grid-column:3;min-width:0;padding:0 0 2px}
+[data-itinerary] .coastal-route .route-kind{display:block;font-size:12px;font-weight:750;color:var(--coast)}
+[data-itinerary] .coastal-route .step.route-meal .route-kind{color:#ad4330}
+[data-itinerary] .coastal-route .step b{font-size:17px;line-height:1.4;color:var(--deep)}
+[data-itinerary] .coastal-route .step p{font-size:16px;line-height:1.5;color:var(--deep);margin:5px 0 0}
+[data-itinerary] .coastal-route .time-detail{display:flex;flex-wrap:wrap;gap:1px 9px;font-size:12px;line-height:1.5;color:#365968;margin:6px 0 9px}
+[data-itinerary] .coastal-route .step p.tiny{font-size:13px;color:#365968;line-height:1.5}
+[data-itinerary] .place-link{border-color:#a8cbd4;color:var(--coast);font-size:14px;margin:8px 8px 0 0;min-height:44px}
+[data-itinerary] .itinerary-alternatives{margin-top:14px;border-top:1px solid #b9d8df}
+[data-itinerary] .itinerary-alternatives summary{min-height:48px;display:flex;align-items:center;font-weight:800;cursor:pointer;color:var(--coast)}
+[data-itinerary] .itinerary-alternatives .panel{margin-top:8px;box-shadow:none;border-color:#b9d8df}
+[data-itinerary] .itinerary-alternatives .step{display:block;overflow-wrap:anywhere}
+[data-itinerary] button:focus-visible,[data-itinerary] summary:focus-visible,[data-itinerary] a:focus-visible{outline:3px solid var(--sunset);outline-offset:2px}
 
 .link-card{display:block;text-decoration:none;color:inherit;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:16px;overflow:hidden}
 .link-card:active{transform:scale(.99)}
@@ -82,7 +117,7 @@ fetchWithTimeout('https://br-silent-haze-b3xw64tm-phqreadonly.compute.c-4.ap-sou
     +`<div class="section-head t-block"><h2>當日吃飯</h2></div><div class="panel pad">${meals}</div>`
     +(cut.length?`<div class="section-head t-block"><h2>時間不夠時怎麼調整</h2></div><div class="panel pad"><ul class="cut-list">${cut.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`:'')
     +(gates.length?`<div class="section-head t-block"><h2>成行條件</h2></div><div class="panel pad"><ul class="cut-list">${gates.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`:'');
-}).catch(()=>{mount.innerHTML='<div class="callout red">資料載入失敗，請檢查連線後重新整理。<a href="./#itinerary">回行程</a></div>'});
+  }).catch(()=>{mount.innerHTML='<div class="callout red">資料載入失敗，請檢查連線後重新整理。<a href="./#itinerary">回行程</a></div>'});
 })();
 </script>
 </body>

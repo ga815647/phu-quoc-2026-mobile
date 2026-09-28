@@ -160,5 +160,23 @@
   "order_copy": "現做、熱賣的熟食",
   "desc_copy": "只在 Safari daylight tail 已經到 Gành Dầu 時順手看。",
   "divider": null
+ },
+ {
+  "pool_key": "safari-inside",
+  "notion_id": null,
+  "pool_rank": 19,
+  "pool_role": "fallback",
+  "order_copy": "Safari 園內午餐（待查核）",
+  "desc_copy": "園內餐飲待查核，現場依營業與孩子狀況選擇",
+  "divider": null
+ },
+ {
+  "pool_key": "honthom-inside",
+  "notion_id": null,
+  "pool_rank": 20,
+  "pool_role": "fallback",
+  "order_copy": "Hòn Thơm 園內午餐（待查核）",
+  "desc_copy": "園內餐飲待查核，現場依營業與孩子狀況選擇",
+  "divider": null
  }
 ]

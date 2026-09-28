@@ -1,0 +1,2256 @@
+{
+ "data": {
+  "days": [
+   {
+    "id": "phuquoc-2026:2026-10-10",
+    "date": "2026-10-10",
+    "plan": {
+     "segments": [
+      {
+       "id": "flight-845-depart",
+       "ref": {
+        "id": "arrival-flight",
+        "type": "base"
+       },
+       "kind": "activity",
+       "note": "已確認航班摘要；不以跨時區時刻相減推算飛行或接車時間。",
+       "time": {
+        "kind": "scheduled",
+        "timezone": "Asia/Taipei",
+        "day_offset": 0,
+        "source_refs": [
+         "bookings:vjl845"
+        ],
+        "start_window": {
+         "max": "14:10",
+         "min": "14:10"
+        },
+        "evidence_as_of": "2026-09-20",
+        "duration_minutes": null
+       },
+       "label": "VJ845 臺北起飛 14:10（臺北當地）",
+       "condition_refs": []
+      },
+      {
+       "id": "flight-845-arrive",
+       "ref": {
+        "id": "arrival-flight",
+        "type": "base"
+       },
+       "kind": "activity",
+       "note": "落地後入境、領行李與等待接車另計；航班需出發前重查。",
+       "time": {
+        "kind": "scheduled",
+        "timezone": "Asia/Ho_Chi_Minh",
+        "day_offset": 0,
+        "source_refs": [
+         "bookings:vjl845"
+        ],
+        "start_window": {
+         "max": "16:50",
+         "min": "16:50"
+        },
+        "evidence_as_of": "2026-09-20",
+        "duration_minutes": null
+       },
+       "label": "VJ845 抵達 PQC 16:50（富國島當地）",
+       "condition_refs": []
+      },
+      {
+       "id": "airport-to-cosy",
+       "ref": null,
+       "kind": "transfer",
+       "note": "機場叫車可用但不是預約成立；Cosy 入口 pin（71B/81B 資料衝突）待住宿核實。；預留15分鐘為草案規劃緩衝（非實測車程/候車或業者時刻）；等待及門到門耗時仍待核實。",
+       "time": {
+        "kind": "unknown",
+        "timezone": "Asia/Ho_Chi_Minh",
+        "day_offset": 0,
+        "source_refs": [],
+        "start_window": null,
+        "evidence_as_of": null,
+        "duration_minutes": null
+       },
+       "label": "入境領行李後叫車：PQC → Cosy",
+       "transfer": {
+        "mode": "grab",
+        "to_ref": {
+         "id": "cosy",
+         "type": "base"
+        },
+        "from_ref": {
+         "id": "arrival-flight",
+         "type": "base"
+        },
+        "wait_minutes": null,
+        "buffer_minutes": 15,
+        "condition_refs": []
+       },
+       "condition_refs": []
+      },
+      {
+       "id": "arrival-checkin",
+       "ref": {
+        "id": "cosy",
+        "type": "base"
+       },
+       "kind": "rest",
+       "note": "已確認住宿基地 10/10–15；不宣稱旅館入口地址已確認。",
+       "time": {
+        "kind": "unknown",
+        "timezone": "Asia/Ho_Chi_Minh",
+        "day_offset": 0,
+        "source_refs": [],
+        "start_window": null,
+        "evidence_as_of": null,
+        "duration_minutes": null
+       },
+       "label": "入住 Cosy、整理與休息",
+       "condition_refs": []
+      },
+      {
+       "id": "arrival-to-dinner",
+       "ref": null,
+       "kind": "transfer",
+       "note": "先確認是否順路及仍營業；否則住宿周邊吃。；預留15分鐘為草案規劃緩衝（非實測車程/候車或業者時刻）；等待及門到門耗時仍待核實。",
+       "time": {
+        "kind": "unknown",
+        "timezone": "Asia/Ho_Chi_Minh",
+        "day_offset": 0,
+        "source_refs": [],
+        "start_window": null,
+        "evidence_as_of": null,
+        "duration_minutes": null
+       },
+       "label": "入住後若仍適合，前往 Bánh mì Anh Thư",
+       "transfer": {
+        "mode": "grab",
+        "to_ref": {
+         "id": "banh-mi-anh-thu",
+         "type": "pool"
+        },
+        "from_ref": {
+         "id": "cosy",
+         "type": "base"
+        },
+        "wait_minutes": null,
+        "buffer_minutes": 15,
+        "condition_refs": []
+       },
+       "condition_refs": []
+      },
+      {
+       "id": "arrival-dinner",
+       "ref": {
+        "id": "banh-mi-anh-thu",
+        "type": "pool"
+       },
+       "kind": "meal",
+       "note": "暫排一般餐飲推薦，非預訂；僅叫車/步行路線順路且確認營業才採用，否則就近用餐。Waterfront 尚無 Neon ID，不虛構引用；店家 last_verified 2026-09-01，出發前重查。",
+       "time": {
+        "kind": "unknown",
+        "timezone": "Asia/Ho_Chi_Minh",
+        "day_offset": 0,
+        "source_refs": [],
+        "start_window": null,
+        "evidence_as_of": null,
+        "duration_minutes": null
+       },
+       "label": "晚餐：Bánh mì Anh Thư 外帶候選",
+       "selection": "derived",
+       "condition_refs": []
+      },
+      {
+       "id": "arrival-dinner-home",
+       "ref": null,
+       "kind": "transfer",
+       "note": "不是住宿旁已核實步行距離；若就近吃則不執行跨區路線。；預留15分鐘為草案規劃緩衝（非實測車程/候車或業者時刻）；等待及門到門耗時仍待核實。",
+       "time": {
+        "kind": "unknown",
+        "timezone": "Asia/Ho_Chi_Minh",
+        "day_offset": 0,
+        "source_refs": [],
+        "start_window": null,
+        "evidence_as_of": null,
+        "duration_minutes": null
+       },
+       "label": "晚餐後返 Cosy",
+       "transfer": {
+        "mode": "grab",
+        "to_ref": {
+         "id": "cosy",
+         "type": "base"
+        },
+        "from_ref": {
+         "id": "banh-mi-anh-thu",
+         "type": "pool"
+        },
+        "wait_minutes": null,
+        "buffer_minutes": 15,
+        "condition_refs": []
+       },
+       "condition_refs": []
+      },
+      {
+       "id": "arrival-supplies",
+       "ref": {
+        "id": "cosy",
+        "type": "base"
+       },
+       "kind": "optional",
+       "note": "晚到即取消；晚間活動約 21:00 前結束，返房另算。",
+       "time": {
+        "kind": "unknown",
+        "timezone": "Asia/Ho_Chi_Minh",
+        "day_offset": 0,
+        "source_refs": [],
+        "start_window": null,
+        "evidence_as_of": null,
+        "duration_minutes": null
+       },
+       "label": "視入境與體力補明早水與簡餐",
+       "condition_refs": []
+      }
+     ],
+     "public_note": "10/10 放慢；希望查核的 Waterfront 尚無 Neon food/pool ID，現有 Bánh mì 僅暫排非已接受替代或已訂晚餐。",
+     "alternatives": [
+      {
+       "id": "late-arrival",
+       "action": "skip_optional",
+       "trigger_kind": "unavailable",
+       "trigger_text": "入境或接車延誤",
+       "target_segment_ids": [
+        "arrival-supplies"
+       ],
+       "replacement_segments": []
+      }
+     ],
+     "schema_version": 1
+    },
+    "day_kind": "arrival",
+    "main_card_slug": null
+   },
+   {
+    "id": "phuquoc-2026:2026-10-11",
+    "date": "2026-10-11",
+    "plan": {
+     "segments": [
+      {
+       "id": "onbird-breakfast",
+       "ref": {
+        "id": "banh-mi-anh-thu",
+        "type": "pool"
+       },
+       "kind": "meal",
+       "note": "若接車窗口太早/不順路，房內簡餐；未假設店家當日營業或已購買。last_verified 2026-09-01，出發前重查。",
+       "time": {
+        "kind": "unknown",
+        "timezone": "Asia/Ho_Chi_Minh",
+        "day_offset": 0,
+        "source_refs": [],
+        "start_window": null,
+        "evidence_as_of": null,
+        "duration_minutes": null
+       },
+       "label": "早餐：Bánh mì Anh Thư 前晚順路外帶候選",
+       "selection": "derived",
+       "condition_refs": []
+      },
+      {
+       "id": "onbird-pickup",
+       "ref": null,
+       "kind": "transfer",
+       "note": "已確認業者接送模式；不拆成自叫 Grab 去港口；兒童救生衣與照看須事先書面確認。；預留10分鐘為草案規劃緩衝（非實測車程/候車或業者時刻）；等待及門到門耗時仍待核實。",
+       "time": {
+        "kind": "unknown",
+        "timezone": "Asia/Ho_Chi_Minh",
+        "day_offset": 0,
+        "source_refs": [],
+        "start_window": null,
+        "evidence_as_of": null,
+        "duration_minutes": null
+       },
+       "label": "業者從 Cosy 門口接送（接車窗口待通知）",
+       "transfer": {
+        "mode": "operator_pickup",
+        "to_ref": {
+         "id": "onbird-booking",
+         "type": "base"
+        },
+        "from_ref": {
+         "id": "cosy",
+         "type": "base"
+        },
+        "wait_minutes": null,
+        "buffer_minutes": 10,
+        "condition_refs": []
+       },
+       "condition_refs": []
+      },
+      {
+       "id": "onbird-core",
+       "ref": {
+        "id": "onbird",
+        "type": "card"
+       },
+       "kind": "activity",
+       "note": "10/11 Morning 固定主活動；海況與業者放行，接車/活動長度均待通知。bookings:onbird evidence_as_of 2026-09-20。",
+       "time": {
+        "kind": "unknown",
+        "timezone": "Asia/Ho_Chi_Minh",
+        "day_offset": 0,
+        "source_refs": [],
+        "start_window": null,
+        "evidence_as_of": null,
+        "duration_minutes": null
+       },
+       "label": "OnBird 上午浮潛（確切時間未知）",
+       "condition_refs": []
+      },
+      {
+       "id": "onbird-dropoff",
+       "ref": null,
+       "kind": "transfer",
+       "note": "不自訂回程叫車；返送時刻待通知。；預留10分鐘為草案規劃緩衝（非實測車程/候車或業者時刻）；等待及門到門耗時仍待核實。",
+       "time": {
+        "kind": "unknown",
+        "timezone": "Asia/Ho_Chi_Minh",
+        "day_offset": 0,
+        "source_refs": [],
+        "start_window": null,
+        "evidence_as_of": null,
+        "duration_minutes": null
+       },
+       "label": "業者送回 Cosy",
+       "transfer": {
+        "mode": "operator_pickup",
+        "to_ref": {
+         "id": "cosy",
+         "type": "base"
+        },
+        "from_ref": {
+         "id": "onbird-booking",
+         "type": "base"
+        },
+        "wait_minutes": null,
+        "buffer_minutes": 10,
+        "condition_refs": []
+       },
+       "condition_refs": []
+      },
+      {
+       "id": "onbird-shower",
+       "ref": {
+        "id": "cosy",
+        "type": "base"
+       },
+       "kind": "rest",
+       "note": "午餐在業者返送後，未確認結束時間，先讓孩子休息。",
+       "time": {
+        "kind": "unknown",
+        "timezone": "Asia/Ho_Chi_Minh",
+        "day_offset": 0,
+        "source_refs": [],
+        "start_window": null,
+        "evidence_as_of": null,
+        "duration_minutes": null
+       },
+       "label": "回房洗澡、休息",
+       "condition_refs": []
+      },
+      {
+       "id": "onbird-lunch-out",
+       "ref": null,
+       "kind": "transfer",
+       "note": "不是業者接送的一部分；若返送晚則留住宿周邊吃。；預留15分鐘為草案規劃緩衝（非實測車程/候車或業者時刻）；等待及門到門耗時仍待核實。",
+       "time": {
+        "kind": "unknown",
+        "timezone": "Asia/Ho_Chi_Minh",
+        "day_offset": 0,
+        "source_refs": [],
+        "start_window": null,
+        "evidence_as_of": null,
+        "duration_minutes": null
+       },
+       "label": "午餐若時間足夠，Cosy → Nhà Xưa 68",
+       "transfer": {
+        "mode": "grab",
+        "to_ref": {
+         "id": "nha-xua-68",
+         "type": "pool"
+        },
+        "from_ref": {
+         "id": "cosy",
+         "type": "base"
+        },
+        "wait_minutes": null,
+        "buffer_minutes": 15,
+        "condition_refs": []
+       },
+       "condition_refs": []
+      },
+      {
+       "id": "onbird-lunch",
+       "ref": {
+        "id": "nha-xua-68",
+        "type": "pool"
+       },
+       "kind": "meal",
+       "note": "返程後若午餐尚未解決，僅當時段及前往 Dương Đông 路線合理才去；不是已訂位/住宿旁店家。last_verified 2026-08-11，出發前重查；否則就近解決。",
+       "time": {
+        "kind": "unknown",
+        "timezone": "Asia/Ho_Chi_Minh",
+        "day_offset": 0,
+        "source_refs": [],
+        "start_window": null,
+        "evidence_as_of": null,
+        "duration_minutes": null
+       },
+       "label": "午餐：Nhà Xưa 68 家常菜候選",
+       "selection": "derived",
+       "condition_refs": []
+      },
+      {
+       "id": "onbird-lunch-home",
+       "ref": null,
+       "kind": "transfer",
+       "note": "不把午餐後去晚餐的間隔假裝成緊鄰兩店。；預留15分鐘為草案規劃緩衝（非實測車程/候車或業者時刻）；等待及門到門耗時仍待核實。",
+       "time": {
+        "kind": "unknown",
+        "timezone": "Asia/Ho_Chi_Minh",
+        "day_offset": 0,
+        "source_refs": [],
+        "start_window": null,
+        "evidence_as_of": null,
+        "duration_minutes": null
+       },
+       "label": "午餐後回 Cosy 午休",
+       "transfer": {
+        "mode": "grab",
+        "to_ref": {
+         "id": "cosy",
+         "type": "base"
+        },
+        "from_ref": {
+         "id": "nha-xua-68",
+         "type": "pool"
+        },
+        "wait_minutes": null,
+        "buffer_minutes": 15,
+        "condition_refs": []
+       },
+       "condition_refs": []
+      },
+      {
+       "id": "onbird-afternoon-rest",
+       "ref": {
+        "id": "cosy",
+        "type": "base"
+       },
+       "kind": "rest",
+       "note": "",
+       "time": {
+        "kind": "unknown",
+        "timezone": "Asia/Ho_Chi_Minh",
+        "day_offset": 0,
+        "source_refs": [],
+        "start_window": null,
+        "evidence_as_of": null,
+        "duration_minutes": null
+       },
+       "label": "午休後才評估晚餐",
+       "condition_refs": []
+      },
+      {
+       "id": "onbird-dinner-out",
+       "ref": null,
+       "kind": "transfer",
+       "note": "不是 OnBird 業者行程；營業與可得車仍需核實。；預留15分鐘為草案規劃緩衝（非實測車程/候車或業者時刻）；等待及門到門耗時仍待核實。",
+       "time": {
+        "kind": "unknown",
+        "timezone": "Asia/Ho_Chi_Minh",
+        "day_offset": 0,
+        "source_refs": [],
+        "start_window": null,
+        "evidence_as_of": null,
+        "duration_minutes": null
+       },
+       "label": "視體力由 Cosy 前往 Cơm tấm Nhị",
+       "transfer": {
+        "mode": "grab",
+        "to_ref": {
+         "id": "com-tam-nhi",
+         "type": "pool"
+        },
+        "from_ref": {
+         "id": "cosy",
+         "type": "base"
+        },
+        "wait_minutes": null,
+        "buffer_minutes": 15,
+        "condition_refs": []
+       },
+       "condition_refs": []
+      },
+      {
+       "id": "onbird-dinner",
+       "ref": {
+        "id": "com-tam-nhi",
+        "type": "pool"
+       },
+       "kind": "meal",
+       "note": "僅回程早且營業/路線合適才到老城；目錄營業時段有衝突。last_verified 2026-08-26，出發前重查；累則住宿附近簡餐。",
+       "time": {
+        "kind": "unknown",
+        "timezone": "Asia/Ho_Chi_Minh",
+        "day_offset": 0,
+        "source_refs": [],
+        "start_window": null,
+        "evidence_as_of": null,
+        "duration_minutes": null
+       },
+       "label": "晚餐：Cơm tấm Nhị 候選",
+       "selection": "derived",
+       "condition_refs": []
+      },
+      {
+       "id": "onbird-dinner-to-walk",
+       "ref": null,
+       "kind": "transfer",
+       "note": "兩點實際距離/交通方式未核實，不聲稱可直接步行。；預留15分鐘為草案規劃緩衝（非實測車程/候車或業者時刻）；等待及門到門耗時仍待核實。",
+       "time": {
+        "kind": "unknown",
+        "timezone": "Asia/Ho_Chi_Minh",
+        "day_offset": 0,
+        "source_refs": [],
+        "start_window": null,
+        "evidence_as_of": null,
+        "duration_minutes": null
+       },
+       "label": "晚餐後前往 Dinh Cậu（僅有體力）",
+       "transfer": {
+        "mode": "grab",
+        "to_ref": {
+         "id": "dinh-cau",
+         "type": "point"
+        },
+        "from_ref": {
+         "id": "com-tam-nhi",
+         "type": "pool"
+        },
+        "wait_minutes": null,
+        "buffer_minutes": 15,
+        "condition_refs": []
+       },
+       "condition_refs": []
+      },
+      {
+       "id": "onbird-walk",
+       "ref": {
+        "id": "dinh-cau",
+        "type": "point"
+       },
+       "kind": "optional",
+       "note": "先吃晚餐，回程晚或孩子累即取消；活動約21:00前收尾，返房另計。",
+       "time": {
+        "kind": "unknown",
+        "timezone": "Asia/Ho_Chi_Minh",
+        "day_offset": 0,
+        "source_refs": [],
+        "start_window": null,
+        "evidence_as_of": null,
+        "duration_minutes": null
+       },
+       "label": "Dinh Cậu 短散步（體力允許才去）",
+       "condition_refs": []
+      },
+      {
+       "id": "onbird-evening-home",
+       "ref": null,
+       "kind": "transfer",
+       "note": "僅短散步成立時叫車；直接休息則不執行此段。；預留15分鐘為草案規劃緩衝（非實測車程/候車或業者時刻）；等待及門到門耗時仍待核實。",
+       "time": {
+        "kind": "unknown",
+        "timezone": "Asia/Ho_Chi_Minh",
+        "day_offset": 0,
+        "source_refs": [],
+        "start_window": null,
+        "evidence_as_of": null,
+        "duration_minutes": null
+       },
+       "label": "短散步後回 Cosy",
+       "transfer": {
+        "mode": "grab",
+        "to_ref": {
+         "id": "cosy",
+         "type": "base"
+        },
+        "from_ref": {
+         "id": "dinh-cau",
+         "type": "point"
+        },
+        "wait_minutes": null,
+        "buffer_minutes": 15,
+        "condition_refs": []
+       },
+       "condition_refs": []
+      }
+     ],
+     "public_note": "OnBird 午餐是返送後的普通候選，路線不合就近吃；主活動時間與業者接送不可混同。",
+     "alternatives": [
+      {
+       "id": "onbird-tired",
+       "action": "use_alternative",
+       "trigger_kind": "fatigue",
+       "trigger_text": "晚餐後孩子累，取消 Dinh Cậu",
+       "target_segment_ids": [
+        "onbird-dinner-to-walk",
+        "onbird-walk",
+        "onbird-evening-home"
+       ],
+       "replacement_segments": [
+        {
+         "id": "onbird-dinner-direct-home",
+         "ref": null,
+         "kind": "transfer",
+         "note": "不繞去 Dinh Cậu；晚餐後仍須返住宿。；預留15分鐘為草案規劃緩衝（非實測車程/候車或業者時刻）；等待及門到門耗時仍待核實。",
+         "time": {
+          "kind": "unknown",
+          "timezone": "Asia/Ho_Chi_Minh",
+          "day_offset": 0,
+          "source_refs": [],
+          "start_window": null,
+          "evidence_as_of": null,
+          "duration_minutes": null
+         },
+         "label": "晚餐店直接回 Cosy",
+         "transfer": {
+          "mode": "grab",
+          "to_ref": {
+           "id": "cosy",
+           "type": "base"
+          },
+          "from_ref": {
+           "id": "com-tam-nhi",
+           "type": "pool"
+          },
+          "wait_minutes": null,
+          "buffer_minutes": 15,
+          "condition_refs": []
+         },
+         "condition_refs": []
+        }
+       ]
+      }
+     ],
+     "schema_version": 1
+    },
+    "day_kind": "activity",
+    "main_card_slug": "onbird"
+   },
+   {
+    "id": "phuquoc-2026:2026-10-12",
+    "date": "2026-10-12",
+    "plan": {
+     "segments": [
+      {
+       "id": "vin-breakfast",
+       "ref": {
+        "id": "banh-mi-anh-thu",
+        "type": "pool"
+       },
+       "kind": "meal",
+       "note": "僅前晚有順路買到才用，否則房內簡餐；早餐不新增城市繞行。last_verified 2026-09-01，出發前重查。",
+       "time": {
+        "kind": "unknown",
+        "timezone": "Asia/Ho_Chi_Minh",
+        "day_offset": 0,
+        "source_refs": [],
+        "start_window": null,
+        "evidence_as_of": null,
+        "duration_minutes": null
+       },
+       "label": "早餐：前晚外帶 Bánh mì Anh Thư 候選，在 Cosy 吃",
+       "selection": "derived",
+       "condition_refs": []
+      },
+      {
+       "id": "vin-out",
+       "ref": null,
+       "kind": "transfer",
+       "note": "早餐已在住宿解決；候車、入園排隊另計，雙向門到門 ETA 未核實，偏遠回接出發前確認。；預留15分鐘為草案規劃緩衝（非實測車程/候車或業者時刻）；等待及門到門耗時仍待核實。",
+       "time": {
+        "kind": "unknown",
+        "timezone": "Asia/Ho_Chi_Minh",
+        "day_offset": 0,
+        "source_refs": [],
+        "start_window": null,
+        "evidence_as_of": null,
+        "duration_minutes": null
+       },
+       "label": "Cosy 叫車直達 VinWonders",
+       "transfer": {
+        "mode": "grab",
+        "to_ref": {
+         "id": "vinwonders",
+         "type": "card"
+        },
+        "from_ref": {
+         "id": "cosy",
+         "type": "base"
+        },
+        "wait_minutes": null,
+        "buffer_minutes": 15,
+        "condition_refs": []
+       },
+       "condition_refs": []
+      },
+      {
+       "id": "vin-core",
+       "ref": {
+        "id": "vinwonders",
+        "type": "card"
+       },
+       "kind": "activity",
+       "note": "分區時段/身高現場核對；園方 2026-09-27 查閱，非旅日營運保證。",
+       "time": {
+        "kind": "unknown",
+        "timezone": "Asia/Ho_Chi_Minh",
+        "day_offset": 0,
+        "source_refs": [],
+        "start_window": null,
+        "evidence_as_of": null,
+        "duration_minutes": null
+       },
+       "label": "VinWonders：Sea Shell 先玩",
+       "condition_refs": []
+      },
+      {
+       "id": "vin-lunch",
+       "ref": {
+        "id": "vinwonders-inside",
+        "type": "pool"
+       },
+       "kind": "meal",
+       "note": "pool 僅代表 VinWonders 園內餐飲，不代表 Deep Sea 獨立 ID 或已預訂；當日若不開改園內營業餐飲；Deep Sea 官網查閱 2026-09-27。",
+       "time": {
+        "kind": "unknown",
+        "timezone": "Asia/Ho_Chi_Minh",
+        "day_offset": 0,
+        "source_refs": [],
+        "start_window": null,
+        "evidence_as_of": null,
+        "duration_minutes": null
+       },
+       "label": "園內午餐：Sea Shell Deep Sea 為待核對具名候選",
+       "selection": "derived",
+       "condition_refs": []
+      },
+      {
+       "id": "vin-rest",
+       "ref": {
+        "id": "vinwonders",
+        "type": "card"
+       },
+       "kind": "rest",
+       "note": "",
+       "time": {
+        "kind": "unknown",
+        "timezone": "Asia/Ho_Chi_Minh",
+        "day_offset": 0,
+        "source_refs": [],
+        "start_window": null,
+        "evidence_as_of": null,
+        "duration_minutes": null
+       },
+       "label": "園內休息，依體力續玩或提早撤",
+       "condition_refs": []
+      },
+      {
+       "id": "vin-dinner-ride",
+       "ref": null,
+       "kind": "transfer",
+       "note": "回程可得性先核對；如園內已吃晚餐則改直接回 Cosy，不自動加 Grand World 長尾。；預留15分鐘為草案規劃緩衝（非實測車程/候車或業者時刻）；等待及門到門耗時仍待核實。",
+       "time": {
+        "kind": "unknown",
+        "timezone": "Asia/Ho_Chi_Minh",
+        "day_offset": 0,
+        "source_refs": [],
+        "start_window": null,
+        "evidence_as_of": null,
+        "duration_minutes": null
+       },
+       "label": "離園後回市區晚餐候選",
+       "transfer": {
+        "mode": "grab",
+        "to_ref": {
+         "id": "banh-mi-anh-thu",
+         "type": "pool"
+        },
+        "from_ref": {
+         "id": "vinwonders",
+         "type": "card"
+        },
+        "wait_minutes": null,
+        "buffer_minutes": 15,
+        "condition_refs": []
+       },
+       "condition_refs": []
+      },
+      {
+       "id": "vin-dinner",
+       "ref": {
+        "id": "banh-mi-anh-thu",
+        "type": "pool"
+       },
+       "kind": "meal",
+       "note": "一般候選非預訂；若園內已吃晚餐則跳過，若很累回住宿附近吃。last_verified 2026-09-01，出發前重查。",
+       "time": {
+        "kind": "unknown",
+        "timezone": "Asia/Ho_Chi_Minh",
+        "day_offset": 0,
+        "source_refs": [],
+        "start_window": null,
+        "evidence_as_of": null,
+        "duration_minutes": null
+       },
+       "label": "晚餐：Bánh mì Anh Thư（回市區才採用）",
+       "selection": "derived",
+       "condition_refs": []
+      },
+      {
+       "id": "vin-home",
+       "ref": null,
+       "kind": "transfer",
+       "note": "不把餐廳當成住宿旁或回程已保證。；預留15分鐘為草案規劃緩衝（非實測車程/候車或業者時刻）；等待及門到門耗時仍待核實。",
+       "time": {
+        "kind": "unknown",
+        "timezone": "Asia/Ho_Chi_Minh",
+        "day_offset": 0,
+        "source_refs": [],
+        "start_window": null,
+        "evidence_as_of": null,
+        "duration_minutes": null
+       },
+       "label": "晚餐後叫車回 Cosy",
+       "transfer": {
+        "mode": "grab",
+        "to_ref": {
+         "id": "cosy",
+         "type": "base"
+        },
+        "from_ref": {
+         "id": "banh-mi-anh-thu",
+         "type": "pool"
+        },
+        "wait_minutes": null,
+        "buffer_minutes": 15,
+        "condition_refs": []
+       },
+       "condition_refs": []
+      }
+     ],
+     "public_note": "Grand World 與 Bếp Nhà 是早退且 Green/回程可安排的備選，不預設遠端晚間尾段。",
+     "alternatives": [
+      {
+       "id": "vin-tired",
+       "action": "return_or_rest",
+       "trigger_kind": "fatigue",
+       "trigger_text": "孩子累或園區營運變動",
+       "target_segment_ids": [
+        "vin-rest"
+       ],
+       "replacement_segments": []
+      },
+      {
+       "id": "vin-ate-in-park",
+       "action": "use_alternative",
+       "trigger_kind": "fatigue",
+       "trigger_text": "園內已吃晚餐或孩子累，直接返住宿",
+       "target_segment_ids": [
+        "vin-dinner-ride",
+        "vin-dinner",
+        "vin-home"
+       ],
+       "replacement_segments": [
+        {
+         "id": "vin-direct-home",
+         "ref": null,
+         "kind": "transfer",
+         "note": "不另追市區晚餐；仍需先核對回接車。；預留15分鐘為草案規劃緩衝（非實測車程/候車或業者時刻）；等待及門到門耗時仍待核實。",
+         "time": {
+          "kind": "unknown",
+          "timezone": "Asia/Ho_Chi_Minh",
+          "day_offset": 0,
+          "source_refs": [],
+          "start_window": null,
+          "evidence_as_of": null,
+          "duration_minutes": null
+         },
+         "label": "從 VinWonders 直接回 Cosy",
+         "transfer": {
+          "mode": "grab",
+          "to_ref": {
+           "id": "cosy",
+           "type": "base"
+          },
+          "from_ref": {
+           "id": "vinwonders",
+           "type": "card"
+          },
+          "wait_minutes": null,
+          "buffer_minutes": 15,
+          "condition_refs": []
+         },
+         "condition_refs": []
+        }
+       ]
+      }
+     ],
+     "schema_version": 1
+    },
+    "day_kind": "activity",
+    "main_card_slug": "vinwonders"
+   },
+   {
+    "id": "phuquoc-2026:2026-10-13",
+    "date": "2026-10-13",
+    "plan": {
+     "segments": [
+      {
+       "id": "cable-breakfast",
+       "ref": {
+        "id": "banh-mi-anh-thu",
+        "type": "pool"
+       },
+       "kind": "meal",
+       "note": "僅預先順路買到才用，否則房內簡餐；不繞 Dinh Cậu 或先開車去老城。last_verified 2026-09-01，出發前重查。",
+       "time": {
+        "kind": "unknown",
+        "timezone": "Asia/Ho_Chi_Minh",
+        "day_offset": 0,
+        "source_refs": [],
+        "start_window": null,
+        "evidence_as_of": null,
+        "duration_minutes": null
+       },
+       "label": "早餐：前晚外帶 Bánh mì Anh Thư 候選，在 Cosy 吃",
+       "selection": "derived",
+       "condition_refs": []
+      },
+      {
+       "id": "cable-out",
+       "ref": null,
+       "kind": "transfer",
+       "note": "車程/候車未知，另核實QR、廁所與搭乘隊伍；官方時段與本日停駛出發前核對。；預留15分鐘為草案規劃緩衝（非實測車程/候車或業者時刻）；等待及門到門耗時仍待核實。",
+       "time": {
+        "kind": "unknown",
+        "timezone": "Asia/Ho_Chi_Minh",
+        "day_offset": 0,
+        "source_refs": [],
+        "start_window": null,
+        "evidence_as_of": null,
+        "duration_minutes": null
+       },
+       "label": "Cosy 叫車直達 Ga Ánh Dương",
+       "transfer": {
+        "mode": "grab",
+        "to_ref": {
+         "id": "cable",
+         "type": "card"
+        },
+        "from_ref": {
+         "id": "cosy",
+         "type": "base"
+        },
+        "wait_minutes": null,
+        "buffer_minutes": 15,
+        "condition_refs": []
+       },
+       "condition_refs": []
+      },
+      {
+       "id": "cable-core",
+       "ref": {
+        "id": "cable",
+        "type": "card"
+       },
+       "kind": "activity",
+       "note": "2026-09-27 查閱園方公告 7/20 起適用 09:00–11:30、13:30–17:00；不是 10/13 保證班次，回程先確認。",
+       "time": {
+        "kind": "unknown",
+        "timezone": "Asia/Ho_Chi_Minh",
+        "day_offset": 0,
+        "source_refs": [],
+        "start_window": null,
+        "evidence_as_of": null,
+        "duration_minutes": null
+       },
+       "label": "纜車往 Hòn Thơm",
+       "condition_refs": []
+      },
+      {
+       "id": "hon-thom",
+       "ref": {
+        "id": "hon-thom",
+        "type": "point"
+       },
+       "kind": "activity",
+       "note": "設施/適齡以園方當日公告及孩子體力為準。",
+       "time": {
+        "kind": "unknown",
+        "timezone": "Asia/Ho_Chi_Minh",
+        "day_offset": 0,
+        "source_refs": [],
+        "start_window": null,
+        "evidence_as_of": null,
+        "duration_minutes": null
+       },
+       "label": "Hòn Thơm 玩與補水休息",
+       "condition_refs": []
+      },
+      {
+       "id": "hon-lunch",
+       "ref": {
+        "id": "honthom-inside",
+        "type": "pool"
+       },
+       "kind": "meal",
+       "note": "generic pool 僅指園內當日營業且孩子可吃的餐，非具名店/訂位/開店保證；現場核實。",
+       "time": {
+        "kind": "unknown",
+        "timezone": "Asia/Ho_Chi_Minh",
+        "day_offset": 0,
+        "source_refs": [],
+        "start_window": null,
+        "evidence_as_of": null,
+        "duration_minutes": null
+       },
+       "label": "Hòn Thơm 園內午餐：實際店家待查",
+       "selection": "derived",
+       "condition_refs": []
+      },
+      {
+       "id": "cable-return",
+       "ref": null,
+       "kind": "transfer",
+       "note": "15:30 起往回程站為草案緩衝，非末班保證；當日班次與隊伍先核對。；預留10分鐘為草案規劃緩衝（非實測車程/候車或業者時刻）；等待及門到門耗時仍待核實。",
+       "time": {
+        "kind": "unknown",
+        "timezone": "Asia/Ho_Chi_Minh",
+        "day_offset": 0,
+        "source_refs": [],
+        "start_window": null,
+        "evidence_as_of": null,
+        "duration_minutes": null
+       },
+       "label": "提前搭纜車回本島",
+       "transfer": {
+        "mode": "cable",
+        "to_ref": {
+         "id": "cable",
+         "type": "card"
+        },
+        "from_ref": {
+         "id": "hon-thom",
+         "type": "point"
+        },
+        "wait_minutes": null,
+        "buffer_minutes": 10,
+        "condition_refs": []
+       },
+       "condition_refs": []
+      },
+      {
+       "id": "cable-to-sunset",
+       "ref": null,
+       "kind": "transfer",
+       "note": "實際站點距離、通道與可用車待核實；不主張已核實步行可達，若不順便直接返宿。；預留15分鐘為草案規劃緩衝（非實測車程/候車或業者時刻）；等待及門到門耗時仍待核實。",
+       "time": {
+        "kind": "unknown",
+        "timezone": "Asia/Ho_Chi_Minh",
+        "day_offset": 0,
+        "source_refs": [],
+        "start_window": null,
+        "evidence_as_of": null,
+        "duration_minutes": null
+       },
+       "label": "回本島後前往 Sunset Town",
+       "transfer": {
+        "mode": "grab",
+        "to_ref": {
+         "id": "sunset-town",
+         "type": "point"
+        },
+        "from_ref": {
+         "id": "cable",
+         "type": "card"
+        },
+        "wait_minutes": null,
+        "buffer_minutes": 15,
+        "condition_refs": []
+       },
+       "condition_refs": []
+      },
+      {
+       "id": "sunset-town",
+       "ref": {
+        "id": "sunset-town",
+        "type": "point"
+       },
+       "kind": "optional",
+       "note": "僅孩子體力和回程交通允許時去，表演不當必看。",
+       "time": {
+        "kind": "unknown",
+        "timezone": "Asia/Ho_Chi_Minh",
+        "day_offset": 0,
+        "source_refs": [],
+        "start_window": null,
+        "evidence_as_of": null,
+        "duration_minutes": null
+       },
+       "label": "回本島後 Sunset Town 看海短走",
+       "condition_refs": []
+      },
+      {
+       "id": "sunset-to-wow",
+       "ref": null,
+       "kind": "transfer",
+       "note": "步行是否順路未知，不能直接假定步行；若不順路用 sunset-local-dinner 替代路線。；預留15分鐘為草案規劃緩衝（非實測車程/候車或業者時刻）；等待及門到門耗時仍待核實。",
+       "time": {
+        "kind": "unknown",
+        "timezone": "Asia/Ho_Chi_Minh",
+        "day_offset": 0,
+        "source_refs": [],
+        "start_window": null,
+        "evidence_as_of": null,
+        "duration_minutes": null
+       },
+       "label": "僅路線與車輛可行時，Sunset Town → WOW QUÊ TÔI",
+       "transfer": {
+        "mode": "grab",
+        "to_ref": {
+         "id": "wow-que-toi",
+         "type": "pool"
+        },
+        "from_ref": {
+         "id": "sunset-town",
+         "type": "point"
+        },
+        "wait_minutes": null,
+        "buffer_minutes": 15,
+        "condition_refs": []
+       },
+       "condition_refs": []
+      },
+      {
+       "id": "cable-dinner",
+       "ref": {
+        "id": "wow-que-toi",
+        "type": "pool"
+       },
+       "kind": "meal",
+       "note": "An Thới 候選，Sunset Town 步行是否順路未知；若不順路直接附近吃。last_verified 2026-08-26，出發前重查。",
+       "time": {
+        "kind": "unknown",
+        "timezone": "Asia/Ho_Chi_Minh",
+        "day_offset": 0,
+        "source_refs": [],
+        "start_window": null,
+        "evidence_as_of": null,
+        "duration_minutes": null
+       },
+       "label": "晚餐：WOW QUÊ TÔI（路線合適才用）",
+       "selection": "derived",
+       "condition_refs": []
+      },
+      {
+       "id": "cable-home",
+       "ref": null,
+       "kind": "transfer",
+       "note": "若無法成行，選 Sunset Town 直接返宿替代路線；21:00 是活動結束目標，非到住宿時刻。；預留15分鐘為草案規劃緩衝（非實測車程/候車或業者時刻）；等待及門到門耗時仍待核實。",
+       "time": {
+        "kind": "unknown",
+        "timezone": "Asia/Ho_Chi_Minh",
+        "day_offset": 0,
+        "source_refs": [],
+        "start_window": null,
+        "evidence_as_of": null,
+        "duration_minutes": null
+       },
+       "label": "由 WOW QUÊ TÔI 晚餐店安排回 Cosy 的車",
+       "transfer": {
+        "mode": "grab",
+        "to_ref": {
+         "id": "cosy",
+         "type": "base"
+        },
+        "from_ref": {
+         "id": "wow-que-toi",
+         "type": "pool"
+        },
+        "wait_minutes": null,
+        "buffer_minutes": 15,
+        "condition_refs": []
+       },
+       "condition_refs": []
+      }
+     ],
+     "public_note": "An Thới 市場僅回島夠早、有體力且返程可靠的衛星加點；先刪此加點。",
+     "alternatives": [
+      {
+       "id": "cable-early-home",
+       "action": "use_alternative",
+       "trigger_kind": "fatigue",
+       "trigger_text": "回本島後孩子累或回程不穩，取消 Sunset Town",
+       "target_segment_ids": [
+        "cable-to-sunset",
+        "sunset-town",
+        "sunset-to-wow",
+        "cable-dinner",
+        "cable-home"
+       ],
+       "replacement_segments": [
+        {
+         "id": "cable-direct-home",
+         "ref": null,
+         "kind": "transfer",
+         "note": "先確認可用車，取消 Sunset Town 與南島晚餐。；預留15分鐘為草案規劃緩衝（非實測車程/候車或業者時刻）；等待及門到門耗時仍待核實。",
+         "time": {
+          "kind": "unknown",
+          "timezone": "Asia/Ho_Chi_Minh",
+          "day_offset": 0,
+          "source_refs": [],
+          "start_window": null,
+          "evidence_as_of": null,
+          "duration_minutes": null
+         },
+         "label": "纜車本島站直返 Cosy",
+         "transfer": {
+          "mode": "grab",
+          "to_ref": {
+           "id": "cosy",
+           "type": "base"
+          },
+          "from_ref": {
+           "id": "cable",
+           "type": "card"
+          },
+          "wait_minutes": null,
+          "buffer_minutes": 15,
+          "condition_refs": []
+         },
+         "condition_refs": []
+        },
+        {
+         "id": "cable-early-dinner-out",
+         "ref": null,
+         "kind": "transfer",
+         "note": "確認營業與體力；否則住宿附近吃。；預留15分鐘為草案規劃緩衝（非實測車程/候車或業者時刻）；等待及門到門耗時仍待核實。",
+         "time": {
+          "kind": "unknown",
+          "timezone": "Asia/Ho_Chi_Minh",
+          "day_offset": 0,
+          "source_refs": [],
+          "start_window": null,
+          "evidence_as_of": null,
+          "duration_minutes": null
+         },
+         "label": "回宿後若仍需晚餐，去 Bánh mì Anh Thư",
+         "transfer": {
+          "mode": "grab",
+          "to_ref": {
+           "id": "banh-mi-anh-thu",
+           "type": "pool"
+          },
+          "from_ref": {
+           "id": "cosy",
+           "type": "base"
+          },
+          "wait_minutes": null,
+          "buffer_minutes": 15,
+          "condition_refs": []
+         },
+         "condition_refs": []
+        },
+        {
+         "id": "cable-local-dinner",
+         "ref": {
+          "id": "banh-mi-anh-thu",
+          "type": "pool"
+         },
+         "kind": "meal",
+         "note": "未預訂、不是住宿旁已核實餐廳；last_verified 2026-09-01，出發前重查。",
+         "time": {
+          "kind": "unknown",
+          "timezone": "Asia/Ho_Chi_Minh",
+          "day_offset": 0,
+          "source_refs": [],
+          "start_window": null,
+          "evidence_as_of": null,
+          "duration_minutes": null
+         },
+         "label": "回市區後晚餐：Bánh mì Anh Thư 候選",
+         "selection": "derived",
+         "condition_refs": []
+        },
+        {
+         "id": "cable-early-dinner-home",
+         "ref": null,
+         "kind": "transfer",
+         "note": "不把晚餐餐廳當住宿點。；預留15分鐘為草案規劃緩衝（非實測車程/候車或業者時刻）；等待及門到門耗時仍待核實。",
+         "time": {
+          "kind": "unknown",
+          "timezone": "Asia/Ho_Chi_Minh",
+          "day_offset": 0,
+          "source_refs": [],
+          "start_window": null,
+          "evidence_as_of": null,
+          "duration_minutes": null
+         },
+         "label": "晚餐後回 Cosy",
+         "transfer": {
+          "mode": "grab",
+          "to_ref": {
+           "id": "cosy",
+           "type": "base"
+          },
+          "from_ref": {
+           "id": "banh-mi-anh-thu",
+           "type": "pool"
+          },
+          "wait_minutes": null,
+          "buffer_minutes": 15,
+          "condition_refs": []
+         },
+         "condition_refs": []
+        }
+       ]
+      },
+      {
+       "id": "sunset-local-dinner",
+       "action": "use_alternative",
+       "trigger_kind": "unavailable",
+       "trigger_text": "WOW QUÊ TÔI 從 Sunset Town 不順路或當日未營業",
+       "target_segment_ids": [
+        "sunset-to-wow",
+        "cable-dinner",
+        "cable-home"
+       ],
+       "replacement_segments": [
+        {
+         "id": "sunset-direct-home",
+         "ref": null,
+         "kind": "transfer",
+         "note": "不為 WOW 折返，先確認回程車。；預留15分鐘為草案規劃緩衝（非實測車程/候車或業者時刻）；等待及門到門耗時仍待核實。",
+         "time": {
+          "kind": "unknown",
+          "timezone": "Asia/Ho_Chi_Minh",
+          "day_offset": 0,
+          "source_refs": [],
+          "start_window": null,
+          "evidence_as_of": null,
+          "duration_minutes": null
+         },
+         "label": "從 Sunset Town 返 Cosy",
+         "transfer": {
+          "mode": "grab",
+          "to_ref": {
+           "id": "cosy",
+           "type": "base"
+          },
+          "from_ref": {
+           "id": "sunset-town",
+           "type": "point"
+          },
+          "wait_minutes": null,
+          "buffer_minutes": 15,
+          "condition_refs": []
+         },
+         "condition_refs": []
+        },
+        {
+         "id": "sunset-dinner-out",
+         "ref": null,
+         "kind": "transfer",
+         "note": "若孩子累，在住宿附近就近吃。；預留15分鐘為草案規劃緩衝（非實測車程/候車或業者時刻）；等待及門到門耗時仍待核實。",
+         "time": {
+          "kind": "unknown",
+          "timezone": "Asia/Ho_Chi_Minh",
+          "day_offset": 0,
+          "source_refs": [],
+          "start_window": null,
+          "evidence_as_of": null,
+          "duration_minutes": null
+         },
+         "label": "回宿後若仍需晚餐，去 Bánh mì Anh Thư",
+         "transfer": {
+          "mode": "grab",
+          "to_ref": {
+           "id": "banh-mi-anh-thu",
+           "type": "pool"
+          },
+          "from_ref": {
+           "id": "cosy",
+           "type": "base"
+          },
+          "wait_minutes": null,
+          "buffer_minutes": 15,
+          "condition_refs": []
+         },
+         "condition_refs": []
+        },
+        {
+         "id": "sunset-dinner-local",
+         "ref": {
+          "id": "banh-mi-anh-thu",
+          "type": "pool"
+         },
+         "kind": "meal",
+         "note": "僅當日營業且可前往時選，不宣稱 Sunset Town 附近或預訂。last_verified 2026-09-01，出發前重查。",
+         "time": {
+          "kind": "unknown",
+          "timezone": "Asia/Ho_Chi_Minh",
+          "day_offset": 0,
+          "source_refs": [],
+          "start_window": null,
+          "evidence_as_of": null,
+          "duration_minutes": null
+         },
+         "label": "晚餐：Bánh mì Anh Thư 候選",
+         "selection": "derived",
+         "condition_refs": []
+        },
+        {
+         "id": "sunset-dinner-home",
+         "ref": null,
+         "kind": "transfer",
+         "note": "不把晚餐店當住宿終點。；預留15分鐘為草案規劃緩衝（非實測車程/候車或業者時刻）；等待及門到門耗時仍待核實。",
+         "time": {
+          "kind": "unknown",
+          "timezone": "Asia/Ho_Chi_Minh",
+          "day_offset": 0,
+          "source_refs": [],
+          "start_window": null,
+          "evidence_as_of": null,
+          "duration_minutes": null
+         },
+         "label": "晚餐後回 Cosy",
+         "transfer": {
+          "mode": "grab",
+          "to_ref": {
+           "id": "cosy",
+           "type": "base"
+          },
+          "from_ref": {
+           "id": "banh-mi-anh-thu",
+           "type": "pool"
+          },
+          "wait_minutes": null,
+          "buffer_minutes": 15,
+          "condition_refs": []
+         },
+         "condition_refs": []
+        }
+       ]
+      }
+     ],
+     "schema_version": 1
+    },
+    "day_kind": "activity",
+    "main_card_slug": "cable"
+   },
+   {
+    "id": "phuquoc-2026:2026-10-14",
+    "date": "2026-10-14",
+    "plan": {
+     "segments": [
+      {
+       "id": "safari-breakfast",
+       "ref": {
+        "id": "banh-mi-anh-thu",
+        "type": "pool"
+       },
+       "kind": "meal",
+       "note": "僅事前順路買到才用，否則房內簡餐；不為早餐繞去 Dương Đông。last_verified 2026-09-01，出發前重查。",
+       "time": {
+        "kind": "unknown",
+        "timezone": "Asia/Ho_Chi_Minh",
+        "day_offset": 0,
+        "source_refs": [],
+        "start_window": null,
+        "evidence_as_of": null,
+        "duration_minutes": null
+       },
+       "label": "早餐：前晚外帶 Bánh mì Anh Thư 候選，在 Cosy 吃",
+       "selection": "derived",
+       "condition_refs": []
+      },
+      {
+       "id": "safari-out",
+       "ref": null,
+       "kind": "transfer",
+       "note": "候車/車程/入園等待未知；遠端返程可得性出發前核對。；預留15分鐘為草案規劃緩衝（非實測車程/候車或業者時刻）；等待及門到門耗時仍待核實。",
+       "time": {
+        "kind": "unknown",
+        "timezone": "Asia/Ho_Chi_Minh",
+        "day_offset": 0,
+        "source_refs": [],
+        "start_window": null,
+        "evidence_as_of": null,
+        "duration_minutes": null
+       },
+       "label": "Cosy 叫車直達 Safari",
+       "transfer": {
+        "mode": "grab",
+        "to_ref": {
+         "id": "safari",
+         "type": "card"
+        },
+        "from_ref": {
+         "id": "cosy",
+         "type": "base"
+        },
+        "wait_minutes": null,
+        "buffer_minutes": 15,
+        "condition_refs": []
+       },
+       "condition_refs": []
+      },
+      {
+       "id": "safari-core",
+       "ref": {
+        "id": "safari",
+        "type": "card"
+       },
+       "kind": "activity",
+       "note": "園方2026-09-27查閱列 09:00–16:00，旅日重查，兒童設施/表演現場確認。",
+       "time": {
+        "kind": "unknown",
+        "timezone": "Asia/Ho_Chi_Minh",
+        "day_offset": 0,
+        "source_refs": [],
+        "start_window": null,
+        "evidence_as_of": null,
+        "duration_minutes": null
+       },
+       "label": "Safari 上午參觀，動物巴士與休息優先",
+       "condition_refs": []
+      },
+      {
+       "id": "safari-lunch",
+       "ref": {
+        "id": "safari-inside",
+        "type": "pool"
+       },
+       "kind": "meal",
+       "note": "generic pool 不代表 Giraffe 有具名 ID/已預訂；Giraffe 官方時段互有衝突，當日看開放店家。查閱 2026-09-27；不借用 VinWonders pool。",
+       "time": {
+        "kind": "unknown",
+        "timezone": "Asia/Ho_Chi_Minh",
+        "day_offset": 0,
+        "source_refs": [],
+        "start_window": null,
+        "evidence_as_of": null,
+        "duration_minutes": null
+       },
+       "label": "Safari 園內午餐：實際店家待查",
+       "selection": "derived",
+       "condition_refs": []
+      },
+      {
+       "id": "safari-home",
+       "ref": null,
+       "kind": "transfer",
+       "note": "先查可回程與候車，不能保證叫得到；不預設 Grand World 或 Gành Dầu 長尾。；預留15分鐘為草案規劃緩衝（非實測車程/候車或業者時刻）；等待及門到門耗時仍待核實。",
+       "time": {
+        "kind": "unknown",
+        "timezone": "Asia/Ho_Chi_Minh",
+        "day_offset": 0,
+        "source_refs": [],
+        "start_window": null,
+        "evidence_as_of": null,
+        "duration_minutes": null
+       },
+       "label": "園區確認回程叫車 → Cosy",
+       "transfer": {
+        "mode": "grab",
+        "to_ref": {
+         "id": "cosy",
+         "type": "base"
+        },
+        "from_ref": {
+         "id": "safari",
+         "type": "card"
+        },
+        "wait_minutes": null,
+        "buffer_minutes": 15,
+        "condition_refs": []
+       },
+       "condition_refs": []
+      },
+      {
+       "id": "safari-rest",
+       "ref": {
+        "id": "cosy",
+        "type": "base"
+       },
+       "kind": "rest",
+       "note": "",
+       "time": {
+        "kind": "unknown",
+        "timezone": "Asia/Ho_Chi_Minh",
+        "day_offset": 0,
+        "source_refs": [],
+        "start_window": null,
+        "evidence_as_of": null,
+        "duration_minutes": null
+       },
+       "label": "回房休息並整理次日行李",
+       "condition_refs": []
+      },
+      {
+       "id": "safari-dinner-out",
+       "ref": null,
+       "kind": "transfer",
+       "note": "營業時段與回程車須查，否則住宿附近就近吃。；預留15分鐘為草案規劃緩衝（非實測車程/候車或業者時刻）；等待及門到門耗時仍待核實。",
+       "time": {
+        "kind": "unknown",
+        "timezone": "Asia/Ho_Chi_Minh",
+        "day_offset": 0,
+        "source_refs": [],
+        "start_window": null,
+        "evidence_as_of": null,
+        "duration_minutes": null
+       },
+       "label": "若還有體力，由 Cosy 去 Cơm tấm Nhị",
+       "transfer": {
+        "mode": "grab",
+        "to_ref": {
+         "id": "com-tam-nhi",
+         "type": "pool"
+        },
+        "from_ref": {
+         "id": "cosy",
+         "type": "base"
+        },
+        "wait_minutes": null,
+        "buffer_minutes": 15,
+        "condition_refs": []
+       },
+       "condition_refs": []
+      },
+      {
+       "id": "safari-dinner",
+       "ref": {
+        "id": "com-tam-nhi",
+        "type": "pool"
+       },
+       "kind": "meal",
+       "note": "只在回市區路線/當日營業適合時採用；舊目錄時間不當確認，last_verified 2026-08-26，出發前重查；否則住宿附近吃。",
+       "time": {
+        "kind": "unknown",
+        "timezone": "Asia/Ho_Chi_Minh",
+        "day_offset": 0,
+        "source_refs": [],
+        "start_window": null,
+        "evidence_as_of": null,
+        "duration_minutes": null
+       },
+       "label": "提早晚餐：Cơm tấm Nhị 候選",
+       "selection": "derived",
+       "condition_refs": []
+      },
+      {
+       "id": "safari-dinner-home",
+       "ref": null,
+       "kind": "transfer",
+       "note": "隔天早班機，早些返宿；不把餐廳假定就在住宿旁。；預留15分鐘為草案規劃緩衝（非實測車程/候車或業者時刻）；等待及門到門耗時仍待核實。",
+       "time": {
+        "kind": "unknown",
+        "timezone": "Asia/Ho_Chi_Minh",
+        "day_offset": 0,
+        "source_refs": [],
+        "start_window": null,
+        "evidence_as_of": null,
+        "duration_minutes": null
+       },
+       "label": "晚餐後回 Cosy",
+       "transfer": {
+        "mode": "grab",
+        "to_ref": {
+         "id": "cosy",
+         "type": "base"
+        },
+        "from_ref": {
+         "id": "com-tam-nhi",
+         "type": "pool"
+        },
+        "wait_minutes": null,
+        "buffer_minutes": 15,
+        "condition_refs": []
+       },
+       "condition_refs": []
+      }
+     ],
+     "public_note": "海星仍為五卡替換候選，但此草案不提供可執行海星路線；七項門檻、原船原車回均須先核實。",
+     "alternatives": [
+      {
+       "id": "safari-weather",
+       "action": "return_or_rest",
+       "trigger_kind": "unavailable",
+       "trigger_text": "Safari 因營運或天氣不可用",
+       "target_segment_ids": [
+        "safari-core"
+       ],
+       "replacement_segments": []
+      }
+     ],
+     "schema_version": 1
+    },
+    "day_kind": "activity",
+    "main_card_slug": "safari"
+   },
+   {
+    "id": "phuquoc-2026:2026-10-15",
+    "date": "2026-10-15",
+    "plan": {
+     "segments": [
+      {
+       "id": "depart-breakfast",
+       "ref": {
+        "id": "banh-mi-anh-thu",
+        "type": "pool"
+       },
+       "kind": "meal",
+       "note": "若未事先買到，房內簡餐；不為早餐繞路或假設清晨店家開門。last_verified 2026-09-01，出發前重查。",
+       "time": {
+        "kind": "unknown",
+        "timezone": "Asia/Ho_Chi_Minh",
+        "day_offset": 0,
+        "source_refs": [],
+        "start_window": null,
+        "evidence_as_of": null,
+        "duration_minutes": null
+       },
+       "label": "早餐：Bánh mì Anh Thư 前晚順路外帶候選",
+       "selection": "derived",
+       "condition_refs": []
+      },
+      {
+       "id": "depart-checkout",
+       "ref": {
+        "id": "cosy",
+        "type": "base"
+       },
+       "kind": "rest",
+       "note": "叫車與出門時間依實際飯店入口、Vietjet 報到規定倒排，現在未知。",
+       "time": {
+        "kind": "unknown",
+        "timezone": "Asia/Ho_Chi_Minh",
+        "day_offset": 0,
+        "source_refs": [],
+        "start_window": null,
+        "evidence_as_of": null,
+        "duration_minutes": null
+       },
+       "label": "退房、檢查行李",
+       "condition_refs": []
+      },
+      {
+       "id": "cosy-to-airport",
+       "ref": null,
+       "kind": "transfer",
+       "note": "前一晚核對回程車與航空公司要求；航班起飛時刻不可當成飯店出門時間。；預留15分鐘為草案規劃緩衝（非實測車程/候車或業者時刻）；等待及門到門耗時仍待核實。",
+       "time": {
+        "kind": "unknown",
+        "timezone": "Asia/Ho_Chi_Minh",
+        "day_offset": 0,
+        "source_refs": [],
+        "start_window": null,
+        "evidence_as_of": null,
+        "duration_minutes": null
+       },
+       "label": "預約/叫車前往 PQC",
+       "transfer": {
+        "mode": "grab",
+        "to_ref": {
+         "id": "departure-flight",
+         "type": "base"
+        },
+        "from_ref": {
+         "id": "cosy",
+         "type": "base"
+        },
+        "wait_minutes": null,
+        "buffer_minutes": 15,
+        "condition_refs": []
+       },
+       "condition_refs": []
+      },
+      {
+       "id": "flight-844-depart",
+       "ref": {
+        "id": "departure-flight",
+        "type": "base"
+       },
+       "kind": "activity",
+       "note": "已確認航班摘要；須重查報到截止與變動。",
+       "time": {
+        "kind": "scheduled",
+        "timezone": "Asia/Ho_Chi_Minh",
+        "day_offset": 0,
+        "source_refs": [
+         "bookings:vjl844"
+        ],
+        "start_window": {
+         "max": "08:20",
+         "min": "08:20"
+        },
+        "evidence_as_of": "2026-09-20",
+        "duration_minutes": null
+       },
+       "label": "VJ844 PQC 起飛 08:20（富國島當地）",
+       "condition_refs": []
+      },
+      {
+       "id": "flight-844-arrive",
+       "ref": {
+        "id": "departure-flight",
+        "type": "base"
+       },
+       "kind": "activity",
+       "note": "與 PQC 起飛屬不同時區，不用相減聲稱車程或飛行時長。",
+       "time": {
+        "kind": "scheduled",
+        "timezone": "Asia/Taipei",
+        "day_offset": 0,
+        "source_refs": [
+         "bookings:vjl844"
+        ],
+        "start_window": {
+         "max": "13:00",
+         "min": "13:00"
+        },
+        "evidence_as_of": "2026-09-20",
+        "duration_minutes": null
+       },
+       "label": "VJ844 抵達 TPE 13:00（臺北當地）",
+       "condition_refs": []
+      }
+     ],
+     "public_note": "不排景點，早餐以不繞行為原則；出門時間尚無核定。",
+     "alternatives": [
+      {
+       "id": "depart-ride-risk",
+       "action": "return_or_rest",
+       "trigger_kind": "unavailable",
+       "trigger_text": "叫車或報到規則改變",
+       "target_segment_ids": [
+        "depart-breakfast"
+       ],
+       "replacement_segments": []
+      }
+     ],
+     "schema_version": 1
+    },
+    "day_kind": "departure",
+    "main_card_slug": null
+   }
+  ],
+  "refs": {
+   "pool": [
+    {
+     "divider": null,
+     "pool_key": "banh-mi-anh-thu",
+     "desc_copy": "高優先、低摩擦；很適合塞進行程空檔或晚一點快速吃。",
+     "notion_id": "3ce39f3f-a67c-81fb-b323-f1e9fb315a83",
+     "pool_rank": 2,
+     "pool_role": "carrier",
+     "order_copy": "Bánh mì"
+    },
+    {
+     "divider": null,
+     "pool_key": "com-tam-nhi",
+     "desc_copy": "想快速坐下吃一份飯時用；是實用 fallback，不是必追名店。",
+     "notion_id": "3c839f3f-a67c-8117-badf-cfaac7584afc",
+     "pool_rank": 9,
+     "pool_role": "fallback",
+     "order_copy": "Cơm tấm"
+    },
+    {
+     "divider": null,
+     "pool_key": "honthom-inside",
+     "desc_copy": "園內餐飲待查核，現場依營業與孩子狀況選擇",
+     "notion_id": null,
+     "pool_rank": 20,
+     "pool_role": "fallback",
+     "order_copy": "Hòn Thơm 園內午餐（待查核）"
+    },
+    {
+     "divider": null,
+     "pool_key": "nha-xua-68",
+     "desc_copy": "孩子累、想舒服坐下、正餐時間亂掉時很好用。",
+     "notion_id": "3cc39f3f-a67c-81f7-b554-f062aa79b55d",
+     "pool_rank": 8,
+     "pool_role": "fallback",
+     "order_copy": "沒有鎖定單一必點；看當日家常菜＋白飯"
+    },
+    {
+     "divider": null,
+     "pool_key": "safari-inside",
+     "desc_copy": "園內餐飲待查核，現場依營業與孩子狀況選擇",
+     "notion_id": null,
+     "pool_rank": 19,
+     "pool_role": "fallback",
+     "order_copy": "Safari 園內午餐（待查核）"
+    },
+    {
+     "divider": null,
+     "pool_key": "vinwonders-inside",
+     "desc_copy": "沒有鎖定必吃店；正常或孩子累時，園內解決比為吃飯硬接 Grand World 更合理。",
+     "notion_id": null,
+     "pool_rank": 11,
+     "pool_role": "fallback",
+     "order_copy": "園內就近、孩子能吃的熱食"
+    },
+    {
+     "divider": null,
+     "pool_key": "wow-que-toi",
+     "desc_copy": "南島低摩擦 fallback，不升 Dish Carrier。",
+     "notion_id": "3c839f3f-a67c-81b4-ad7e-e4fc9cf00bef",
+     "pool_rank": 12,
+     "pool_role": "fallback",
+     "order_copy": "沒有鎖定必點；選當下現做熱食正餐"
+    }
+   ],
+   "bases": [
+    {
+     "id": "arrival-flight",
+     "ref": {
+      "id": "vjl845",
+      "type": "booking"
+     }
+    },
+    {
+     "id": "cosy",
+     "ref": {
+      "id": "cosy",
+      "type": "booking"
+     }
+    },
+    {
+     "id": "departure-flight",
+     "ref": {
+      "id": "vjl844",
+      "type": "booking"
+     }
+    },
+    {
+     "id": "onbird-booking",
+     "ref": {
+      "id": "onbird",
+      "type": "booking"
+     }
+    }
+   ],
+   "cards": [
+    {
+     "name": "Cable + Sunset Town",
+     "slug": "cable",
+     "gates": "[\"纜車可搭(不停駛)\", \"08:00-08:15離DD\", \"T-72確認首班/回程/末班\"]",
+     "notes": "Mandatory Yes；5卡最高優先；Khem非default",
+     "route": "Cosy → 早餐queue → Dinh Cậu micro-stop(可選) → Ga Ánh Dương → Cable → Hòn Thơm → Sunset Town → Cosy",
+     "stops": "[{\"time\": \"07:00–08:15\", \"title\": \"Food Pool 早餐\", \"desc\": \"從未吃且仍可用者挑早餐。早餐後直接往 Ga Ánh Dương；Cable 日不再安排 Dinh Cậu 或其他 DD 停留。\", \"maps\": []}, {\"time\": \"08:30–08:45\", \"title\": \"離開 Cosy / DD\", \"desc\": \"Grab／GreenSM／taxi 直接往 Ga Ánh Dương；不要為早餐或老城散步拖過 departure window。\", \"maps\": [{\"label\": \"📍 Cosy Bungalow · 地圖\", \"query\": \"Cosy Bungalow Phu Quoc\"}, {\"label\": \"📍 Ga Ánh Dương · 地圖\", \"query\": \"Ga Anh Duong Phu Quoc\"}]}, {\"time\": \"10:30–10:45\", \"title\": \"Soft arrival\", \"desc\": \"留 QR、廁所、量身高、排隊 buffer。\", \"maps\": []}, {\"time\": \"11:00\", \"title\": \"Hard arrival\", \"desc\": \"目前 first-wave close 11:30；T−72 重查 October exact hours。\", \"maps\": []}, {\"time\": \"回本島後\", \"title\": \"An Thới optional\", \"desc\": \"時間與孩子狀態都好才留 45–60 分看 Market + Harbour；否則直接 Sunset Town。\", \"maps\": [{\"label\": \"📍 Chợ An Thới · 地圖\", \"query\": \"Cho An Thoi Phu Quoc\"}]}, {\"time\": \"Evening\", \"title\": \"Sunset Town\", \"desc\": \"Kiss Bridge + 日落保留；免費 show 只算 bonus。\", \"maps\": [{\"label\": \"📍 Sunset Town · 地圖\", \"query\": \"Sunset Town Phu Quoc\"}, {\"label\": \"📍 Kiss Bridge · 地圖\", \"query\": \"Kiss Bridge Phu Quoc\"}]}]",
+     "badges": "[{\"tone\": \"brand\", \"text\": \"必排\"}, {\"tone\": \"warm\", \"text\": \"Heavy\"}, {\"tone\": \"\", \"text\": \"No DD micro-stop\"}]",
+     "dining": "[{\"meal\": \"早餐\", \"place\": \"Central / Cosy Food Pool\", \"note\": \"從未吃者挑；不再固定店。\"}, {\"meal\": \"晚餐\", \"place\": \"Sunset Town 低摩擦（WOW QUÊ TÔI）\", \"note\": \"接近 show 以低摩擦為主；不要為吃折返 An Thới。\"}, {\"meal\": \"順手\", \"place\": \"Chợ An Thới（僅 satellite 成立時）\", \"note\": \"熟食／小吃優先；不是為市場硬排時間。\"}]",
+     "status": "ACTIVE",
+     "callout": null,
+     "summary": "最高優先 · first-wave target · An Thới 只 optional",
+     "kid_note": "約 115cm，纜車站量身高留排隊 buffer；全程後座，長程優先三點式安全帶＋增高墊。",
+     "cut_order": "[\"先砍：An Thới Market + Harbour optional satellite。\", \"再砍：任何 VERIFY food hunting，直接 WOW。\"]",
+     "key_times": "[\"08:30–08:45 離 Cosy\", \"11:00 hard arrival（first-wave 09:30–11:30*，T−72 重查）\"]",
+     "transport": "direct car primary；Sun World免費接駁只作回程省錢備案(T-72確認)",
+     "transport_out": "[{\"title\": \"去程 · 直達叫車\", \"desc\": \"Grab／GreenSM／taxi → Ga Ánh Dương；08:30–08:45 離 Cosy，不要為早餐或老城散步拖過 departure window。\"}]",
+     "evidence_as_of": "2026-09-20",
+     "transport_back": "[{\"title\": \"回程 · 纜車＋末班 T−72 確認\", \"desc\": \"回程／末班時段、是否維修、天氣，出發前 72h 重查。\"}, {\"title\": \"備案 · Sun World 免費接駁\", \"desc\": \"只作回程省錢備案（T−72 確認班次）；時間緊就直接叫車。\"}]",
+     "condition_labels": {}
+    },
+    {
+     "name": "OnBird 跳島浮潛",
+     "slug": "onbird",
+     "gates": "[\"業者書面pickup\", \"海況operator go\", \"5歲 transfer/船上照看清楚\", \"10/12-14可改期buffer\"]",
+     "notes": "2026-10-11 Morning已約定；241.5萬VND，去程訂金120.7已付",
+     "route": "Cosy door-to-door round trip（業者接送，不自拆Grab去港口）",
+     "stops": "[{\"time\": \"−90m\", \"title\": \"房內簡單早餐\", \"desc\": \"太早就前晚備麵包、水果、奶類與水；不繞 An Thới。\", \"maps\": []}, {\"time\": \"Morning\", \"title\": \"Operator door-to-door\", \"desc\": \"Cosy pickup／drop-off；exact window 依 OnBird 通知；不自拆 Grab 去港口。\", \"maps\": [{\"label\": \"📍 Cosy Bungalow · 地圖\", \"query\": \"Cosy Bungalow Phu Quoc\"}]}, {\"time\": \"回 Cosy\", \"title\": \"洗澡＋休息\", \"desc\": \"休息後預排 Dinh Cậu／河口 + DD evening；若回程太晚或孩子累，就取消這段留 Cosy／Long Beach。\", \"maps\": [{\"label\": \"📍 Dinh Cậu · 地圖\", \"query\": \"Dinh Cau Temple Phu Quoc\"}]}]",
+     "badges": "[{\"tone\": \"brand\", \"text\": \"已確認\"}, {\"tone\": \"\", \"text\": \"10/12–14 改期 buffer\"}]",
+     "dining": "[{\"meal\": \"早餐\", \"place\": \"房內簡單解決\", \"note\": \"前晚先備好；不繞店。\"}, {\"meal\": \"晚餐\", \"place\": \"Central / Cosy Queue（僅 DD evening 成立時）\", \"note\": \"Dinh Cậu／河口＋DD evening；累就留 Cosy／Long Beach 就近吃。\"}]",
+     "status": "ACTIVE",
+     "callout": "{\"tone\": \"\", \"text\": \"Dinh Cậu／河口 + DD evening 先排上；若回程晚、下雨或孩子累，現場直接取消。\"}",
+     "summary": "10/11 Morning confirmed · Cosy 往返 · 回來先休息",
+     "kid_note": "5 歲 transfer／船上照看事先書面確認；child-size life jacket；現場仍依教練安全評估，可改期（10/12–14 buffer）。",
+     "cut_order": "[\"DD evening 是 optional tail，不是 OnBird 成功條件。\", \"回程晚／下雨／孩子累 → 現場直接取消。\"]",
+     "key_times": "[\"Morning operator pickup（exact window 依通知）\", \"回程後休息；DD evening 僅 optional\"]",
+     "transport": "operator Cosy 71B round trip only",
+     "transport_out": "[{\"title\": \"去程 · 業者接送 only\", \"desc\": \"Operator Cosy 71B door-to-door round trip；不自拆 Grab 去港口。\"}]",
+     "evidence_as_of": "2026-09-20",
+     "transport_back": "[{\"title\": \"回程 · 業者送回 Cosy\", \"desc\": \"先洗澡休息；DD evening 另用 Grab／taxi，累就取消。\"}]",
+     "condition_labels": {}
+    },
+    {
+     "name": "Safari + one north tail",
+     "slug": "safari",
+     "gates": "[\"Safari營業無block\", \"tail只選一個\", \"Gành Dầu 17:00前離\"]",
+     "notes": "Junior Zoo Keeper=0不問；VIP車淘汰",
+     "route": "Cosy → direct car → Safari(3-4h,偏早上) → Gành Dầu daylight 或 Grand World evening 二選一 → Cosy",
+     "stops": "[{\"time\": \"07:55–08:10\", \"title\": \"Cosy 直達叫車\", \"desc\": \"先從 Food Pool 解決早餐；不做完整 DD 散步。\", \"maps\": [{\"label\": \"📍 Cosy Bungalow · 地圖\", \"query\": \"Cosy Bungalow Phu Quoc\"}]}, {\"time\": \"09:00*\", \"title\": \"Safari arrival\", \"desc\": \"保守用 09:00；T−72 重查 official hours；園內 3–4h，偏早上。\", \"maps\": [{\"label\": \"📍 Vinpearl Safari Phú Quốc · 地圖\", \"query\": \"Vinpearl Safari Phu Quoc\"}]}, {\"time\": \"Tail A\", \"title\": \"Gành Dầu daylight\", \"desc\": \"retained driver；17:00 前離；先把回程車談好。\", \"maps\": [{\"label\": \"📍 Gành Dầu · 地圖\", \"query\": \"Ganh Dau Phu Quoc\"}]}, {\"time\": \"Tail B\", \"title\": \"Grand World evening\", \"desc\": \"孩子 Green 才接；不為吃飯硬選這條。\", \"maps\": [{\"label\": \"📍 Grand World · 地圖\", \"query\": \"Grand World Phu Quoc\"}]}]",
+     "badges": "[{\"tone\": \"warm\", \"text\": \"Optional\"}, {\"tone\": \"\", \"text\": \"不是自動遞補\"}]",
+     "dining": "[{\"meal\": \"午餐\", \"place\": \"Safari 園內／就近解決\", \"note\": \"不為吃飯硬接 tail。\"}, {\"meal\": \"Tail A 餐\", \"place\": \"Gành Dầu（Quốc Thiên VERIFY #1／Phúc Ngân #2）\", \"note\": \"秤重海鮮先問單價、重量、加工費。\"}, {\"meal\": \"Tail B 餐\", \"place\": \"Grand World（Bếp Nhà #1／Cơm Nhà #2）\", \"note\": \"人在 Grand World 才用。\"}]",
+     "status": "ACTIVE",
+     "callout": null,
+     "summary": "Gành Dầu daylight 或 Grand World evening，二選一",
+     "kid_note": "約 115cm，設施限制現場確認；Junior Zoo Keeper=0 不問；VIP 車淘汰；3–4h 偏早上，累了就撤。",
+     "cut_order": "[\"tail 只選一個，不自動綁 Grand World。\", \"只有真的想去才排；不是自動遞補。\"]",
+     "key_times": "[\"09:00* Safari arrival（T−72 重查）\", \"Gành Dầu tail 17:00 前離\"]",
+     "transport": "direct car primary",
+     "transport_out": "[{\"title\": \"去程 · 直達叫車\", \"desc\": \"Cosy direct car → Safari；偏遠點先鎖回程再出發。\"}]",
+     "evidence_as_of": "2026-09-20",
+     "transport_back": "[{\"title\": \"回程 A · retained driver\", \"desc\": \"Gành Dầu daylight tail 用留車／明確回接，17:00 前離。\"}, {\"title\": \"回程 B · 直達叫車\", \"desc\": \"Grand World evening tail 直達叫車回 Cosy。\"}]",
+     "condition_labels": {}
+    },
+    {
+     "name": "VinWonders + optional Grand World",
+     "slug": "vinwonders",
+     "gates": "[\"園區營業/維修無block\", \"小孩狀態Green才接GW\"]",
+     "notes": "Sea Shell first；115cm現場確認",
+     "route": "Cosy → 區域早餐queue → VinWonders(約10:00入園可接受) → optional Grand World → Cosy",
+     "stops": "[{\"time\": \"Breakfast\", \"title\": \"Food Pool 早餐\", \"desc\": \"不固定某一家；當天再看時間與位置決定。\", \"maps\": []}, {\"time\": \"09:15–09:35\", \"title\": \"Main gate\", \"desc\": \"直達叫車優先；安檢／票券後自然接 Sea Shell。\", \"maps\": [{\"label\": \"📍 Cosy Bungalow · 地圖\", \"query\": \"Cosy Bungalow Phu Quoc\"}, {\"label\": \"📍 VinWonders Phú Quốc · 地圖\", \"query\": \"VinWonders Phu Quoc\"}]}, {\"time\": \"10:00\", \"title\": \"Sea Shell first\", \"desc\": \"先做全齡、高確定性內容，再依 115cm 與孩子狀態選其他區域。\", \"maps\": [{\"label\": \"📍 The Sea Shell · 地圖\", \"query\": \"The Sea Shell VinWonders Phu Quoc\"}]}, {\"time\": \"正常／累\", \"title\": \"園內解決吃飯\", \"desc\": \"正常離園或孩子已累，不為晚餐硬加 Grand World；園內餐飲 window T−72/T−1 重查。\", \"maps\": []}, {\"time\": \"Early exit\", \"title\": \"Optional Grand World\", \"desc\": \"只有刻意提早離園且孩子 Green 才接；Bếp Nhà 是 VERIFY 現場備案 #1，Cơm Nhà secondary，兩者都不是 production Carrier。\", \"maps\": [{\"label\": \"📍 Grand World · 地圖\", \"query\": \"Grand World Phu Quoc\"}]}]",
+     "badges": "[{\"tone\": \"brand\", \"text\": \"核心\"}, {\"tone\": \"warm\", \"text\": \"Heavy\"}, {\"tone\": \"\", \"text\": \"GW optional\"}]",
+     "dining": "[{\"meal\": \"午餐\", \"place\": \"園內就近熱食\", \"note\": \"Món ngon Việt Nam 等多落在白天到約 19:00；T−72/T−1 重查實際時段。\"}, {\"meal\": \"晚餐（僅 early exit＋Green）\", \"place\": \"Grand World Queue\", \"note\": \"Bếp Nhà（約11:00–23:00）VERIFY #1；Cơm Nhà secondary。不為吃飯單獨硬加 Grand World。\"}]",
+     "status": "ACTIVE",
+     "callout": "{\"tone\": \"blue\", \"text\": \"正常／child-tired：園內吃 → 撤。只有 early exit + child Green 才接 Grand World。\"}",
+     "summary": "Sea Shell first；正常／孩子累就園內吃完撤",
+     "kid_note": "約 115cm，各設施限制現場確認；Sea Shell first 保全齡確定性；累了就撤，不硬撐。",
+     "cut_order": "[\"Grand World 不是成功條件；走不動就離開。\", \"正常／累：園內吃 → 撤。\"]",
+     "key_times": "[\"09:15–09:35 main gate\", \"10:00 Sea Shell first\"]",
+     "transport": "direct Grab/GreenSM/taxi primary",
+     "transport_out": "[{\"title\": \"去程 · 直達叫車優先\", \"desc\": \"Direct car primary；VinBus 只在 live ETA 與 T2 internal 接駁清楚時用。\"}]",
+     "evidence_as_of": "2026-09-20",
+     "transport_back": "[{\"title\": \"回程 · 直達叫車\", \"desc\": \"Grand World 不是成功條件；走不動就直接離開回 Cosy。\"}]",
+     "condition_labels": {}
+    }
+   ],
+   "foods": [
+    {
+     "name": "Cơm tấm Nhị",
+     "grade": "B",
+     "worth": 84,
+     "region": "Dương Đông",
+     "cluster": "Nguyễn Trung Trực｜平價晚餐圈",
+     "cuisine": "[\"越南小吃\"]",
+     "housing": "Dương Đông 老城",
+     "kid_fit": 90,
+     "op_conf": "MEDIUM",
+     "summary": "這是 Atlas 很需要的『不是特色菜、但住老城超實用』類型：網路再怎麼吹海鮮，旅行途中有一頓便宜穩定的本地飯更有決策價值。",
+     "dish_ids": "[]",
+     "evidence": "現行 Maps/business listing 4.6/90、17:00–20:00；2026 Sun Paradise、2026 Tripi／Toplist＋較早 PhuQuocJapan 實訪皆一致描述晚間短時段、常客多／容易客滿、價格約3萬。",
+     "neg_warn": "cơm tấm 不是富國島限定料理；不要因『最有名』標題把它升成跨區必吃。價值是便宜、快、晚餐時段與本地日常感",
+     "data_conf": "A",
+     "local_idx": 91,
+     "notion_id": "3c839f3f-a67c-8117-badf-cfaac7584afc",
+     "op_status": "營業中",
+     "hours_text": "17:00–20:00；常可能提早賣完",
+     "maps_query": "Cơm tấm Nhị, 1 Nguyễn Trung Trực, Dương Đông, Phú Quốc",
+     "pq_feature": 42,
+     "price_text": "約 3–4／份",
+     "time_slots": "[\"晚餐\"]",
+     "atlas_state": "ACTIVE",
+     "convenience": 94,
+     "last_verified": "2026-08-26",
+     "research_date": "2026-08-26",
+     "evidence_as_of": "2026-08-26"
+    },
+    {
+     "name": "WOW QUÊ TÔI",
+     "grade": "A",
+     "worth": 84,
+     "region": "An Thới",
+     "cluster": "Sunset Town／An Thới 平價越南菜圈",
+     "cuisine": "[\"越南小吃\"]",
+     "housing": "An Thới／Sunset Town",
+     "kid_fit": 88,
+     "op_conf": "MEDIUM",
+     "summary": "Sunset Town／An Thới 若要『好用又不被景區餐廳綁架』，這間比高價景觀餐廳更符合本 Atlas：方便度極高、價格低、料理是正常越南家常菜。A 是『住南島時優先』，不是跨島必吃。",
+     "dish_ids": "[]",
+     "evidence": "RestaurantsPhuQuoc 現行頁 4.3/449、Trip.com 2026 評論與 07:00–20:30 時段、近期旅記交叉；近期評論反覆提家常越南菜、bánh xèo／bún chả／春捲與平價。",
+     "neg_warn": "不是富國島限定菜，也不是純 local 老店；價值在 Sunset Town 周邊少見的平價越南家常菜與全天時段",
+     "data_conf": "A",
+     "local_idx": 68,
+     "notion_id": "3c839f3f-a67c-81b4-ad7e-e4fc9cf00bef",
+     "op_status": "營業中",
+     "hours_text": "約 07:00–20:30",
+     "maps_query": "WOW QUÊ TÔI, An Thới, Phú Quốc",
+     "pq_feature": 58,
+     "price_text": "約 1–10／道；屬平價",
+     "time_slots": "[\"早餐\", \"早午餐\", \"午餐\", \"下午\", \"晚餐\"]",
+     "atlas_state": "ACTIVE",
+     "convenience": 96,
+     "last_verified": "2026-08-26",
+     "research_date": "2026-08-26",
+     "evidence_as_of": "2026-08-26"
+    },
+    {
+     "name": "Nhà Xưa 68｜Cơm & Lẩu Gia Đình",
+     "grade": "A",
+     "worth": 88,
+     "region": "Dương Đông",
+     "cluster": "Lý Thường Kiệt／central family-meal node",
+     "cuisine": "[\"越南小吃\"]",
+     "housing": "Dương Đông 老城",
+     "kid_fit": 88,
+     "op_conf": "MEDIUM",
+     "summary": "補現有 Atlas 的『正常坐下吃一頓越南家庭菜』缺口。強項不是富國島限定，而是 canh chua、mắm chưng、mắm ba khía、lẩu mắm 等南部家常風味＋家庭用餐穩定度；吃多天海鮮／粉麵後有實際決策價值。",
+     "dish_ids": "[]",
+     "evidence": "2026-08 RestaurantGuru updated listing；Phú Quốc Map；Sapo 店家案例；Foody。",
+     "neg_warn": "熱門時段可能排隊；lẩu mắm 份量偏 2–3 人，1大1小不一定適合直接點整鍋。",
+     "data_conf": "A",
+     "local_idx": 76,
+     "notion_id": "3cc39f3f-a67c-81f7-b554-f062aa79b55d",
+     "op_status": "營業中",
+     "hours_text": "近期資料約 09:30–21:30／22:00",
+     "maps_query": "68 Lý Thường Kiệt, Dương Đông, Phú Quốc",
+     "pq_feature": 48,
+     "price_text": "約 5–20／人起；鍋物另計",
+     "time_slots": "[\"早午餐\", \"午餐\", \"下午\", \"晚餐\"]",
+     "atlas_state": "ACTIVE",
+     "convenience": 88,
+     "last_verified": "2026-08-11",
+     "research_date": "2026-08-30",
+     "evidence_as_of": "2026-08-11"
+    },
+    {
+     "name": "Bánh mì Anh Thư｜ANH THU - Banh Mi Xiu Mai",
+     "grade": null,
+     "worth": null,
+     "region": "Dương Đông",
+     "cluster": "",
+     "cuisine": "[\"越南小吃\"]",
+     "housing": "30 Tháng 4",
+     "kid_fit": null,
+     "op_conf": "MEDIUM",
+     "summary": "v2 ACCEPTED disposition｜Bánh mì DEFAULT PRIMARY via decision set PHQ-DS-BANH-MI-DEFAULT-2026-09-01-01. Strong cross-provenance dish-specific FOOD evidence survives major lineage removal; dissent retai",
+     "dish_ids": "[\"3ce39f3f-a67c-81ed-9d79-e8a5e4a73be9\"]",
+     "evidence": "PHQ-FOOD-WORKER-BANH-MI-2026-09-01-01-R1｜atlas_snapshot_id=PHQ-ATLAS-SNAPSHOT-2026-09-01-03｜independent non-Maps tickets: Backpackers, Yuki, Trip.com UGC, Wander with Debbie; 2026 operation corroboration; Maps pool non-deciding.",
+     "neg_warn": "One concrete blandness dissent and one current 'good, not best off-island' reservation retained. Google Maps review-integrity pool remains UNKNOWN. Address number varies 13 vs 21; use PHAM THOA + cano",
+     "data_conf": null,
+     "local_idx": null,
+     "notion_id": "3ce39f3f-a67c-81fb-b323-f1e9fb315a83",
+     "op_status": "營業中",
+     "hours_text": "約 06:00–00:00（current structured listing；13 vs 21 門牌來源有差異，以 PHAM THOA + canonical place identity 為準；T−72/T−1 refresh）",
+     "maps_query": "ANH THU - Banh Mi Xiu Mai, Đ. 30 Tháng 4, Dương Đông, Phú Quốc｜PHAM THOA landmark｜phone +84 919 146 180｜13 vs 21 house-number variance",
+     "pq_feature": null,
+     "price_text": "約 2.5 萬／個（2026 current firsthand；現場仍確認）",
+     "time_slots": "[\"早餐\", \"早午餐\", \"午餐\", \"下午\", \"晚餐\", \"宵夜\"]",
+     "atlas_state": "ACTIVE",
+     "convenience": null,
+     "last_verified": "2026-09-01",
+     "research_date": "2026-09-01",
+     "evidence_as_of": "2026-09-01"
+    }
+   ],
+   "points": [
+    {
+     "area": "DD",
+     "name": "Dinh Cậu＋水龍聖母廟＋河口港景",
+     "slug": "dinh-cau",
+     "status": "ACTIVE",
+     "interest": 3,
+     "mandatory": null,
+     "play_mode": null,
+     "durable_note": "視為單一整塊Point；Cable Day僅低摩擦時作10-20分micro-stop。",
+     "returnability": null,
+     "trip_priority": null,
+     "condition_gate": null,
+     "evidence_as_of": "2026-08-29"
+    },
+    {
+     "area": "SOUTH",
+     "name": "Hòn Thơm Sun World Cable Car core",
+     "slug": "hon-thom",
+     "status": "ACTIVE",
+     "interest": 3,
+     "mandatory": "Yes",
+     "play_mode": null,
+     "durable_note": "Cable=Mandatory core；Aquatopia/Exotica/Bãi Trào皆內部內容。",
+     "returnability": null,
+     "trip_priority": "整趟最高",
+     "condition_gate": null,
+     "evidence_as_of": "2026-08-29"
+    },
+    {
+     "area": "SOUTH",
+     "name": "Sunset Town＋Kiss Bridge",
+     "slug": "sunset-town",
+     "status": "ACTIVE",
+     "interest": 2,
+     "mandatory": "Yes",
+     "play_mode": null,
+     "durable_note": "代表性必訪；內部內容不另設Point。",
+     "returnability": null,
+     "trip_priority": null,
+     "condition_gate": null,
+     "evidence_as_of": "2026-08-29"
+    }
+   ],
+   "bookings": [
+    {
+     "kind": "hotel",
+     "slug": "cosy",
+     "title": "Cosy Bungalow 5晚 2026-10-10→15 單一基地",
+     "amount": "316.366萬VND future-price",
+     "status": "Confirmed",
+     "evidence_as_of": "2026-09-20"
+    },
+    {
+     "kind": "activity",
+     "slug": "onbird",
+     "title": "OnBird南島浮潛 2026-10-11 Morning",
+     "amount": "241.5萬VND(訂金120.7已付)",
+     "status": "Confirmed",
+     "evidence_as_of": "2026-09-20"
+    },
+    {
+     "kind": "flight",
+     "slug": "vjl844",
+     "title": "VJ844 PQC→TPE 2026-10-15 08:20-13:00",
+     "amount": "含上",
+     "status": "Confirmed",
+     "evidence_as_of": "2026-09-20"
+    },
+    {
+     "kind": "flight",
+     "slug": "vjl845",
+     "title": "VJ845 TPE→PQC 2026-10-10 14:10-16:50",
+     "amount": "NT$10,914 來回2人",
+     "status": "Confirmed",
+     "evidence_as_of": "2026-09-20"
+    }
+   ],
+   "transport": []
+  },
+  "itinerary": {
+   "id": "phuquoc-2026",
+   "end_date": "2026-10-15",
+   "timezone": "Asia/Ho_Chi_Minh",
+   "start_date": "2026-10-10"
+  },
+  "schema_version": 1
+ },
+ "meta": {
+  "schema_version": 1,
+  "content_revision": "phq1:6806a27908e797aceeb99cb7003ad9d1a05e9ffb07db0ca8d82092c4c4c4a1c3",
+  "source": "neon-prod",
+  "environment": "production",
+  "fetched_at": "2026-09-28T02:16:19.292656Z",
+  "exported_at": "2026-09-28T02:16:19.292656Z"
+ }
+}
