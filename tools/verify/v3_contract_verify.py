@@ -103,9 +103,9 @@ def main():
         check("html-fallback-recognizable", "更新暫不可用" in html and "資料資訊" in html, "fallback recognizable")
         check("html-natural-labels", "優先推薦" in html and "待再確認" in html, "natural Chinese")
         check("html-booking-semantics", "已確認" in html and "待處理" in html, "Confirmed/Open natural labels")
-        check("html-audit-semantics", "更改暫排不等於更改或取消訂單" in html and "不同幣別不直接加總" in html, "semantics")
+        check("html-audit-semantics", "行程修改請透過 Chat" in html and "不同幣別不直接加總" in html, "readonly itinerary, currency semantics")
         check("html-no-secrets", not re.search(r"DATABASE_URL|PHQ_READONLY_DATABASE_URL|neondb_owner|Bearer [A-Za-z0-9]", html, re.I), "no secrets")
-        check("html-v3-keys", "phq-v3-slots" in html and "phq-v3-food-eaten" in html, "v3 LS")
+        check("html-local-state", "phq-v4-food-eaten" in html and not any(key in html for key in ["phq-v2-slots", "phq-v3-slots", "phq-v2-food-eaten", "phq-v3-food-eaten"]), "clean eaten state, slots retired")
         check("html-timeout", "AbortController" in html and "no-store" in html, "timeout+revalidate")
         check("html-distinguish-dates", "核實" in html and "取得時間" in html and "備援資料" in html, "verified vs fetched vs fallback")
         # card links (client-rendered): JS template + cards.json 5 ACTIVE

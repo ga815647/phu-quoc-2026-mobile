@@ -28,6 +28,12 @@ Content split (2026-09-23): the website serves trip execution; private preparati
 
 `v2.html` remains a separate UI/content candidate until it is explicitly accepted for promotion to the canonical GitHub Pages experience.
 
+Local-state policy (Issue 13, 2026-09-30): the website reads the six-day Neon itinerary;
+legacy phone slots are retired, and itinerary changes go through Chat's controlled entry point.
+Eaten buttons/filters/progress stay device-only, using a clean `phq-v4-food-eaten` key
+without importing pre-trip v2/v3 test values. Old keys are left untouched; new eaten
+marks persist across reloads. Build with `python tools/build_site.py --prod --itinerary-mode readonly`.
+
 Ops evidence (2026-09-24–25, read-only re-verified, zero prod writes):
 - `docs/ops/MIGRATION_MAP.md` — 全量 ID 集合比對（SQLite／Neon／JSON 三源；未處置項另列，不計入無缺漏）。
 - `docs/ops/RETIREMENT.md` — old site kept as recovery entry; retirement conditions not yet met.

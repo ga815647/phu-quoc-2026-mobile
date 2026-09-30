@@ -49,7 +49,8 @@ try {
   assert.match(await page.locator('#vietnamDateLine').innerText(),/2026-10-12/);
   assert.equal(await page.evaluate(()=>localStorage.getItem('phq-v3-slots')),slot);
   assert.equal(await page.locator('a.link-card').count(),5);
-  assert.match(await page.locator('#itinerary').innerText(),/舊本機暫排/);
+  assert.doesNotMatch(await page.locator('#itinerary').innerText(),/舊本機暫排/);
+  assert.equal(await page.locator('select[data-day],#resetSlots').count(),0);
   assert.equal(await page.locator('[data-itinerary-day="phuquoc-2026:2026-10-12"]').getAttribute('data-main-card'),'cable');
   await page.getByRole('tab',{name:'10-12'}).click();
   const scheduled=await page.locator('.day-panel.active [data-segment-id="main"]').innerText();
@@ -136,7 +137,7 @@ try {
     await page.locator('#refreshItinerary').click();
     await page.locator('[data-itinerary][data-source="live"]').waitFor();
     assert.equal(await page.evaluate(()=>localStorage.getItem('phq-v3-slots')),slot,`legacy slots ${width}`);
-    assert.equal(await page.locator('#resetSlots').isVisible(),true,`legacy editor ${width}`);
+    assert.equal(await page.locator('#resetSlots').count(),0,`retired editor ${width}`);
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,`overflow ${width}`);
     assert.ok(await page.locator('.day-panel.active [data-segment-id="meal"] .place-link').evaluate(e=>e.getBoundingClientRect().height)>=44,`map target ${width}`);
     assert.ok(await page.locator('.date-tab').first().evaluate(e=>e.getBoundingClientRect().height)>=44,`date target ${width}`);
@@ -170,10 +171,11 @@ try {
   const eaten=page.locator('.food-card:not(.hidden) .eaten-btn').first();
   await eaten.click();
   assert.equal(await eaten.getAttribute('aria-pressed'),'true');
-  const stored=await page.evaluate(()=>localStorage.getItem('phq-v3-food-eaten'));
+  const stored=await page.evaluate(()=>localStorage.getItem('phq-v4-food-eaten'));
+  assert.ok(stored);
   await page.reload();
   await page.locator('[data-itinerary][data-source="live"]').waitFor();
-  assert.equal(await page.evaluate(()=>localStorage.getItem('phq-v3-food-eaten')),stored);
+  assert.equal(await page.evaluate(()=>localStorage.getItem('phq-v4-food-eaten')),stored);
   await page.close();
 
   const fallback=await browser.newPage({viewport:{width:390,height:844}});

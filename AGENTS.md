@@ -15,7 +15,7 @@
   restricted role `phq_web_ro`) → Neon production; `data/*.json` (public
   projection) is the offline fallback, regenerated from Neon.
 - After any Neon write: `export_json.py` (default source=neon) →
-  `snapshot.json`/`bookings.json` etc., then `build_site.py --prod` if UI changed.
+  `snapshot.json`/`bookings.json` etc., then `build_site.py --prod --itinerary-mode readonly` if UI changed.
   Never point the formal site at the test branch; never fall back to SQLite silently.
 - Trip rule: 5 cards `onbird/vinwonders/cable/starfish/safari`; `anthoi`=OPTIONAL satellite, `khem`=RETIRED (never render as card). `bookings.status`: `Confirmed` vs `Open` (`Open` = tracking list). Mid-trip: only `INSERT INTO evidence_log`, don't rewrite main tables (per `data/AGENT_QUERY.md`).
 - Answers about places/cards must carry `last_verified` / `evidence_as_of`; >30 days → mark 出發前重查.
@@ -24,14 +24,14 @@
 - Private preparation lives in the Notion page `富國島 2026｜出發準備（私人）`: payment/cancellation tracking, private costs, cash estimates, packing and retained price comparisons. Find by title with the authenticated connector; never put its URL, private amounts or source documents in this public repo/site.
 - Existing Notion Trip SSOT/research/handoffs/Food Atlas remain historical reference; their titles do not override Neon. Do not restart Notion ETL or copy the old tree. One maintenance location per field, no automatic two-way sync.
 - Chat handles research and explicitly requested content updates in the appropriate destination; OpenCode handles engineering and fallback publication. Transient questions stay in chat. `Confirmed` is not paid; public `bookings.amount` is not a private expense ledger. Neon trip-time freeze does not freeze private Notion checklists.
-- Keep the five cards, food shortlist and device-only state. Do not build packing, private accounting, login or cross-device sync to duplicate Notion; the old `user_state` proposal is deferred.
+- Keep the five cards, food shortlist and device-only eaten state. Per [legacy local-state retirement](https://github.com/ga815647/phu-quoc-2026-mobile/issues/13), local itinerary slots are retired; eaten uses `phq-v4-food-eaten` without importing v2/v3 values. Old keys stay untouched. Do not build packing, private accounting, login or cross-device sync to duplicate Notion; the old `user_state` proposal is deferred.
 
 ## Experience redesign scope (2026-09-26)
 - Before redesign work or subagent dispatch, read `docs/ops/REDESIGN_SCOPE.md` for agreed product decisions, allowed paths, content ownership, and stage status. Maintain it with changes affecting those boundaries.
 - UI/design approval does not itself apply content decisions to Neon or change confirmed bookings. Six-day defaults and meal/transport-following behavior still need an approved data design; don't introduce an independently maintained hardcoded travel-data copy.
 - Give every subagent explicit writable paths, data-write scope, and acceptance criteria. Keep live data updates, fallback publication, preview deployment, and Chat capability verification as separate outcomes.
 - Chat's selected read route is GitHub for rules/code/published evidence and Neon for current travel content. Direct Chat HTTP access to the production site is not a required capability; OpenCode/CI and the user's phone validate runtime behavior. GitHub JSON remains a dated fallback, not live Neon data.
-- Six-day itinerary release was explicitly authorized 2026-09-28. Production 006, six-day draft initialization and Function deployment6 are applied; site/Actions/target-Chat acceptance are individually recorded in `docs/ops/ITINERARY_RELEASE_20260928.md`. Follow `CONTENT_CONTRACT.md` §10 and `docs/ops/CHAT_ITINERARY_RUNBOOK.md`; do not confuse engineering evidence with target-Chat readback. Keep legacy phone edits until accepted.
+- Six-day itinerary release was explicitly authorized 2026-09-28. Production 006, six-day draft initialization and Function deployment6 are applied; site/Actions/target-Chat acceptance are individually recorded in `docs/ops/ITINERARY_RELEASE_20260928.md`. Follow `CONTENT_CONTRACT.md` §10 and `docs/ops/CHAT_ITINERARY_RUNBOOK.md`; do not confuse engineering evidence with target-Chat readback. Issue 13 explicitly authorizes retiring legacy phone slots independently of those historical acceptance gates; it does not grant new data-write permissions.
 - Approved future scope: Chat may update the new daily itinerary and meal/transport assignments during the trip via its validated controlled entry point; existing research tables and confirmed bookings keep current freeze/authorization rules. This is not permission to run a migration or use an unimplemented entry point. See CONTENT_CONTRACT.md §9.
 
 ## Agent skills
@@ -44,7 +44,7 @@ Single-context glossary in `CONTEXT.md`; see `docs/agents/domain.md`. Keep termi
 
 ## Commands (Windows PowerShell 5.1, Python 3.14; VPS: python3 + PYTHONUTF8=1)
 - `$env:PYTHONUTF8=1; $env:DATABASE_URL='<prod-owner-DSN-from-Neon-Console>'; python tools/export_json.py` — required; default source is now Neon. Without `PYTHONUTF8=1` it crashes on `cp950`.
-- `python tools/build_site.py --prod --itinerary-mode candidate` — current transitional formal build: production Function API + A six-day reader, retaining legacy phone editing until target-Chat acceptance. Regenerates `index.html` + `data.html` + `card.html`, assets and site-version. The internal `candidate` mode is a compatibility mode, not a test-DB target. Do not omit this flag (default legacy drops the reader). Never run bare `build_site.py` for formal output; isolated builds use `--api-base/--out-dir`. UI-only changes need no DB write or JSON re-export.
+- `python tools/build_site.py --prod --itinerary-mode readonly` — formal build: production Function API + A six-day reader, no local itinerary editor. Regenerates `index.html` + `data.html` + `card.html`, assets and site-version. The internal `candidate` mode remains a compatibility mode, not a test-DB target, and no longer retains local slots. Do not omit the mode flag (default legacy drops the reader). Never run bare `build_site.py` for formal output; isolated builds use `--api-base/--out-dir`. UI-only changes need no DB write or JSON re-export.
 - `python tools/etl_points.py` — historical points ETL; do not run against the formal dataset or reactivate Notion food/carrier ETL without separate approval.
 - Verify: `SELECT slug,kind,amount,status FROM bookings` and reload `data/bookings.json` after export.
 
@@ -56,5 +56,5 @@ Single-context glossary in `CONTEXT.md`; see `docs/agents/domain.md`. Keep termi
 - Workdir `E:\CS\projects\富國島` contains CJK; `glob` may return nothing — use `read` on directories and `bash` with `workdir` instead of `cd`.
 - Console is `cp950`: printing `↔`/CJK from sqlite crashes; set `PYTHONUTF8=1` and avoid bare `print(row)` with wide chars.
 - `git status` shows repo-wide LF→CRLF warnings; ignore the noise — real diffs are `data/bookings.json`, `data/phuquoc.db`, `data/snapshot.json`.
-- CI `data-smoke.yml` (Playwright, 390px mobile) asserts: 5 `a.link-card` (`cable/vinwonders/onbird/starfish/safari`), food pool count, `ACTIVE`/`VERIFY` badges, touch targets ≥41px, no-hash nav, `localStorage` eaten/slots persistence, no horizontal overflow. Keep these green.
+- CI `data-smoke.yml` (Playwright, 390px mobile; overflow at 320/390/430px) asserts: 5 `a.link-card` (`cable/vinwonders/onbird/starfish/safari`), food pool count, `ACTIVE`/`VERIFY` badges, touch targets ≥41px, no-hash nav, clean v4 eaten persistence, retired slots/old-key non-import, no console/page errors or horizontal overflow. Keep these green.
 - `.agents/skills/frontend-design` is vendored (pinned). The proprietary Product Design plugin must NOT be copied into the repo.
