@@ -22,7 +22,7 @@ const oldState={
 // Exercise the generated page and real browser storage, not source-text matches.
 for(const mode of ['candidate','readonly','legacy']) {
   test(`${mode}: retired slots are inert and eaten starts clean then persists`,async()=>{
-    const site=await mkdtemp('/tmp/opencode/phq-local-state-');
+    const site=await mkdtemp(join(process.env.RUNNER_TEMP||'/tmp/opencode','phq-local-state-'));
     const server=createServer(async(req,res)=>{
       const path=new URL(req.url,'http://localhost').pathname;
       try {

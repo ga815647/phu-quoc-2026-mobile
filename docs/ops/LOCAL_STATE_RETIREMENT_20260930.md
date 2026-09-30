@@ -32,6 +32,8 @@
 
 測試環境用工作區相依與既有 user-space Chromium libraries（`LD_LIBRARY_PATH`），沒有安裝系統套件。初次完整探索因新 worktree 缺 `pg`／Playwright、Chromium libraries 未加入搜尋路徑而失敗；補齊環境後上述 suite 全通過。另有歷史 `functions/test-local-api.mjs` 需要外部 DSN／固定舊 Neon 筆數，初次 broad glob 在未提供 DSN 時失敗；不宣稱該歷史遠端支架通過，不為這項 UI 工程注入正式 credential 或修改其筆數。
 
+首輪正式部署 Pages 與 OpenCode 線上完整 smoke 通過；首輪 GitHub smoke 則在新本機測試建立暫存目錄時失敗（GitHub runner 無 `/tmp/opencode`，尚未執行正式站檢查）。測試改採 runner 的 `RUNNER_TEMP`，本機仍預設使用已核准 `/tmp/opencode`；網站／build／資料不變。重跑結果與 run 指標仍以 issue resolution 為準。
+
 ## 驗站觀測修正（非旅遊資料修改）
 
 - 新增 console 檢查後，原有未知卡 `slug=nope` 案例會刻意取得 404。已核對錯誤來源；只排除該精確 API URL 的預期 404 resource message，其他 console／page error 仍阻擋。
