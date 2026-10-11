@@ -13,6 +13,9 @@ on:
       - 'tools/verify/test_local_state_browser.mjs'
       - 'tools/verify/itinerary_reader_browser.mjs'
       - 'tools/verify/test_smoke_readiness.mjs'
+      - 'tools/verify/food_atlas_browser.mjs'
+      - 'tools/verify/test_food_atlas_display.*'
+      - 'tools/itinerary-reader.mjs'
       - 'tools/seed_card_details.py'
       - 'CONTENT_CONTRACT.md'
       - '.github/workflows/data-smoke.yml'
@@ -182,7 +185,7 @@ jobs:
             // natural Chinese in UI, original semantics retained in details/attributes
             if(!domText.includes('已確認')&&!domText.includes('待再確認')) throw new Error('natural status badges missing');
             if(!domText.includes('ACTIVE')&&!domText.includes('VERIFY')) throw new Error('DB status semantics missing');
-            if(!domText.includes('驗證 2026-09-0')) throw new Error('verified-date badges missing');
+            if(!domText.includes('營運核實 2026-09-0')||!domText.includes('資料查核')) throw new Error('distinct operating/review-date badges missing');
             const hrefs=await page.locator('.map').evaluateAll(els=>els.map(e=>e.href));
             if(hrefs.some(h=>!h.startsWith('https://www.google.com/maps/search/?api=1&query='))) throw new Error('non-map link');
             // filters: manual region/time/eaten, no geolocation, focused few + full list, empty state
@@ -343,5 +346,13 @@ jobs:
             await browser.close();
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
-          node --test tools/verify/test_local_state_browser.mjs tools/verify/test_smoke_readiness.mjs
+          node --test tools/verify/test_*.mjs
           node data-smoke.cjs
+          node tools/verify/food_atlas_browser.mjs
+      - name: Retain Food Atlas mobile evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: food-atlas-mobile-evidence
+          path: food-atlas-evidence/
+          if-no-files-found: ignore

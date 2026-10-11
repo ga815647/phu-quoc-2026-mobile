@@ -105,9 +105,11 @@ def status_badge(f):
         parts.append('<span class="role red" data-atlas="DEACTIVATED">已下架</span>')
     # Keep machine-readable original for tests/audit alongside natural label.
     parts.append(f'<span class="tiny" data-atlas-raw="{h.escape(str(st or ""))}" style="display:none">{h.escape(str(st or ""))} ACTIVE VERIFY</span>')
-    ver = f.get("last_verified") or f.get("evidence_as_of") or ""
-    if ver:
-        parts.append(f'<span class="food-region">驗證 {h.escape(str(ver))}</span>')
+    ver = f.get("last_verified")
+    parts.append(f'<span class="food-region">營運核實 {h.escape(str(ver))}</span>' if ver else '<span class="food-region">營運核實：未知</span>')
+    reviewed = f.get("evidence_as_of")
+    if reviewed:
+        parts.append(f'<span class="food-region">資料查核 {h.escape(str(reviewed))}</span>')
     return "".join(parts)
 
 
@@ -334,6 +336,8 @@ def build_food_pool(pool, bynotion, byname, candidate=False):
         order = row.get("order_copy") or ""
         desc = row.get("desc_copy") or ""
         divider = row.get("divider")
+        if divider == "主池｜這趟優先完成":
+            divider = "候選清單｜依店家狀態選擇"
         rank = row.get("pool_rank")
         if divider:
             out.append(f'<div class="pool-divider">{h.escape(divider)}</div>')
@@ -505,7 +509,7 @@ def main():
     transport = snap.get("transport", [])
     bookings_html = build_bookings_html(bookings)
     meta = snap.get("meta", {})
-    snapshot_src = str(meta.get("source", ""))
+    snapshot_src = str(meta.get("exported_at") or meta.get("refreshed_from_neon") or meta.get("source", ""))
     snap_day = snapshot_day(snapshot_src)
     cards_src = src_block("cardsMount", "行程卡", snap_day)
     food_src = src_block("foodPool", "美食", snap_day) if DYNAMIC else ""
@@ -549,8 +553,9 @@ def main():
             "else if(f.atlas_state==='VERIFY')p+='<span class=\"role verify\" data-atlas=\"VERIFY\">待再確認</span>';"
             "else if(f.atlas_state==='DEACTIVATED')p+='<span class=\"role red\" data-atlas=\"DEACTIVATED\">已下架</span>';"
             "p+='<span class=\"tiny\" data-atlas-raw=\"'+escF(f.atlas_state||'')+'\" style=\"display:none\">'+escF(f.atlas_state||'')+' ACTIVE VERIFY</span>';"
-            "var ver=f.last_verified||f.evidence_as_of||'';"
-            "if(ver)p+='<span class=\"food-region\">驗證 '+escF(ver)+'</span>';"
+            "var ver=f.last_verified;"
+            "p+='<span class=\"food-region\">'+(ver?'營運核實 '+escF(ver):'營運核實：未知')+'</span>';"
+            "if(f.evidence_as_of)p+='<span class=\"food-region\">資料查核 '+escF(f.evidence_as_of)+'</span>';"
             "return p}"
             "function resortPool(){"
             "var pool=document.getElementById('foodPool');if(!pool)return;"
@@ -566,12 +571,12 @@ def main():
             "if(!card.hasAttribute('data-notion-id')){var nm=card.querySelector('.food-name');"
             "if(nm)nm.textContent=p.order_copy||p.desc_copy||p.pool_key}"
             "if(p.pool_rank!=null)card.setAttribute('data-pool-rank',p.pool_rank);"
-            "card.setAttribute('data-divider',p.divider||'');"
+            "card.setAttribute('data-divider',p.divider==='主池｜這趟優先完成'?'候選清單｜依店家狀態選擇':p.divider||'');"
             "var meta=card.querySelector('.food-meta');"
-            "if(meta){var old=meta.querySelectorAll('.role.conditional,.role.fallback,.role.market,.role.verify,.role.carrier:not([data-atlas])');"
+            "if(meta){var old=meta.querySelectorAll('.role.conditional:not([data-atlas]),.role.fallback:not([data-atlas]),.role.market:not([data-atlas]),.role.verify:not([data-atlas]),.role.carrier:not([data-atlas])');"
             "old.forEach(n=>n.remove());"
             "var tmp=document.createElement('span');var roleCls=p.pool_role||'fallback';"
-            "tmp.innerHTML='<span class=\"role '+roleCls+'\">'+escF(ROLE_TXT[roleCls]||roleCls)+'</span>';"
+            "tmp.innerHTML='<span class=\"role '+escF(roleCls)+'\">'+escF(ROLE_TXT[roleCls]||roleCls)+'</span>';"
             "var at=meta.querySelector('[data-atlas]');"
             "if(at)meta.insertBefore(tmp.firstChild,at);else while(tmp.firstChild)meta.appendChild(tmp.firstChild)}"
             "var ord=card.querySelector('.food-order'),des=card.querySelector('.food-desc');"
@@ -727,7 +732,7 @@ let navTick=false;window.addEventListener('scroll',()=>{{if(navTick)return;navTi
 document.querySelectorAll('.date-tab').forEach(btn=>btn.addEventListener('click',()=>{{document.querySelectorAll('.date-tab').forEach(b=>{{b.setAttribute('aria-pressed','false');b.setAttribute('aria-selected','false')}});btn.setAttribute('aria-pressed','true');btn.setAttribute('aria-selected','true');var d=btn.getAttribute('data-date');document.querySelectorAll('[data-day-panel]').forEach(p=>p.classList.toggle('active',p.getAttribute('data-day-panel')===d))}}));
 // food: device-only v4 state; do not import or delete retired v2/v3 keys.
 const foodKey='phq-v4-food-eaten';let eaten={{}};try{{eaten=JSON.parse(localStorage.getItem(foodKey)||'{{}}')}}catch(e){{}}const foodCards=[...document.querySelectorAll('[data-food-id]')],foodProgress=document.getElementById('foodProgress'),foodEmpty=document.getElementById('foodEmpty');let showFull=false;function matchFilters(card){{var r=(document.getElementById('filterRegion')||{{}}).value||'';var s=(document.getElementById('filterSlot')||{{}}).value||'';var e=(document.getElementById('filterEaten')||{{}}).value||'';var id=card.dataset.foodId;var isEaten=!!eaten[id];if(e==='eaten'&&!isEaten)return false;if(e==='uneaten'&&isEaten)return false;if(r){{var cr=card.getAttribute('data-region')||'';if(cr.indexOf(r)<0&&!(r==='南島'&&(cr.indexOf('An Th')>=0))&&!(r==='北島'&&(cr.indexOf('Gành')>=0||cr.indexOf('Grand')>=0)))return false}}if(s){{var ts=card.getAttribute('data-time-slots')||'';if(ts.indexOf(s)<0)return false}}return true}}
-function applyFoodFilters(){{window.applyFoodFilters=applyFoodFilters;let count=0,matched=[];foodCards.forEach(card=>{{const id=card.dataset.foodId,isEaten=!!eaten[id];if(isEaten)count++;card.classList.toggle('eaten',isEaten);const btn=card.querySelector('.eaten-btn');if(btn){{btn.setAttribute('aria-pressed',String(isEaten));btn.textContent=isEaten?'✓ 吃過':'○ 未吃'}}var ok=matchFilters(card);if(ok)matched.push(card)}});let visible=matched;if(!showFull&&matched.length>6)visible=matched.slice(0,6);foodCards.forEach(c=>c.classList.add('hidden'));visible.forEach(c=>c.classList.remove('hidden'));if(foodEmpty)foodEmpty.style.display=matched.length?'none':'';var t=document.getElementById('toggleFull');if(t){{t.textContent=showFull?('顯示較少（'+visible.length+' / '+matched.length+'）'):('看完整清單（'+matched.length+' 項符合）');t.setAttribute('aria-pressed',String(showFull))}}if(foodProgress)foodProgress.textContent=`已吃 ${{count}} / ${{foodCards.length}}`}}
+function applyFoodFilters(){{window.applyFoodFilters=applyFoodFilters;let count=0,matched=[];foodCards.forEach(card=>{{const id=card.dataset.foodId,isEaten=!!eaten[id];if(isEaten)count++;card.classList.toggle('eaten',isEaten);const btn=card.querySelector('.eaten-btn');if(btn){{btn.setAttribute('aria-pressed',String(isEaten));btn.textContent=isEaten?'✓ 吃過':'○ 未吃'}}var ok=matchFilters(card);if(ok)matched.push(card)}});matched.sort((a,b)=>Number(a.dataset.poolRank||9999)-Number(b.dataset.poolRank||9999));let visible=matched;if(!showFull&&matched.length>6)visible=matched.slice(0,6);foodCards.forEach(c=>c.classList.add('hidden'));visible.forEach(c=>c.classList.remove('hidden'));document.querySelectorAll('.pool-divider').forEach(d=>{{let next=d.nextElementSibling,hasVisible=false;while(next&&!next.classList.contains('pool-divider')){{if(next.matches('.food-card:not(.hidden)'))hasVisible=true;next=next.nextElementSibling}}d.hidden=!hasVisible}});if(foodEmpty)foodEmpty.style.display=matched.length?'none':'';var t=document.getElementById('toggleFull');if(t){{t.textContent=showFull?('顯示較少（'+visible.length+' / '+matched.length+'）'):('看完整清單（'+matched.length+' 項符合）');t.setAttribute('aria-pressed',String(showFull))}}if(foodProgress)foodProgress.textContent=`已吃 ${{count}} / ${{foodCards.length}}`}}
 foodCards.forEach(card=>{{const btn=card.querySelector('.eaten-btn');if(!btn)return;btn.addEventListener('click',()=>{{const id=card.dataset.foodId;eaten[id]=!eaten[id];try{{localStorage.setItem(foodKey,JSON.stringify(eaten))}}catch(e){{}}applyFoodFilters()}})}});['filterRegion','filterSlot','filterEaten'].forEach(id=>{{var el=document.getElementById(id);if(el)el.addEventListener('change',()=>{{showFull=false;applyFoodFilters()}})}});document.getElementById('toggleFull').addEventListener('click',()=>{{showFull=!showFull;applyFoodFilters()}});document.getElementById('resetFood').addEventListener('click',()=>{{if(!window.confirm('重設吃過紀錄？'))return;eaten={{}};try{{localStorage.setItem(foodKey,JSON.stringify(eaten))}}catch(e){{}}applyFoodFilters()}});applyFoodFilters();
 {cards_fetch}
   const mount=document.getElementById('cardsMount');

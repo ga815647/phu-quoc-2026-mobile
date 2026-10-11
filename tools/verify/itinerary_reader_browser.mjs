@@ -56,7 +56,7 @@ try {
   const scheduled=await page.locator('.day-panel.active [data-segment-id="main"]').innerText();
   assert.match(scheduled,/已核對時刻/);
   assert.match(scheduled,/測試預約通知/);
-  assert.match(scheduled,/核實 2026-09-25/);
+  assert.match(scheduled,/時程資料查核 2026-09-25/);
   assert.match(scheduled,/條件：測試開放狀態/);
   await page.locator('.day-panel.active').getByRole('link',{name:'看行程卡'}).click();
   await page.waitForURL('**/card-candidate.html?slug=cable');
@@ -75,7 +75,7 @@ try {
   const estimate=await page.locator('.day-panel.active [data-segment-id="start"]').innerText();
   assert.match(estimate,/估算（非實測）/);
   assert.match(estimate,/依據：測試估時紀錄/);
-  assert.match(estimate,/核實 2026-08-01/);
+  assert.match(estimate,/資料查核 2026-08-01/);
   assert.match(estimate,/出發前重查/);
   assert.match(estimate,/條件：Rain/);
   assert.match(await page.locator('.day-panel.active [data-segment-id="optional-stop"]').innerText(),/順路加點.*可選，非必做/s);
@@ -84,7 +84,7 @@ try {
   assert.equal(await page.locator('.day-panel.active [data-segment-id="go"]').getAttribute('data-kind'),'transfer');
   assert.equal(await page.locator('.day-panel.active [data-segment-id="start"]').getAttribute('data-kind'),'activity');
   assert.equal(await meal.locator('.route-body').evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(221, 241, 245)');
-  assert.match(await meal.innerText(),/測試店家.*核實 2026-08-01.*出發前重查/s);
+  assert.match(await meal.innerText(),/測試店家.*營運核實 2026-08-01.*出發前重查/s);
   const mealMap=meal.getByRole('link',{name:'地圖'});
   assert.equal(new URL(await mealMap.getAttribute('href')).searchParams.get('query'),'測試店家 富國島');
   const transfer=page.locator('[data-segment-id="go"]');

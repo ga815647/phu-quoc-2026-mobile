@@ -849,7 +849,7 @@
        "condition_refs": []
       }
      ],
-     "public_note": "Grand World 與 Bếp Nhà 是早退且 Green/回程可安排的備選，不預設遠端晚間尾段。",
+     "public_note": "Grand World 與 Bếp Nhà 是早退且 Green/回程可安排的備選，不預設遠端晚間尾段。出發前一週重查園區營運與餐飲；前一天再看臨時公告",
      "alternatives": [
       {
        "id": "vin-tired",
@@ -1862,25 +1862,25 @@
     {
      "divider": null,
      "pool_key": "banh-mi-anh-thu",
-     "desc_copy": "高優先、低摩擦；很適合塞進行程空檔或晚一點快速吃。",
+     "desc_copy": "暫停主池與PRIMARY；需先解13／21號店身分、找零爭議及麵包口感反證。其他麵包店的窄範圍准入不自動接替此角色。",
      "notion_id": "3ce39f3f-a67c-81fb-b323-f1e9fb315a83",
      "pool_rank": 2,
-     "pool_role": "carrier",
-     "order_copy": "Bánh mì"
+     "pool_role": "verify",
+     "order_copy": "待確認；Bánh mì"
     },
     {
      "divider": null,
      "pool_key": "com-tam-nhi",
-     "desc_copy": "想快速坐下吃一份飯時用；是實用 fallback，不是必追名店。",
+     "desc_copy": "暫停推薦，保留待查線索。近期可追溯的豬排火候、米飯評價及晚餐營業確認？",
      "notion_id": "3c839f3f-a67c-8117-badf-cfaac7584afc",
      "pool_rank": 9,
-     "pool_role": "fallback",
-     "order_copy": "Cơm tấm"
+     "pool_role": "verify",
+     "order_copy": "待確認；Cơm tấm"
     },
     {
      "divider": null,
      "pool_key": "honthom-inside",
-     "desc_copy": "園內餐飲待查核，現場依營業與孩子狀況選擇",
+     "desc_copy": "園內用餐規劃佔位；尚未查證具體餐廳、菜色與品質，不列入已通過美食推薦。",
      "notion_id": null,
      "pool_rank": 20,
      "pool_role": "fallback",
@@ -1889,16 +1889,16 @@
     {
      "divider": null,
      "pool_key": "nha-xua-68",
-     "desc_copy": "孩子累、想舒服坐下、正餐時間亂掉時很好用。",
+     "desc_copy": "暫停推薦，保留待查線索。需一道具體家常菜的近期獨立佐證，不概括保證全店。",
      "notion_id": "3cc39f3f-a67c-81f7-b554-f062aa79b55d",
      "pool_rank": 8,
-     "pool_role": "fallback",
-     "order_copy": "沒有鎖定單一必點；看當日家常菜＋白飯"
+     "pool_role": "verify",
+     "order_copy": "待確認：指定家常菜尚未核定"
     },
     {
      "divider": null,
      "pool_key": "safari-inside",
-     "desc_copy": "園內餐飲待查核，現場依營業與孩子狀況選擇",
+     "desc_copy": "園內用餐規劃佔位；尚未查證具體餐廳、菜色與品質，不列入已通過美食推薦。",
      "notion_id": null,
      "pool_rank": 19,
      "pool_role": "fallback",
@@ -1907,20 +1907,20 @@
     {
      "divider": null,
      "pool_key": "vinwonders-inside",
-     "desc_copy": "沒有鎖定必吃店；正常或孩子累時，園內解決比為吃飯硬接 Grand World 更合理。",
+     "desc_copy": "園內用餐規劃佔位；尚未查證具體餐廳、菜色與品質，不列入已通過美食推薦。",
      "notion_id": null,
      "pool_rank": 11,
      "pool_role": "fallback",
-     "order_copy": "園內就近、孩子能吃的熱食"
+     "order_copy": "VinWonders 園內午餐（待查核）"
     },
     {
      "divider": null,
      "pool_key": "wow-que-toi",
-     "desc_copy": "南島低摩擦 fallback，不升 Dish Carrier。",
+     "desc_copy": "已在南島時的日常午晚餐選項；只收錄煎餅與烤肉米線，保留忙時等待／春捲口感反證。不升Dish Carrier。",
      "notion_id": "3c839f3f-a67c-81b4-ad7e-e4fc9cf00bef",
      "pool_rank": 12,
      "pool_role": "fallback",
-     "order_copy": "沒有鎖定必點；選當下現做熱食正餐"
+     "order_copy": "Bánh xèo／bún chả"
     }
    ],
    "bases": [
@@ -2050,9 +2050,9 @@
      "housing": "Dương Đông 老城",
      "kid_fit": 90,
      "op_conf": "MEDIUM",
-     "summary": "這是 Atlas 很需要的『不是特色菜、但住老城超實用』類型：網路再怎麼吹海鮮，旅行途中有一頓便宜穩定的本地飯更有決策價值。",
+     "summary": "待確認，暫不主推｜Cơm tấm sườn；附近晚餐。晚餐飯攤用途合理；目前能核對的食物文主要舊實訪與宣傳清單，不能維持「穩定好吃」的ACTIVE保證。 待確認：近期可追溯的豬排火候、米飯評價及晚餐營業確認？",
      "dish_ids": "[]",
-     "evidence": "現行 Maps/business listing 4.6/90、17:00–20:00；2026 Sun Paradise、2026 Tripi／Toplist＋較早 PhuQuocJapan 實訪皆一致描述晚間短時段、常客多／容易客滿、價格約3萬。",
+     "evidence": "現行 Maps/business listing 4.6/90、17:00–20:00；2026 Sun Paradise、2026 Tripi／Toplist＋較早 PhuQuocJapan 實訪皆一致描述晚間短時段、常客多／容易客滿、價格約3萬。\n\n[2026-10-11 Food Atlas 重篩；下列為本輪研究，以上舊證據保留]\n{\n  \"source_check_date\": \"2026-10-11\",\n  \"operation_confirmation\": \"未現場或當日營業核實；last_verified保留原值。\",\n  \"decision\": \"HOLD\",\n  \"supported_scope\": \"Cơm tấm sườn；附近晚餐\",\n  \"reason_codes\": [\n    \"P1\",\n    \"F3\",\n    \"O1\"\n  ],\n  \"rationale\": \"晚餐飯攤用途合理；目前能核對的食物文主要舊實訪與宣傳清單，不能維持「穩定好吃」的ACTIVE保證。\",\n  \"food_support\": \"2022 Taku Kaneko實訪列炭烤豬、蛋、酸菜飯；2026 Tripi描述米飯與配料。\",\n  \"counterevidence_and_limits\": \"Tripi同文稱午餐客滿卻列17–20，可信度有問題；搜尋同名胡志明店抱怨已排除，不能移植。\",\n  \"unresolved\": \"近期可追溯的豬排火候、米飯評價及晚餐營業確認？\",\n  \"confidence\": \"MODERATE_FOR_HOLD_NOT_FOOD_QUALITY\",\n  \"sources\": [\n    {\n      \"url\": \"https://www.phuquocjapan.com/com_tam_nhi/\",\n      \"publisher\": \"Taku Kaneko／PhuQuocJapan\",\n      \"source_date\": \"2022-06-13（搜尋年推定）\",\n      \"retrieved_at\": \"2026-10-11\",\n      \"access_scope\": \"search完整餐食段，open失敗；1第一人稱歷史文\",\n      \"evidence_status\": \"freshly_checked_source_not_necessarily_recent_evidence\"\n    },\n    {\n      \"url\": \"https://tripi.vn/blog/vi/am-thuc/top-6-quan-com-tam-ngon-tuyet-tai-tp-phu-quoc-kien-giang-tripi\",\n      \"publisher\": \"Tripi\",\n      \"source_date\": \"2026-08-21\",\n      \"retrieved_at\": \"2026-10-11\",\n      \"access_scope\": \"search：Nhị段落及時段\",\n      \"evidence_status\": \"freshly_checked_source_not_necessarily_recent_evidence\"\n    },\n    {\n      \"url\": \"https://restaurantsphuquoc.com/vi/restaurants/com-tam-nhi-987\",\n      \"publisher\": \"RestaurantsPhuQuoc\",\n      \"source_date\": null,\n      \"retrieved_at\": \"2026-10-11\",\n      \"access_scope\": \"search：地址，沒有近期原評\",\n      \"evidence_status\": \"freshly_checked_source_not_necessarily_recent_evidence\"\n    }\n  ],\n  \"public_source_urls\": [\n    \"https://www.phuquocjapan.com/com_tam_nhi/\",\n    \"https://tripi.vn/blog/vi/am-thuc/top-6-quan-com-tam-ngon-tuyet-tai-tp-phu-quoc-kien-giang-tripi\",\n    \"https://restaurantsphuquoc.com/vi/restaurants/com-tam-nhi-987\"\n  ],\n  \"method_limits\": \"待確認不等於難吃、不安全或欺詐。保留正反證；來源查閱日期不等於用餐日期或營業確認。歷史評分不作本輪准入依據。\"\n}",
      "neg_warn": "cơm tấm 不是富國島限定料理；不要因『最有名』標題把它升成跨區必吃。價值是便宜、快、晚餐時段與本地日常感",
      "data_conf": "A",
      "local_idx": 91,
@@ -2063,11 +2063,11 @@
      "pq_feature": 42,
      "price_text": "約 3–4／份",
      "time_slots": "[\"晚餐\"]",
-     "atlas_state": "ACTIVE",
+     "atlas_state": "VERIFY",
      "convenience": 94,
      "last_verified": "2026-08-26",
-     "research_date": "2026-08-26",
-     "evidence_as_of": "2026-08-26"
+     "research_date": "2026-10-11",
+     "evidence_as_of": "2026-10-11"
     },
     {
      "name": "WOW QUÊ TÔI",
@@ -2079,9 +2079,9 @@
      "housing": "An Thới／Sunset Town",
      "kid_fit": 88,
      "op_conf": "MEDIUM",
-     "summary": "Sunset Town／An Thới 若要『好用又不被景區餐廳綁架』，這間比高價景觀餐廳更符合本 Atlas：方便度極高、價格低、料理是正常越南家常菜。A 是『住南島時優先』，不是跨島必吃。",
+     "summary": "限定料理／時段推薦｜bánh xèo；bún chả；南島順路午晚餐。具體煎餅脆度與烤肉米線好評跨Google／Trip.com支持；收窄為兩菜日常餐，不再泛稱所有菜穩定。 待確認：當天供應與實際營業，煎餅是否仍現煎？",
      "dish_ids": "[]",
-     "evidence": "RestaurantsPhuQuoc 現行頁 4.3/449、Trip.com 2026 評論與 07:00–20:30 時段、近期旅記交叉；近期評論反覆提家常越南菜、bánh xèo／bún chả／春捲與平價。",
+     "evidence": "RestaurantsPhuQuoc 現行頁 4.3/449、Trip.com 2026 評論與 07:00–20:30 時段、近期旅記交叉；近期評論反覆提家常越南菜、bánh xèo／bún chả／春捲與平價。\n\n[2026-10-11 Food Atlas 重篩；下列為本輪研究，以上舊證據保留]\n{\n  \"source_check_date\": \"2026-10-11\",\n  \"operation_confirmation\": \"未現場或當日營業核實；last_verified保留原值。\",\n  \"decision\": \"ADMIT\",\n  \"supported_scope\": \"bánh xèo；bún chả；南島順路午晚餐\",\n  \"reason_codes\": [\n    \"P1\",\n    \"F1\",\n    \"O1\"\n  ],\n  \"rationale\": \"具體煎餅脆度與烤肉米線好評跨Google／Trip.com支持；收窄為兩菜日常餐，不再泛稱所有菜穩定。\",\n  \"food_support\": \"Trip.com _TI***ip 2026-05-16称bánh xèo脆、生春捲爽脆；Google Felix相對6月推薦bánh xèo及bún chả。\",\n  \"counterevidence_and_limits\": \"My Hà較舊評論說bún chả春捲偏軟、忙時等候；2023旅記稱烤肉份量小；炒飯僅普通摘錄不延伸為招牌。\",\n  \"unresolved\": \"當天供應與實際營業，煎餅是否仍現煎？\",\n  \"confidence\": \"MEDIUM\",\n  \"sources\": [\n    {\n      \"url\": \"https://restaurantguru.com/WOW-QUE-TOI-Vietnam\",\n      \"publisher\": \"RestaurantGuru/Google\",\n      \"publication_or_review_date\": \"Felix相對6月；My Hà相對2年\",\n      \"retrieved_at\": \"2026-10-11\",\n      \"access\": \"3篇可見原評\"\n    },\n    {\n      \"url\": \"https://www.trip.com/restaurant/vietnam/phu-quoc-island/detail/wow-qu-ti-145025177/?rankingId=100900015261&source=uccrank\",\n      \"publisher\": \"Trip.com\",\n      \"publication_or_review_date\": \"2026-05-16;2025-04-29×2\",\n      \"retrieved_at\": \"2026-10-11\",\n      \"access\": \"3篇可見原評\"\n    },\n    {\n      \"url\": \"https://hk.trip.com/moments/theme/destination-phu-quoc-island-24779-korean-cuisine-992285/\",\n      \"publisher\": \"Trip Moments\",\n      \"publication_or_review_date\": \"visit2023-07\",\n      \"retrieved_at\": \"2026-10-11\",\n      \"access\": \"1篇舊旅記；非獨立於Trip生態\"\n    }\n  ],\n  \"public_source_urls\": [\n    \"https://restaurantguru.com/WOW-QUE-TOI-Vietnam\",\n    \"https://www.trip.com/restaurant/vietnam/phu-quoc-island/detail/wow-qu-ti-145025177/?rankingId=100900015261&source=uccrank\",\n    \"https://hk.trip.com/moments/theme/destination-phu-quoc-island-24779-korean-cuisine-992285/\",\n    \"http://Trip.com)\"\n  ],\n  \"method_limits\": \"待確認不等於難吃、不安全或欺詐。保留正反證；來源查閱日期不等於用餐日期或營業確認。歷史評分不作本輪准入依據。\"\n}",
      "neg_warn": "不是富國島限定菜，也不是純 local 老店；價值在 Sunset Town 周邊少見的平價越南家常菜與全天時段",
      "data_conf": "A",
      "local_idx": 68,
@@ -2095,8 +2095,8 @@
      "atlas_state": "ACTIVE",
      "convenience": 96,
      "last_verified": "2026-08-26",
-     "research_date": "2026-08-26",
-     "evidence_as_of": "2026-08-26"
+     "research_date": "2026-10-11",
+     "evidence_as_of": "2026-10-11"
     },
     {
      "name": "Nhà Xưa 68｜Cơm & Lẩu Gia Đình",
@@ -2108,9 +2108,9 @@
      "housing": "Dương Đông 老城",
      "kid_fit": 88,
      "op_conf": "MEDIUM",
-     "summary": "補現有 Atlas 的『正常坐下吃一頓越南家庭菜』缺口。強項不是富國島限定，而是 canh chua、mắm chưng、mắm ba khía、lẩu mắm 等南部家常風味＋家庭用餐穩定度；吃多天海鮮／粉麵後有實際決策價值。",
+     "summary": "待確認，暫不主推｜mắm chưng / canh khổ qua / family dishes；正常坐下家庭晚餐。南部家常餐適配成立；不能把部分好菜提升成全菜穩定。新增主廚苦瓜湯線索可保留，尚待菜別補證。 待確認：Independent current corroboration for one narrow family dish; reframe rather than universal endorsement.",
      "dish_ids": "[]",
-     "evidence": "2026-08 RestaurantGuru updated listing；Phú Quốc Map；Sapo 店家案例；Foody。",
+     "evidence": "2026-08 RestaurantGuru updated listing；Phú Quốc Map；Sapo 店家案例；Foody。\n\n[2026-10-11 Food Atlas 重篩；下列為本輪研究，以上舊證據保留]\n{\n  \"source_check_date\": \"2026-10-11\",\n  \"operation_confirmation\": \"未現場或當日營業核實；last_verified保留原值。\",\n  \"decision\": \"HOLD\",\n  \"supported_scope\": \"mắm chưng / canh khổ qua / family dishes；正常坐下家庭晚餐\",\n  \"reason_codes\": [\n    \"P1\",\n    \"F2\",\n    \"F3\"\n  ],\n  \"rationale\": \"南部家常餐適配成立；不能把部分好菜提升成全菜穩定。新增主廚苦瓜湯線索可保留，尚待菜別補證。\",\n  \"food_support\": \"Named chef Andy Huỳnh likes canh khổ qua; pilot April2026 squid hotpot and May2026 minced fermented pork support.\",\n  \"counterevidence_and_limits\": \"Pilot inherited June2026 overseasoning,October2025 dry squid,May2026 weaker duck; fresh Tripadvisor open did not expose same cached excerpts, retain as pilot not freshly reverified.\",\n  \"unresolved\": \"Independent current corroboration for one narrow family dish; reframe rather than universal endorsement.\",\n  \"confidence\": \"MEDIUM\",\n  \"sources\": [\n    {\n      \"url\": \"https://wanderlog.com/place/details/3068880/nh%C3%A0-x%C6%B0a-68\",\n      \"publication_or_visit_date\": null,\n      \"retrieved_at\": \"2026-10-11\",\n      \"type_and_limits\": \"fresh identity open, individual reviews not exposed in opened version\"\n    },\n    {\n      \"url\": \"https://www.tripadvisor.co.uk/Restaurant_Review-g1184679-d17118429-Reviews-Nha_Xua_68-Duong_Dong_Phu_Quoc_Island_Kien_Giang_Province.html\",\n      \"publication_or_visit_date\": null,\n      \"retrieved_at\": \"2026-10-11\",\n      \"type_and_limits\": \"fresh page open; pilot accounts inherited\"\n    },\n    {\n      \"url\": \"https://wowweekend.vn/quan-quen-cua-bep-truong.html\",\n      \"publication_or_visit_date\": \"2025 approx\",\n      \"retrieved_at\": \"2026-10-11\",\n      \"type_and_limits\": \"named chef dish counterweight\"\n    }\n  ],\n  \"public_source_urls\": [\n    \"https://wanderlog.com/place/details/3068880/nh%C3%A0-x%C6%B0a-68\",\n    \"https://www.tripadvisor.co.uk/Restaurant_Review-g1184679-d17118429-Reviews-Nha_Xua_68-Duong_Dong_Phu_Quoc_Island_Kien_Giang_Province.html\",\n    \"https://wowweekend.vn/quan-quen-cua-bep-truong.html\"\n  ],\n  \"method_limits\": \"待確認不等於難吃、不安全或欺詐。保留正反證；來源查閱日期不等於用餐日期或營業確認。歷史評分不作本輪准入依據。\"\n}",
      "neg_warn": "熱門時段可能排隊；lẩu mắm 份量偏 2–3 人，1大1小不一定適合直接點整鍋。",
      "data_conf": "A",
      "local_idx": 76,
@@ -2121,11 +2121,11 @@
      "pq_feature": 48,
      "price_text": "約 5–20／人起；鍋物另計",
      "time_slots": "[\"早午餐\", \"午餐\", \"下午\", \"晚餐\"]",
-     "atlas_state": "ACTIVE",
+     "atlas_state": "VERIFY",
      "convenience": 88,
      "last_verified": "2026-08-11",
-     "research_date": "2026-08-30",
-     "evidence_as_of": "2026-08-11"
+     "research_date": "2026-10-11",
+     "evidence_as_of": "2026-10-11"
     },
     {
      "name": "Bánh mì Anh Thư｜ANH THU - Banh Mi Xiu Mai",
@@ -2137,9 +2137,9 @@
      "housing": "30 Tháng 4",
      "kid_fit": null,
      "op_conf": "MEDIUM",
-     "summary": "v2 ACCEPTED disposition｜Bánh mì DEFAULT PRIMARY via decision set PHQ-DS-BANH-MI-DEFAULT-2026-09-01-01. Strong cross-provenance dish-specific FOOD evidence survives major lineage removal; dissent retai",
+     "summary": "待確認，暫不主推｜Bánh mì xíu mại / thập cẩm；日常外帶簡餐。新樣本揭露找零／收款爭議及乾冷麵包，舊LOW交易結論應撤回；13與21是兩個MapsID，先不能繼續當單一已解身分。 待確認：先釐清 13／21 號店址與歷史食記歸屬、收款爭議脈絡及近期麵包口感；暫停原預設主選角色。",
      "dish_ids": "[\"3ce39f3f-a67c-81ed-9d79-e8a5e4a73be9\"]",
-     "evidence": "PHQ-FOOD-WORKER-BANH-MI-2026-09-01-01-R1｜atlas_snapshot_id=PHQ-ATLAS-SNAPSHOT-2026-09-01-03｜independent non-Maps tickets: Backpackers, Yuki, Trip.com UGC, Wander with Debbie; 2026 operation corroboration; Maps pool non-deciding.",
+     "evidence": "PHQ-FOOD-WORKER-BANH-MI-2026-09-01-01-R1｜atlas_snapshot_id=PHQ-ATLAS-SNAPSHOT-2026-09-01-03｜independent non-Maps tickets: Backpackers, Yuki, Trip.com UGC, Wander with Debbie; 2026 operation corroboration; Maps pool non-deciding.\n\n[2026-10-11 Food Atlas 重篩；下列為本輪研究，以上舊證據保留]\n{\n  \"source_check_date\": \"2026-10-11\",\n  \"operation_confirmation\": \"未現場或當日營業核實；last_verified保留原值。\",\n  \"decision\": \"HOLD\",\n  \"supported_scope\": \"Bánh mì xíu mại / thập cẩm；日常外帶簡餐\",\n  \"reason_codes\": [\n    \"P1\",\n    \"F2\",\n    \"T1\",\n    \"I1\",\n    \"E2\"\n  ],\n  \"rationale\": \"新樣本揭露找零／收款爭議及乾冷麵包，舊LOW交易結論應撤回；13與21是兩個MapsID，先不能繼續當單一已解身分。\",\n  \"food_support\": \"陳籽涵2026-08-06 crisp bread/fragrant filling;Debbie2026Sept rich pork-ball/meat sandwich good butnot best;Flora2026-08-31 richer25k combination but ordinary.\",\n  \"counterevidence_and_limits\": \"Chee2026-02-01 alleges200k/20k denial;Charles2025-08-07 change mismatch. Alim/Krystalin same2025-01-07 possibly same party,not two independent incidents. Roy2025-03-08 no reheating/bland;takeaway JY texture confounded by hotel delay.\",\n  \"unresolved\": \"先釐清 13／21 號店址與歷史食記歸屬、收款爭議脈絡及近期麵包口感；暫停原預設主選角色。\",\n  \"confidence\": \"MEDIUM\",\n  \"sources\": [\n    {\n      \"url\": \"https://debbiechien.com/phu-quoc-travel-guide/\",\n      \"publication_or_visit_date\": \"2026-09 approx publication;visit unspecified\",\n      \"retrieved_at\": \"2026-10-11\",\n      \"type_and_limits\": \"freshread firsthand25k andqualifiedpositive\"\n    },\n    {\n      \"url\": \"https://restaurantsphuquoc.com/en/restaurants/banh-mi-anh-thu-2204\",\n      \"publication_or_visit_date\": null,\n      \"retrieved_at\": \"2026-10-11\",\n      \"type_and_limits\": \"13address listing\"\n    },\n    {\n      \"url\": \"https://restaurantsphuquoc.com/vi/restaurants/anh-thu-banh-mi-xiu-mai-3845\",\n      \"publication_or_visit_date\": null,\n      \"retrieved_at\": \"2026-10-11\",\n      \"type_and_limits\": \"21address listing\"\n    }\n  ],\n  \"public_source_urls\": [\n    \"https://debbiechien.com/phu-quoc-travel-guide/\",\n    \"https://restaurantsphuquoc.com/en/restaurants/banh-mi-anh-thu-2204\",\n    \"https://restaurantsphuquoc.com/vi/restaurants/anh-thu-banh-mi-xiu-mai-3845\",\n    \"http://Trip.com)\",\n    \"https://www.google.com/maps/reviews/data=!4m8!14m7!1m6!2m5!1sCi9DQUlRQUNvZENodHljRjlvT2tSWVIyVk5YM3BqT0dKR2VrOVhPWEpETTJ4dmRGRRAB!2m1!1s0x0:0x350568701de20f86!3m1!1s2@1:CAIQACodChtycF9oOkRYR2VNX3pjOGJGek9XOXJDM2xvdFE%7C%7C?hl=en-US\",\n    \"https://www.google.com/maps/reviews/data=!4m8!14m7!1m6!2m5!1sCi9DQUlRQUNvZENodHljRjlvT2pGZllYRk1TWEkxY0MxTE9IQnVTMU5qU1ZOc1pFRRAB!2m1!1s0x0:0x350568701de20f86!3m1!1s2@1:CAIQACodChtycF9oOjFfYXFMSXI1cC1LOHBuS1NjSVNsZEE%7C%7C?hl=en-US\",\n    \"https://www.google.com/maps/reviews/data=!4m8!14m7!1m6!2m5!1sChZDSUhNMG9nS0VJQ0FnSURmOFplWFJ3EAE!2m1!1s0x0:0x350568701de20f86!3m1!1s2@1:CIHM0ogKEICAgIDf8ZeXRw%7C%7C?hl=en-US\",\n    \"https://www.google.com/maps/reviews/data=!4m8!14m7!1m6!2m5!1sChZDSUhNMG9nS0VJQ0FnSURmOGJfek5REAE!2m1!1s0x0:0x350568701de20f86!3m1!1s2@1:CIHM0ogKEICAgIDf8b_zNQ%7C%7C?hl=en-US\",\n    \"https://www.google.com/maps/reviews/data=!4m8!14m7!1m6!2m5!1sCi9DQUlRQUNvZENodHljRjlvT21KVlduWjNaRzEyTWpVMWFFbDBUSEpYT0hKd2FtYxAB!2m1!1s0x0:0x350568701de20f86!3m1!1s2@1:CAIQACodChtycF9oOmJVWnZ3ZG12MjU1aEl0THJXOHJwamc%7C%7C?hl=en-US\",\n    \"https://www.google.com/maps/reviews/data=!4m8!14m7!1m6!2m5!1sChdDSUhNMG9nS0VJQ0FnTUR3cExmNHlRRRAB!2m1!1s0x0:0x350568701de20f86!3m1!1s2@1:CIHM0ogKEICAgMDwpLf4yQE%7C%7C?hl=en-US\",\n    \"https://www.google.com/maps/reviews/data=!4m8!14m7!1m6!2m5!1sChZDSUhNMG9nS0VJQ0FnTURRc1AtSlNBEAE!2m1!1s0x0:0x350568701de20f86!3m1!1s2@1:CIHM0ogKEICAgMDQsP-JSA%7C%7C?hl=en-US\",\n    \"https://www.google.com/maps/reviews/data=!4m8!14m7!1m6!2m5!1sChZDSUhNMG9nS0VJQ0FnTURJeE5meFdnEAE!2m1!1s0x0:0x350568701de20f86!3m1!1s2@1:CIHM0ogKEICAgMDIxNfxWg%7C%7C?hl=en-US\",\n    \"https://www.google.com/maps/reviews/data=!4m8!14m7!1m6!2m5!1sCi9DQUlRQUNvZENodHljRjlvT2xkeGRGVTBRbEZUT1RCQ01XcDBZVzFxUzFSTVpWRRAB!2m1!1s0x0:0x350568701de20f86!3m1!1s2@1:CAIQACodChtycF9oOldxdFU0QlFTOTBCMWp0YW1qS1RMZVE%7C%7C?hl=en-US\",\n    \"https://www.google.com/maps/reviews/data=!4m8!14m7!1m6!2m5!1sCi9DQUlRQUNvZENodHljRjlvT2pOMVEzTXlUMFZaVlRGdFYxTjBRVEZ3T0ZWVFMwRRAB!2m1!1s0x0:0x350568701de20f86!3m1!1s2@1:CAIQACodChtycF9oOjN1Q3MyT0VZVTFtV1N0QTFwOFVTS0E%7C%7C?hl=en-US\",\n    \"https://www.google.com/maps/reviews/data=!4m8!14m7!1m6!2m5!1sCi9DQUlRQUNvZENodHljRjlvT201bWExUjZlRGxSUzIwdFVFeHNlSGh1WnpoQ0xVRRAB!2m1!1s0x0:0x350568701de20f86!3m1!1s2@1:CAIQACodChtycF9oOm5ma1R6eDlRS20tUExseHhuZzhCLUE%7C%7C?hl=en-US\",\n    \"https://www.google.com/maps/reviews/data=!4m8!14m7!1m6!2m5!1sCi9DQUlRQUNvZENodHljRjlvT2tOUmJERTVhRzFEV2xwVloxQjNOREp4VjBwWlJuYxAB!2m1!1s0x0:0x350568701de20f86!3m1!1s2@1:CAIQACodChtycF9oOkNRbDE5aG1DWlpVZ1B3NDJxV0pZRnc%7C%7C?hl=en-US\",\n    \"https://www.google.com/maps/reviews/data=!4m8!14m7!1m6!2m5!1sCi9DQUlRQUNvZENodHljRjlvT21oWlpuQXpUMjAzU0RoRU5XaDFka1Z5T0dkcVoyYxAB!2m1!1s0x0:0x350568701de20f86!3m1!1s2@1:CAIQACodChtycF9oOmhZZnAzT203SDhENWh1dkVyOGdqZ2c%7C%7C?hl=en-US\"\n  ],\n  \"method_limits\": \"待確認不等於難吃、不安全或欺詐。保留正反證；來源查閱日期不等於用餐日期或營業確認。歷史評分不作本輪准入依據。\"\n}",
      "neg_warn": "One concrete blandness dissent and one current 'good, not best off-island' reservation retained. Google Maps review-integrity pool remains UNKNOWN. Address number varies 13 vs 21; use PHAM THOA + cano",
      "data_conf": null,
      "local_idx": null,
@@ -2150,11 +2150,11 @@
      "pq_feature": null,
      "price_text": "約 2.5 萬／個（2026 current firsthand；現場仍確認）",
      "time_slots": "[\"早餐\", \"早午餐\", \"午餐\", \"下午\", \"晚餐\", \"宵夜\"]",
-     "atlas_state": "ACTIVE",
+     "atlas_state": "VERIFY",
      "convenience": null,
      "last_verified": "2026-09-01",
-     "research_date": "2026-09-01",
-     "evidence_as_of": "2026-09-01"
+     "research_date": "2026-10-11",
+     "evidence_as_of": "2026-10-11"
     }
    ],
    "points": [
@@ -2247,10 +2247,10 @@
  },
  "meta": {
   "schema_version": 1,
-  "content_revision": "phq1:6806a27908e797aceeb99cb7003ad9d1a05e9ffb07db0ca8d82092c4c4c4a1c3",
+  "content_revision": "phq1:e643fb08830eb42ca05128044a952c0cb0415485a860c21db15428c0ebd16c01",
   "source": "neon-prod",
   "environment": "production",
-  "fetched_at": "2026-09-28T02:16:19.292656Z",
-  "exported_at": "2026-09-28T02:16:19.292656Z"
+  "fetched_at": "2026-10-11T16:56:28.261838Z",
+  "exported_at": "2026-10-11T16:56:28.261838Z"
  }
 }

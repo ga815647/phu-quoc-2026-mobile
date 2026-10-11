@@ -48,3 +48,11 @@
 [data-itinerary] .itinerary-alternatives .panel{margin-top:8px;box-shadow:none;border-color:#b9d8df}
 [data-itinerary] .itinerary-alternatives .step{display:block;overflow-wrap:anywhere}
 [data-itinerary] button:focus-visible,[data-itinerary] summary:focus-visible,[data-itinerary] a:focus-visible{outline:3px solid var(--sunset);outline-offset:2px}
+
+/* Source-review dates never imply a new operating verification. */
+[data-itinerary] .dining-status{font-size:12px;font-weight:800;color:#724512;margin:0 0 7px}
+[data-itinerary] [data-dining-state="DEACTIVATED"] .dining-status{color:#9b332b}
+[data-itinerary] .itinerary-evidence,[data-itinerary] .itinerary-original-note{margin-top:8px;font-size:12px;min-width:0}
+[data-itinerary] .itinerary-evidence summary,[data-itinerary] .itinerary-original-note summary{min-height:44px;padding:11px 0;cursor:pointer;font-weight:700}
+[data-itinerary] .evidence-text{white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word;max-height:22rem;overflow:auto;padding:8px;background:var(--surface)}
+.pool-divider[hidden]{display:none}

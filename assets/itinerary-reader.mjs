@@ -158,9 +158,32 @@ const DAY_KINDS={arrival:'抵達日',activity:'主活動',light:'輕鬆安排',d
 const SEGMENT_KINDS={activity:'活動',meal:'用餐',transfer:'交通',rest:'休息',optional:'可選'};
 const recheck=date=>date && (Date.now()-Date.parse(`${date}T00:00:00Z`))/86400000 > 30;
 function evidence(body,dates,source) {
-  const unique=[...new Set(dates.filter(Boolean))];
-  unique.forEach(date=>body.append(el('p','tiny',`核實 ${date}${recheck(date)?' · 出發前重查':''}`)));
-  if(source)body.append(el('p','tiny',`依據：${source}`));
+  dates.forEach(([label,date,showUnknown=false])=>{
+    if(date)body.append(el('p','tiny',`${label} ${date}${recheck(date)?' · 出發前重查':''}`));
+    else if(showUnknown)body.append(el('p','tiny',`${label}：未知`));
+  });
+  if(!source)return;
+  if(source.length<=180 && !/[\n{}]/.test(source))body.append(el('p','tiny',`依據：${source}`));
+  else {
+    const details=el('details','itinerary-evidence');
+    details.append(el('summary','','來源與研究依據（展開查看）'),el('p','evidence-text',source));
+    body.append(details);
+  }
+}
+function diningState(refs,s) {
+  const related=[s.ref,s.transfer?.from_ref,s.transfer?.to_ref].filter(r=>['food','pool'].includes(r?.type));
+  const states=related.map(r=>{
+    const pool=r.type==='pool'?refs.pool.find(p=>p.pool_key===r.id):null;
+    const food=refs.foods.find(f=>f.notion_id===(pool?pool.notion_id:r.id));
+    return food?.atlas_state || 'UNKNOWN';
+  });
+  if(states.includes('DEACTIVATED'))return {state:'DEACTIVATED',label:'已下架 · 不列入用餐建議'};
+  if(states.some(state=>state!=='ACTIVE'))return {state:'VERIFY',label:'待再確認 · 暫停推薦'};
+  return null;
+}
+function segmentLabel(refs,s) {
+  const state=diningState(refs,s);
+  return state?`${state.label}｜${s.label}`:s.label;
 }
 function appendSegment(list,s,refs,alternatives) {
   const item=el('div',`step route-${s.kind}`);item.dataset.segmentId=s.id;item.dataset.kind=s.kind;
@@ -168,11 +191,13 @@ function appendSegment(list,s,refs,alternatives) {
   const label=timeText(s.time);
   const time=el('div','time',label.clock);const body=el('div','route-body');
   body.append(el('span','route-kind',SEGMENT_KINDS[s.kind]));
+  const dining=diningState(refs,s);
+  if(dining){item.dataset.diningState=dining.state;body.append(el('p','dining-status',dining.label));}
   body.append(el('b','',s.label));
   const detail=el('div','time-detail');
   detail.append(el('span','',label.zone),el('span','',label.certainty),el('span','',label.duration));
   body.append(detail);
-  evidence(body,[s.time.evidence_as_of],s.time.source_refs.join('、'));
+  evidence(body,[['時程資料查核',s.time.evidence_as_of]],s.time.source_refs.join('、'));
   const conditionLabel=id=>alternatives.find(a=>a.id===id)?.trigger_text ||
     refs.cards.find(c=>c.slug==='starfish')?.condition_labels?.[id] || id;
   if(s.kind==='optional')body.append(el('p','tiny','可選，非必做'));
@@ -181,7 +206,8 @@ function appendSegment(list,s,refs,alternatives) {
     body.append(el('p','',nameFor(refs,s.ref)));
     const row=refs[TYPES[s.ref.type][0]].find(x=>x[TYPES[s.ref.type][1]]===s.ref.id);
     const place=s.ref.type==='pool' && row.notion_id ? refs.foods.find(f=>f.notion_id===row.notion_id) : row;
-    evidence(body,[place?.last_verified,place?.evidence_as_of],place?.evidence);
+    const foodRef=['food','pool'].includes(s.ref.type);
+    evidence(body,[['營運核實',place?.last_verified,foodRef],['資料查核',place?.evidence_as_of]],place?.evidence);
     const mapQuery=s.ref.type==='base' ? null : place?.maps_query;
     if(mapQuery) {
       const link=el('a','place-link','地圖');link.href='https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(mapQuery);
@@ -196,7 +222,10 @@ function appendSegment(list,s,refs,alternatives) {
     body.append(el('p','',`${nameFor(refs,tr.from_ref)} → ${nameFor(refs,tr.to_ref)} · ${tr.mode} · 等車 ${tr.wait_minutes ? `${tr.wait_minutes.min}–${tr.wait_minutes.max} 分鐘`:'待估'} · 緩衝 ${tr.buffer_minutes} 分鐘`));
     if(tr.condition_refs.length)body.append(el('p','tiny',`交通條件：${tr.condition_refs.map(conditionLabel).join('、')}`));
   }
-  if(s.note)body.append(el('p','',s.note));
+  if(s.note){
+    if(dining){const original=el('details','itinerary-original-note');original.append(el('summary','','原安排備註（推薦狀態以目前標示為準）'),el('p','',s.note));body.append(original);}
+    else body.append(el('p','',s.note));
+  }
   item.append(time,body);list.append(item);
 }
 
@@ -241,7 +270,7 @@ export function mountItinerary({root,todayRoot,refreshButton,apiUrl,fallbackUrl,
     const date=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Ho_Chi_Minh',year:'numeric',month:'2-digit',day:'2-digit'}).format(now());
     const dateLine=todayRoot.querySelector('#vietnamDateLine');if(dateLine)dateLine.textContent='越南時間 '+date;
     const day=loaded.envelope.data.days.find(x=>x.date===date);
-    const desc=day ? day.plan.segments.map(s=>`${s.label}${s.ref?'：'+nameFor(loaded.envelope.data.refs,s.ref):''}`).join('、') : '請在行程區查看六日安排。';
+    const desc=day ? day.plan.segments.map(s=>`${segmentLabel(loaded.envelope.data.refs,s)}${s.ref?'：'+nameFor(loaded.envelope.data.refs,s.ref):''}`).join('、') : '請在行程區查看六日安排。';
     const phase=todayRoot.querySelector('#tripPhase'),title=todayRoot.querySelector('#todayTitle'),detail=todayRoot.querySelector('#todayDesc'),next=todayRoot.querySelector('#todayNext');
     if(phase)phase.textContent=date<'2026-10-10'?'出發前':date>'2026-10-15'?'旅行後':'旅途中 · '+date;
     if(title)title.textContent=day?`今日（${date}）：${day.main_card_slug?nameFor(loaded.envelope.data.refs,{type:'card',id:day.main_card_slug}):DAY_KINDS[day.day_kind] || '當日安排'}`:`六日行程（${date}）`;
