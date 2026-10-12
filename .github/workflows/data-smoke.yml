@@ -13,6 +13,7 @@ on:
       - 'tools/verify/test_local_state_browser.mjs'
       - 'tools/verify/itinerary_reader_browser.mjs'
       - 'tools/verify/test_smoke_readiness.mjs'
+      - 'tools/verify/test_site_check_browser.mjs'
       - 'tools/verify/food_atlas_browser.mjs'
       - 'tools/verify/test_food_atlas_display.*'
       - 'tools/itinerary-reader.mjs'
